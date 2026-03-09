@@ -46,7 +46,7 @@ async def write_chapter_form(request: Request, book_id: int, db: Session = Depen
         raise HTTPException(status_code=404, detail="书籍不存在")
     next_chapter = int(book.current_chapter) + 1
     prev_ending = get_prev_ending(book_id, next_chapter)
-    core_event = extract_chapter_outline(book.memory_summary, next_chapter)
+    core_event = extract_chapter_outline(str(book.memory_summary), next_chapter)
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
@@ -68,25 +68,27 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    current = book.current_chapter or 0
+    current = int(book.current_chapter) if book.current_chapter is not None else 0
     next_chapter = current + 1
-    prev_ending = get_prev_ending(book_id, next_chapter)
+    prev_ending = get_prev_ending(book_id, int(next_chapter))
 
-    ai_service = AiService(api_key=app_settings.deepseek_api_key, base_url=app_settings.deepseek_base_url)
+    ai_service = AiService(
+        api_key=app_settings.deepseek_api_key, base_url=app_settings.deepseek_base_url, model=app_settings.default_model
+    )
     try:
-        content = await ai_service.write_chapter(book, next_chapter, core_event, prev_ending)
+        content = await ai_service.write_chapter(book, int(next_chapter), core_event, prev_ending)
     except Exception as e:
         return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
 
     title = extract_title(content) or f"第{next_chapter}章"
     try:
-        save_chapter(book_id, next_chapter, content)
+        save_chapter(book_id, int(next_chapter), content)
     except Exception as e:
         import traceback
 
         return HTMLResponse(content=f"保存章节失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
     try:
-        chapter = Chapter(book_id=book_id, chapter_number=next_chapter, title=title)
+        chapter = Chapter(book_id=book_id, chapter_number=int(next_chapter), title=title)
         db.add(chapter)
         book.current_chapter = next_chapter
         db.commit()

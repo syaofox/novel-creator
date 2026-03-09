@@ -83,18 +83,33 @@ class AiService:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
+        stream = book.config.get("stream", True)
         params = {
             "model": self.model,
             "messages": messages,
             "temperature": book.config.get("temperature", 0.78),
             "top_p": book.config.get("top_p", 0.92),
             "max_tokens": book.config.get("max_tokens", 8192),
-            "stream": book.config.get("stream", True),
+            "stream": stream,
         }
         self._log_request("write_chapter", params)
-        response = await self.client.chat.completions.create(**params)
-        self._log_response(response)
-        return response.choices[0].message.content or ""
+        if stream:
+            response = await self.client.chat.completions.create(**params)
+            content = ""
+            first_chunk = True
+            async for chunk in response:
+                if first_chunk:
+                    logger.info("=== API 响应（流式） ===")
+                    logger.info(f"Model: {chunk.model}")
+                    first_chunk = False
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    content += chunk.choices[0].delta.content
+            logger.info(f"Stream completed, content length: {len(content)}")
+            return content
+        else:
+            response = await self.client.chat.completions.create(**params)
+            self._log_response(response)
+            return response.choices[0].message.content or ""
 
     async def update_summary(self, book: Book, new_chapter_text: str) -> str:
         """根据新章节和旧摘要生成新摘要"""
