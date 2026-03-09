@@ -44,7 +44,7 @@ async def write_chapter_form(request: Request, book_id: int, db: Session = Depen
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    next_chapter = book.current_chapter + 1
+    next_chapter = int(book.current_chapter) + 1
     prev_ending = get_prev_ending(book_id, next_chapter)
     core_event = extract_chapter_outline(book.memory_summary, next_chapter)
     from fastapi.templating import Jinja2Templates
@@ -68,23 +68,20 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    next_chapter = book.current_chapter + 1
+    current = book.current_chapter or 0
+    next_chapter = current + 1
     prev_ending = get_prev_ending(book_id, next_chapter)
 
     ai_service = AiService(api_key=app_settings.deepseek_api_key, base_url=app_settings.deepseek_base_url)
     try:
         content = await ai_service.write_chapter(book, next_chapter, core_event, prev_ending)
     except Exception as e:
-        # 返回错误信息，可显示在片段中
         return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
 
-    # 保存章节
     title = extract_title(content) or f"第{next_chapter}章"
     save_chapter(book_id, next_chapter, content)
-    # 创建章节记录
     chapter = Chapter(book_id=book_id, chapter_number=next_chapter, title=title)
     db.add(chapter)
-    # 更新当前章节数
     book.current_chapter = next_chapter
     db.commit()
 
