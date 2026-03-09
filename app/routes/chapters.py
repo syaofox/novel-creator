@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 import re
 
@@ -72,43 +72,60 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
     next_chapter = current + 1
     prev_ending = get_prev_ending(book_id, int(next_chapter))
 
-    ai_service = AiService(
-        api_key=app_settings.deepseek_api_key, base_url=app_settings.deepseek_base_url, model=app_settings.default_model
-    )
-    try:
-        content = await ai_service.write_chapter(book, int(next_chapter), core_event, prev_ending)
-    except Exception as e:
-        return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
-
-    title = extract_title(content) or f"第{next_chapter}章"
-    try:
-        save_chapter(book_id, int(next_chapter), content)
-    except Exception as e:
-        import traceback
-
-        return HTMLResponse(content=f"保存章节失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
-    try:
-        chapter = Chapter(book_id=book_id, chapter_number=int(next_chapter), title=title)
-        db.add(chapter)
-        book.current_chapter = next_chapter
-        db.commit()
-    except Exception as e:
-        import traceback
-
-        return HTMLResponse(content=f"保存数据库失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
-
+    stream = book.config.get("stream", True)
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
-    try:
-        return templates.TemplateResponse(
-            "partials/chapter_generated.html",
-            {"request": request, "book": book, "chapter": chapter, "content": content[:500] + "..."},
-        )
-    except Exception as e:
-        import traceback
 
-        return HTMLResponse(content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
+    if stream:
+        # 流式模式：返回空内容，前端通过 JavaScript 调用流式端点
+        try:
+            return templates.TemplateResponse(
+                "partials/edit_chapter.html",
+                {
+                    "request": request,
+                    "book": book,
+                    "chapter_number": next_chapter,
+                    "content": "",
+                    "stream": True,
+                    "core_event": core_event,
+                },
+            )
+        except Exception as e:
+            import traceback
+
+            return HTMLResponse(
+                content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
+            )
+    else:
+        # 非流式模式：生成完整内容
+        ai_service = AiService(
+            api_key=app_settings.deepseek_api_key,
+            base_url=app_settings.deepseek_base_url,
+            model=app_settings.default_model,
+        )
+        try:
+            content = await ai_service.write_chapter(book, int(next_chapter), core_event, prev_ending)
+        except Exception as e:
+            return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
+        try:
+            return templates.TemplateResponse(
+                "partials/edit_chapter.html",
+                {
+                    "request": request,
+                    "book": book,
+                    "chapter_number": next_chapter,
+                    "content": content,
+                    "stream": False,
+                    "core_event": core_event,
+                },
+            )
+        except Exception as e:
+            import traceback
+
+            return HTMLResponse(
+                content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
+            )
 
 
 @router.get("/{chapter_num}", response_class=HTMLResponse)
@@ -128,3 +145,81 @@ async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Ses
     return templates.TemplateResponse(
         "chapter_view.html", {"request": request, "book": book, "chapter": chapter, "content": content}
     )
+
+
+@router.post("/save", response_class=HTMLResponse)
+async def save_chapter_endpoint(
+    request: Request,
+    book_id: int,
+    chapter_number: int = Form(...),
+    content: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    # 验证章节号是否合理
+    current = int(book.current_chapter) if book.current_chapter is not None else 0
+    if chapter_number != current + 1:
+        # 可能是编辑已存在的章节？暂时不允许
+        raise HTTPException(status_code=400, detail="章节编号不连续")
+
+    # 提取标题
+    title = extract_title(content) or f"第{chapter_number}章"
+
+    # 保存文件
+    try:
+        save_chapter(book_id, chapter_number, content)
+    except Exception as e:
+        import traceback
+
+        return HTMLResponse(
+            content=f"保存章节文件失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
+        )
+
+    # 保存数据库记录
+    try:
+        chapter = Chapter(book_id=book_id, chapter_number=chapter_number, title=title)
+        db.add(chapter)
+        book.current_chapter = chapter_number
+        db.commit()
+    except Exception as e:
+        import traceback
+
+        return HTMLResponse(content=f"保存数据库失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
+
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory="app/templates")
+    return templates.TemplateResponse(
+        "partials/chapter_generated.html",
+        {"request": request, "book": book, "chapter": chapter, "content": content[:500] + "..."},
+    )
+
+
+@router.post("/stream")
+async def stream_chapter(request: Request, book_id: int, core_event: str = Form(...), db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    current = int(book.current_chapter) if book.current_chapter is not None else 0
+    next_chapter = current + 1
+    prev_ending = get_prev_ending(book_id, int(next_chapter))
+
+    ai_service = AiService(
+        api_key=app_settings.deepseek_api_key, base_url=app_settings.deepseek_base_url, model=app_settings.default_model
+    )
+
+    async def generate():
+        try:
+            async for chunk in ai_service.stream_write_chapter(book, next_chapter, core_event, prev_ending):
+                yield chunk
+        except Exception as e:
+            import traceback
+
+            error_msg = f"\n\n--- 生成过程中发生错误 ---\n{str(e)}\n{traceback.format_exc()}\n"
+            yield error_msg
+
+    return StreamingResponse(generate(), media_type="text/plain")

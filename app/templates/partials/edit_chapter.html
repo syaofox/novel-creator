@@ -1,0 +1,87 @@
+<div class="alert alert-success shadow-lg">
+  <div>
+    <span>第{{ chapter_number }}章生成成功！请审核并编辑内容，然后保存。</span>
+    {% if stream %}
+    <div class="mt-2">
+      <div id="stream-status" class="text-sm text-blue-600">正在流式生成内容...</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+<div class="mt-4">
+  <form
+    hx-post="/books/{{ book.id }}/chapters/save"
+    hx-target="#main-workspace"
+    hx-swap="innerHTML"
+  >
+    <input type="hidden" name="chapter_number" value="{{ chapter_number }}">
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text">章节内容</span>
+      </label>
+      <textarea
+        id="chapter-content"
+        name="content"
+        rows="30"
+        class="textarea textarea-bordered font-mono whitespace-pre-wrap"
+        placeholder="章节内容..."
+      >{{ content }}</textarea>
+    </div>
+    <div class="form-control mt-4">
+      <button type="submit" class="btn btn-primary">保存章节</button>
+      <button type="button" class="btn btn-ghost" onclick="history.back()">
+        取消
+      </button>
+    </div>
+  </form>
+</div>
+{% if stream %}
+<script>
+  (function() {
+    const textarea = document.getElementById('chapter-content');
+    const statusEl = document.getElementById('stream-status');
+    const bookId = {{ book.id }};
+    const coreEvent = {{ core_event|tojson }};
+    
+    async function startStreaming() {
+      const formData = new FormData();
+      formData.append('core_event', coreEvent);
+      
+      try {
+        const response = await fetch(`/books/${bookId}/chapters/stream`, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let received = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          received += chunk;
+          textarea.value = received;
+          // 自动滚动到底部
+          textarea.scrollTop = textarea.scrollHeight;
+        }
+        
+        statusEl.textContent = '流式生成完成。';
+        statusEl.className = 'text-sm text-green-600';
+      } catch (error) {
+        statusEl.textContent = '流式生成失败: ' + error.message;
+        statusEl.className = 'text-sm text-red-600';
+        console.error('Streaming error:', error);
+      }
+    }
+    
+    // 延迟一点开始，确保页面加载完成
+    setTimeout(startStreaming, 100);
+  })();
+</script>
+{% endif %}

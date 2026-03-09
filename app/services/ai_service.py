@@ -111,6 +111,40 @@ class AiService:
             self._log_response(response)
             return response.choices[0].message.content or ""
 
+    async def stream_write_chapter(self, book: Book, chapter_number: int, core_event: str, prev_ending: str):
+        """流式生成下一章正文，异步生成内容块"""
+        system_prompt = (
+            book.config["jailbreak_prefix"]
+            + "\n\n"
+            + book.config["system_template"].format(memory=book.memory_summary, style="请根据小说的风格规范进行写作。")
+        )
+        user_prompt = prompts.WRITE_CHAPTER_PROMPT.format(
+            chapter_number=chapter_number, core_event=core_event, prev_ending=prev_ending
+        )
+        messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": book.config.get("temperature", 0.78),
+            "top_p": book.config.get("top_p", 0.92),
+            "max_tokens": book.config.get("max_tokens", 8192),
+            "stream": True,
+        }
+        self._log_request("stream_write_chapter", params)
+        response = await self.client.chat.completions.create(**params)
+        first_chunk = True
+        async for chunk in response:
+            if first_chunk:
+                logger.info("=== API 响应（流式） ===")
+                logger.info(f"Model: {chunk.model}")
+                first_chunk = False
+            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+        logger.info("Stream completed")
+
     async def update_summary(self, book: Book, new_chapter_text: str) -> str:
         """根据新章节和旧摘要生成新摘要"""
         user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
