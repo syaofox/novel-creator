@@ -1,0 +1,18 @@
+<div class="alert alert-success shadow-lg">
+    <div>
+        <span>第{{ chapter.chapter_number }}章生成成功！</span>
+    </div>
+</div>
+<div class="mt-4">
+    <h3 class="text-lg font-bold">预览</h3>
+    <div class="border rounded p-4 whitespace-pre-wrap">{{ content }}</div>
+</div>
+<div class="mt-4 flex gap-2">
+    <button class="btn btn-sm btn-primary" 
+            hx-post="/books/{{ book.id }}/ai/update-summary" 
+            hx-target="#memory-summary" 
+            hx-swap="innerHTML">
+        更新摘要
+    </button>
+    <a href="/books/{{ book.id }}" class="btn btn-sm btn-ghost">返回</a>
+</div>

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">新建小说</h1>
+    <form action="/books" method="post" class="space-y-4">
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">书名</span>
+            </label>
+            <input type="text" name="title" required class="input input-bordered" />
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">类型</span>
+            </label>
+            <select name="genre" class="select select-bordered">
+                <option>仙侠</option>
+                <option>都市</option>
+                <option>玄幻</option>
+                <option>悬疑</option>
+                <option>言情</option>
+                <option>其他</option>
+            </select>
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">目标章节数</span>
+            </label>
+            <input type="number" name="target_chapters" min="1" value="30" required class="input input-bordered" />
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">初始创意（剧情梗概+人设）</span>
+            </label>
+            <textarea name="basic_idea" rows="6" class="textarea textarea-bordered" placeholder="请输入你的创意..."></textarea>
+        </div>
+        <div class="form-control mt-6">
+            <button type="submit" class="btn btn-primary">开始初始化</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

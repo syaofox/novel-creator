@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+    <!-- 左侧：章节列表 -->
+    <div class="lg:col-span-1">
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">章节列表</h2>
+                <div id="chapter-list">
+                    {% include "partials/chapter_list.html" %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 中间：主工作区 -->
+    <div class="lg:col-span-2">
+        <div class="card bg-base-100 shadow-xl min-h-[500px]">
+            <div class="card-body" id="main-workspace">
+                <h2 class="card-title">创作区</h2>
+                {% if book.current_chapter < book.target_chapters %}
+                <button class="btn btn-lg btn-primary" 
+                        hx-get="/books/{{ book.id }}/chapters/write" 
+                        hx-target="#main-workspace" 
+                        hx-swap="innerHTML">
+                    写下一章
+                </button>
+                {% else %}
+                <p>恭喜！小说已完结。你可以导出或进行全局回顾。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <!-- 右侧：工具栏 -->
+    <div class="lg:col-span-1">
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">工具</h2>
+                <div class="space-y-2">
+                    <div class="collapse collapse-arrow bg-base-200">
+                        <input type="checkbox" checked />
+                        <div class="collapse-title text-lg font-medium">记忆摘要</div>
+                        <div class="collapse-content" id="memory-summary">
+                            {% include "partials/memory_summary.html" %}
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-outline w-full" 
+                            hx-post="/books/{{ book.id }}/ai/update-summary" 
+                            hx-target="#memory-summary" 
+                            hx-swap="innerHTML">
+                        更新摘要
+                    </button>
+                    <button class="btn btn-sm btn-outline w-full" 
+                            hx-get="/books/{{ book.id }}/ai/global-review" 
+                            hx-target="#review-result" 
+                            hx-swap="innerHTML">
+                        全局回顾
+                    </button>
+                    <div id="review-result" class="mt-2"></div>
+                    <a href="/books/{{ book.id }}/settings" class="btn btn-sm btn-outline w-full">参数设置</a>
+                    <a href="/books/{{ book.id }}/export" class="btn btn-sm btn-outline w-full">导出全书</a>
+                    {% if book.status == "进行中" %}
+                    <form action="/books/{{ book.id }}/finish" method="post">
+                        <button type="submit" class="btn btn-sm btn-warning w-full">标记完结</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

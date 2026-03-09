@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">参数设置 - {{ book.title }}</h1>
+    <form action="/books/{{ book.id }}/settings" method="post" class="space-y-4">
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">Temperature</span>
+            </label>
+            <input type="range" name="temperature" min="0" max="2" step="0.01" value="{{ book.config.temperature }}" class="range range-primary" />
+            <div class="flex justify-between text-xs px-2">
+                <span>0</span>
+                <span>1</span>
+                <span>2</span>
+            </div>
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">Top P</span>
+            </label>
+            <input type="number" name="top_p" min="0" max="1" step="0.01" value="{{ book.config.top_p }}" class="input input-bordered" />
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">Max Tokens</span>
+            </label>
+            <input type="number" name="max_tokens" min="1" max="32768" value="{{ book.config.max_tokens }}" class="input input-bordered" />
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">破限前缀</span>
+            </label>
+            <textarea name="jailbreak_prefix" rows="4" class="textarea textarea-bordered">{{ book.config.jailbreak_prefix }}</textarea>
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">系统模板（可使用 {memory} {style} 占位符）</span>
+            </label>
+            <textarea name="system_template" rows="6" class="textarea textarea-bordered">{{ book.config.system_template }}</textarea>
+        </div>
+        <div class="form-control mt-6">
+            <button type="submit" class="btn btn-primary">保存设置</button>
+            <a href="/books/{{ book.id }}" class="btn btn-ghost">取消</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

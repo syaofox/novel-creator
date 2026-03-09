@@ -1,0 +1,110 @@
+import json
+import re
+from typing import Dict, Any
+from openai import OpenAI, AsyncOpenAI
+from app.utils import prompts
+from app.models import Book
+
+class AiService:
+    def __init__(self, api_key: str, base_url: str = "https://api.deepseek.com", model: str = "deepseek-chat"):
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self.model = model
+
+    async def initialize_book(self, basic_idea: str, genre: str, target_chapters: int) -> Dict[str, str]:
+        """调用初始化 Prompt，返回解析后的数据"""
+        user_prompt = prompts.INIT_PROMPT.format(
+            basic_idea=basic_idea,
+            genre=genre,
+            target_chapters=target_chapters
+        )
+        messages = [
+            {"role": "system", "content": "你是一个专业的小说创作辅助AI，请严格按照要求输出JSON格式。"},
+            {"role": "user", "content": user_prompt}
+        ]
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.7,
+            response_format={"type": "json_object"}  # 确保返回JSON
+        )
+        content = response.choices[0].message.content
+        # 尝试解析JSON
+        try:
+            data = json.loads(content)
+            # 期望字段：characters, world_view, style, outline, foreshadowing, other
+            return data
+        except json.JSONDecodeError:
+            # 如果返回的不是JSON，尝试提取
+            return {"characters": content, "world_view": "", "style": "", "outline": "", "foreshadowing": "", "other": ""}
+
+    async def write_chapter(self, book: Book, chapter_number: int, core_event: str, prev_ending: str) -> str:
+        """生成下一章正文"""
+        system_prompt = book.config["jailbreak_prefix"] + "\n\n" + book.config["system_template"].format(
+            memory=book.memory_summary,
+            style="请根据小说的风格规范进行写作。"  # 可以进一步细化
+        )
+        user_prompt = prompts.WRITE_CHAPTER_PROMPT.format(
+            chapter_number=chapter_number,
+            core_event=core_event,
+            prev_ending=prev_ending
+        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=book.config.get("temperature", 0.78),
+            top_p=book.config.get("top_p", 0.92),
+            max_tokens=book.config.get("max_tokens", 8192)
+        )
+        return response.choices[0].message.content
+
+    async def update_summary(self, book: Book, new_chapter_text: str) -> str:
+        """根据新章节和旧摘要生成新摘要"""
+        user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
+            old_summary=book.memory_summary,
+            new_chapter=new_chapter_text
+        )
+        messages = [
+            {"role": "system", "content": "你是一个小说摘要生成专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。"},
+            {"role": "user", "content": user_prompt}
+        ]
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.5,
+            max_tokens=2000
+        )
+        return response.choices[0].message.content
+
+    async def global_review(self, book: Book) -> str:
+        """全局回顾，返回格式化检查结果"""
+        user_prompt = prompts.REVIEW_PROMPT.format(memory_summary=book.memory_summary)
+        messages = [
+            {"role": "system", "content": "你是一个专业的小说编辑，请对以下小说摘要进行全面回顾，检查人设、主线、伏笔、逻辑等问题，并给出建议。"},
+            {"role": "user", "content": user_prompt}
+        ]
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=2000
+        )
+        return response.choices[0].message.content
+
+    async def compress_summary(self, book: Book) -> str:
+        """压缩摘要（保留6部分格式）"""
+        user_prompt = prompts.COMPRESS_SUMMARY_PROMPT.format(summary=book.memory_summary)
+        messages = [
+            {"role": "system", "content": "你是一个摘要压缩专家，请将以下小说摘要压缩至2500字以内，保留6部分格式。"},
+            {"role": "user", "content": user_prompt}
+        ]
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.5,
+            max_tokens=1500
+        )
+        return response.choices[0].message.content

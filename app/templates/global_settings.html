@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">全局设置</h1>
+    <form action="/settings/global" method="post" class="space-y-4">
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">DeepSeek API Key</span>
+            </label>
+            <input type="password" name="deepseek_api_key" value="{{ config.deepseek_api_key }}" class="input input-bordered" />
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">API Base URL</span>
+            </label>
+            <input type="text" name="deepseek_base_url" value="{{ config.deepseek_base_url }}" class="input input-bordered" />
+        </div>
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">默认模型</span>
+            </label>
+            <input type="text" name="default_model" value="{{ config.default_model }}" class="input input-bordered" />
+        </div>
+        <div class="form-control mt-6">
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="/" class="btn btn-ghost">返回首页</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
