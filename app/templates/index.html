@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="tabs tabs-boxed mb-4">
-    <a class="tab tab-active" hx-get="/?status=active" hx-target="#book-list" hx-swap="innerHTML">进行中</a>
-    <a class="tab" hx-get="/?status=finished" hx-target="#book-list" hx-swap="innerHTML">已完结</a>
+    <a class="tab tab-active" hx-get="/?status=进行中" hx-target="#book-list" hx-swap="innerHTML">进行中</a>
+    <a class="tab" hx-get="/?status=已完结" hx-target="#book-list" hx-swap="innerHTML">已完结</a>
 </div>
 <div id="book-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     <!-- 这里将由HTMX动态加载书籍列表 -->

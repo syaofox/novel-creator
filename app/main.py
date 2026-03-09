@@ -1,13 +1,14 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from app.database import engine
+from app.database import engine, get_db
 from app import models
 from app.routes import books, chapters, ai
 from app.routes.settings import book_settings_router, global_settings_router  # 修改点
@@ -49,8 +50,15 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def home(request: Request, status: str | None = None, db: Session = Depends(get_db)):
+    from app.models import Book
+
+    if status == "finished":
+        books = db.query(Book).filter(Book.status == "已完结").order_by(Book.updated_at.desc()).all()
+    else:
+        books = db.query(Book).filter(Book.status == "进行中").order_by(Book.updated_at.desc()).all()
+
+    return templates.TemplateResponse("index.html", {"request": request, "books": books})
 
 
 # 异常处理等可以添加
