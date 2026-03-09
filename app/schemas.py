@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Any
+
 
 class BookBase(BaseModel):
     title: str
@@ -7,36 +8,42 @@ class BookBase(BaseModel):
     target_chapters: int
     basic_idea: str
 
+
 class BookCreate(BookBase):
     pass
 
+
 class BookUpdate(BaseModel):
-    title: Optional[str] = None
-    genre: Optional[str] = None
-    target_chapters: Optional[int] = None
-    config: Optional[Dict[str, Any]] = None
-    memory_summary: Optional[str] = None
-    status: Optional[str] = None
+    title: str | None = None
+    genre: str | None = None
+    target_chapters: int | None = None
+    config: dict[str, Any] | None = None
+    memory_summary: str | None = None
+    status: str | None = None
+
 
 class BookOut(BookBase):
     id: int
-    config: Dict[str, Any]
+    config: dict[str, Any]
     memory_summary: str
     current_chapter: int
     status: str
     created_at: str
-    updated_at: Optional[str] = None
+    updated_at: str | None = None
 
     class Config:
         from_attributes = True
+
 
 class ChapterBase(BaseModel):
     book_id: int
     chapter_number: int
     title: str
 
+
 class ChapterCreate(ChapterBase):
     pass
+
 
 class ChapterOut(ChapterBase):
     id: int
@@ -45,8 +52,10 @@ class ChapterOut(ChapterBase):
     class Config:
         from_attributes = True
 
+
 class WriteChapterRequest(BaseModel):
     core_event: str = Field(..., description="本章核心事件")
+
 
 class SettingsUpdate(BaseModel):
     temperature: float = Field(0.78, ge=0, le=2)

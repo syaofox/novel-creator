@@ -22,6 +22,7 @@ models.Base.metadata.create_all(bind=engine)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时执行
@@ -29,6 +30,7 @@ async def lifespan(app: FastAPI):
     yield
     # 关闭时执行
     logger.info("应用关闭")
+
 
 app = FastAPI(title="DeepSeek Novel Studio", lifespan=lifespan)
 
@@ -39,14 +41,16 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(books.router)
 app.include_router(chapters.router)
 app.include_router(ai.router)
-app.include_router(book_settings_router)   # 新增
-app.include_router(global_settings_router) # 新增
+app.include_router(book_settings_router)  # 新增
+app.include_router(global_settings_router)  # 新增
 
 # 模板
 templates = Jinja2Templates(directory="app/templates")
 
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
 
 # 异常处理等可以添加

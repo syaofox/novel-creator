@@ -6,7 +6,8 @@ Create Date: 2026-03-09 22:30:15.190342
 
 """
 
-from typing import Sequence, Union
+from typing import Union
+from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
@@ -14,9 +15,9 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "d5c05fd7a995"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -48,10 +49,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=True
         ),
-        sa.ForeignKeyConstraint(
-            ["book_id"],
-            ["books.id"],
-        ),
+        sa.ForeignKeyConstraint(["book_id"], ["books.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_chapters_id"), "chapters", ["id"], unique=False)

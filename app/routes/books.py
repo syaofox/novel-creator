@@ -13,11 +13,14 @@ from app.utils.helpers import get_book_dir
 
 router = APIRouter(prefix="/books", tags=["books"])
 
+
 @router.get("/new", response_class=HTMLResponse)
 async def new_book_form(request: Request):
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse("new_book.html", {"request": request})
+
 
 @router.post("/", response_class=HTMLResponse)
 async def create_book(
@@ -26,7 +29,7 @@ async def create_book(
     genre: str = Form(...),
     target_chapters: int = Form(...),
     basic_idea: str = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     # 创建书籍记录（先保存 basic_idea，config使用默认）
     new_book = Book(
@@ -34,7 +37,7 @@ async def create_book(
         genre=genre,
         target_chapters=target_chapters,
         basic_idea=basic_idea,
-        config=Book.__table__.c.config.default.arg  # 使用默认值
+        config=Book.__table__.c.config.default.arg,  # 使用默认值
     )
     db.add(new_book)
     db.commit()
@@ -54,7 +57,7 @@ async def create_book(
             f"【风格规范】\n{init_data.get('style', '')}",
             f"【主线进度】\n{init_data.get('outline', '')}",
             f"【伏笔清单】\n{init_data.get('foreshadowing', '')}",
-            f"【其他信息】\n{init_data.get('other', '')}"
+            f"【其他信息】\n{init_data.get('other', '')}",
         ]
         new_book.memory_summary = "\n\n".join(memory_parts)
         # 也可以将大纲单独存储，但为了简化，放入 memory_summary
@@ -65,6 +68,7 @@ async def create_book(
 
     return RedirectResponse(url=f"/books/{new_book.id}", status_code=303)
 
+
 @router.get("/{book_id}", response_class=HTMLResponse)
 async def book_detail(request: Request, book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -72,12 +76,10 @@ async def book_detail(request: Request, book_id: int, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="书籍不存在")
     chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("book_detail.html", {
-        "request": request,
-        "book": book,
-        "chapters": chapters
-    })
+    return templates.TemplateResponse("book_detail.html", {"request": request, "book": book, "chapters": chapters})
+
 
 @router.get("/{book_id}/export")
 async def export_book(book_id: int, db: Session = Depends(get_db)):
@@ -103,6 +105,7 @@ async def export_book(book_id: int, db: Session = Depends(get_db)):
                 outfile.write(content)
                 outfile.write("\n\n")
     return FileResponse(path=export_path, filename=f"{book.title}.txt", media_type="text/plain")
+
 
 @router.post("/{book_id}/finish")
 async def finish_book(book_id: int, db: Session = Depends(get_db)):

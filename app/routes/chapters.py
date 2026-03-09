@@ -12,6 +12,7 @@ from app.utils.helpers import extract_title
 
 router = APIRouter(prefix="/books/{book_id}/chapters", tags=["chapters"])
 
+
 @router.get("/write", response_class=HTMLResponse)
 async def write_chapter_form(request: Request, book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -20,21 +21,16 @@ async def write_chapter_form(request: Request, book_id: int, db: Session = Depen
     next_chapter = book.current_chapter + 1
     prev_ending = get_prev_ending(book_id, next_chapter)  # 获取上一章结尾（如果有）
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("write_chapter.html", {
-        "request": request,
-        "book": book,
-        "chapter_number": next_chapter,
-        "prev_ending": prev_ending
-    })
+    return templates.TemplateResponse(
+        "write_chapter.html",
+        {"request": request, "book": book, "chapter_number": next_chapter, "prev_ending": prev_ending},
+    )
+
 
 @router.post("/", response_class=HTMLResponse)
-async def generate_chapter(
-    request: Request,
-    book_id: int,
-    core_event: str = Form(...),
-    db: Session = Depends(get_db)
-):
+async def generate_chapter(request: Request, book_id: int, core_event: str = Form(...), db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
@@ -61,13 +57,18 @@ async def generate_chapter(
 
     # 返回成功片段，包含预览和“更新摘要”按钮
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("partials/chapter_generated.html", {
-        "request": request,
-        "book": book,
-        "chapter": chapter,
-        "content": content[:500] + "..."  # 预览
-    })
+    return templates.TemplateResponse(
+        "partials/chapter_generated.html",
+        {
+            "request": request,
+            "book": book,
+            "chapter": chapter,
+            "content": content[:500] + "...",  # 预览
+        },
+    )
+
 
 @router.get("/{chapter_num}", response_class=HTMLResponse)
 async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Session = Depends(get_db)):
@@ -78,12 +79,11 @@ async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Ses
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     from app.services.file_service import read_chapter
+
     content = read_chapter(book_id, chapter_num)
     from fastapi.templating import Jinja2Templates
+
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("chapter_view.html", {
-        "request": request,
-        "book": book,
-        "chapter": chapter,
-        "content": content
-    })
+    return templates.TemplateResponse(
+        "chapter_view.html", {"request": request, "book": book, "chapter": chapter, "content": content}
+    )

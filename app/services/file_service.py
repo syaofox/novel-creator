@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.utils.helpers import get_book_dir
 
+
 def save_chapter(book_id: int, chapter_number: int, content: str):
     """保存章节正文到文件，并提取标题"""
     book_dir = get_book_dir(book_id)
@@ -13,6 +14,7 @@ def save_chapter(book_id: int, chapter_number: int, content: str):
     file_path.write_text(content, encoding="utf-8")
     # 注意：标题提取在路由层完成，这里不负责
 
+
 def read_chapter(book_id: int, chapter_number: int) -> str:
     """读取章节正文"""
     book_dir = get_book_dir(book_id)
@@ -20,6 +22,7 @@ def read_chapter(book_id: int, chapter_number: int) -> str:
     if not file_path.exists():
         return ""
     return file_path.read_text(encoding="utf-8")
+
 
 def get_prev_ending(book_id: int, chapter_number: int, chars: int = 600) -> str:
     """获取上一章的最后 chars 字符，如果上一章不存在返回空字符串"""
@@ -29,6 +32,7 @@ def get_prev_ending(book_id: int, chapter_number: int, chars: int = 600) -> str:
     if not prev_content:
         return ""
     return prev_content[-chars:]
+
 
 def get_all_chapters_text(book_id: int) -> str:
     """获取所有章节的全文，按顺序拼接"""

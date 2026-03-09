@@ -36,11 +36,19 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
-ignore = []
+ignore = [
+    "E501",  # 行长度已在 line-length 中控制
+    "E722",  # 不要在 except 子句中使用 bare 'except'
+    "F401",  # 导入未使用（可能是有意的，如 __init__.py）
+    "F841",  # 局部变量未使用（可能是有意的）
+    "I001",  # 导入排序（可能与格式化冲突）
+]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+skip-magic-trailing-comma = true
+line-ending = "auto"
 
 [tool.setuptools.packages.find]
 where = ["."]

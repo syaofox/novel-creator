@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 # 书籍设置路由
 book_settings_router = APIRouter(prefix="/books/{book_id}/settings", tags=["book_settings"])
 
+
 @book_settings_router.get("/", response_class=HTMLResponse)
 async def settings_form(request: Request, book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -15,6 +16,7 @@ async def settings_form(request: Request, book_id: int, db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="书籍不存在")
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse("settings.html", {"request": request, "book": book})
+
 
 @book_settings_router.post("/", response_class=HTMLResponse)
 async def save_settings(request: Request, book_id: int, db: Session = Depends(get_db)):
@@ -32,8 +34,10 @@ async def save_settings(request: Request, book_id: int, db: Session = Depends(ge
     db.commit()
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)
 
+
 # 全局设置路由
 global_settings_router = APIRouter(prefix="/settings", tags=["global_settings"])
+
 
 @global_settings_router.get("/global", response_class=HTMLResponse)
 async def global_settings_form(request: Request, db: Session = Depends(get_db)):
@@ -45,6 +49,7 @@ async def global_settings_form(request: Request, db: Session = Depends(get_db)):
         db.refresh(config)
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse("global_settings.html", {"request": request, "config": config})
+
 
 @global_settings_router.post("/global", response_class=HTMLResponse)
 async def save_global_settings(request: Request, db: Session = Depends(get_db)):

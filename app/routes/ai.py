@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 router = APIRouter(prefix="/books/{book_id}/ai", tags=["ai"])
 
+
 @router.post("/update-summary", response_class=HTMLResponse)
 async def update_summary(request: Request, book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -27,6 +28,7 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse("partials/memory_summary.html", {"request": request, "book": book})
 
+
 @router.get("/global-review", response_class=HTMLResponse)
 async def global_review(request: Request, book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -39,6 +41,7 @@ async def global_review(request: Request, book_id: int, db: Session = Depends(ge
         return HTMLResponse(content=f"回顾失败: {str(e)}", status_code=500)
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse("partials/review_result.html", {"request": request, "review": review_result})
+
 
 @router.post("/compress-summary", response_class=HTMLResponse)
 async def compress_summary(request: Request, book_id: int, db: Session = Depends(get_db)):
