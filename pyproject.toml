@@ -27,11 +27,8 @@ dev = [
 ]
 
 [tool.prettier]
-plugins = ["prettier-plugin-jinja2"]
+plugins = ["prettier-plugin-jinja-template"]
 exclude = ["books", "app/static"]
-
-[tool.prettier.plugin-jinja2]
-variableFormat = "off"
 
 [build-system]
 requires = ["setuptools>=61.0"]
