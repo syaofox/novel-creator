@@ -1,7 +1,7 @@
 <div>
   <h2 class="text-xl font-bold mb-4">写第 {{ chapter_number }} 章</h2>
   <form
-    hx-post="/books/{{ book.id }}/chapters"
+    hx-post="/books/{{ book.id }}/chapters/"
     hx-target="#main-workspace"
     hx-swap="innerHTML"
   >

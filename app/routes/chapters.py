@@ -79,25 +79,34 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
         return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
 
     title = extract_title(content) or f"第{next_chapter}章"
-    save_chapter(book_id, next_chapter, content)
-    chapter = Chapter(book_id=book_id, chapter_number=next_chapter, title=title)
-    db.add(chapter)
-    book.current_chapter = next_chapter
-    db.commit()
+    try:
+        save_chapter(book_id, next_chapter, content)
+    except Exception as e:
+        import traceback
 
-    # 返回成功片段，包含预览和“更新摘要”按钮
+        return HTMLResponse(content=f"保存章节失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
+    try:
+        chapter = Chapter(book_id=book_id, chapter_number=next_chapter, title=title)
+        db.add(chapter)
+        book.current_chapter = next_chapter
+        db.commit()
+    except Exception as e:
+        import traceback
+
+        return HTMLResponse(content=f"保存数据库失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
+
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse(
-        "partials/chapter_generated.html",
-        {
-            "request": request,
-            "book": book,
-            "chapter": chapter,
-            "content": content[:500] + "...",  # 预览
-        },
-    )
+    try:
+        return templates.TemplateResponse(
+            "partials/chapter_generated.html",
+            {"request": request, "book": book, "chapter": chapter, "content": content[:500] + "..."},
+        )
+    except Exception as e:
+        import traceback
+
+        return HTMLResponse(content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
 
 
 @router.get("/{chapter_num}", response_class=HTMLResponse)
