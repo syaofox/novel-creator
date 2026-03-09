@@ -1,21 +1,40 @@
 <div>
-    <h2 class="text-xl font-bold mb-4">写第 {{ chapter_number }} 章</h2>
-    <form hx-post="/books/{{ book.id }}/chapters" hx-target="#main-workspace" hx-swap="innerHTML">
-        <div class="form-control">
-            <label class="label">
-                <span class="label-text">本章核心事件</span>
-            </label>
-            <textarea name="core_event" rows="3" class="textarea textarea-bordered" placeholder="例如：主角遇到神秘老人，获得传承..."></textarea>
-        </div>
-        <div class="form-control">
-            <label class="label">
-                <span class="label-text">上一章结尾（参考）</span>
-            </label>
-            <textarea readonly rows="4" class="textarea textarea-bordered bg-gray-100">{{ prev_ending }}</textarea>
-        </div>
-        <div class="form-control mt-4">
-            <button type="submit" class="btn btn-primary">生成章节</button>
-            <button type="button" class="btn btn-ghost" onclick="history.back()">取消</button>
-        </div>
-    </form>
+  <h2 class="text-xl font-bold mb-4">写第 {{ chapter_number }} 章</h2>
+  <form
+    hx-post="/books/{{ book.id }}/chapters"
+    hx-target="#main-workspace"
+    hx-swap="innerHTML"
+  >
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text">本章核心事件</span>
+      </label>
+      <textarea
+        name="core_event"
+        rows="3"
+        class="textarea textarea-bordered"
+        placeholder="例如：主角遇到神秘老人，获得传承..."
+      >
+{{ core_event }}</textarea
+      >
+    </div>
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text">上一章结尾（参考）</span>
+      </label>
+      <textarea
+        readonly
+        rows="4"
+        class="textarea textarea-bordered bg-gray-100"
+      >
+{{ prev_ending }}</textarea
+      >
+    </div>
+    <div class="form-control mt-4">
+      <button type="submit" class="btn btn-primary">生成章节</button>
+      <button type="button" class="btn btn-ghost" onclick="history.back()">
+        取消
+      </button>
+    </div>
+  </form>
 </div>

@@ -13,19 +13,52 @@ from app.utils.helpers import extract_title
 router = APIRouter(prefix="/books/{book_id}/chapters", tags=["chapters"])
 
 
+def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
+    match = re.search(r"【主线进度】\s*\n(.*?)(?=\n【|$)", memory_summary, re.DOTALL)
+    if not match:
+        return ""
+    outline_text = match.group(1).strip()
+    lines = outline_text.split("\n")
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith(f"第{chapter_number}章") or re.match(rf"^{chapter_number}[:、.]", line):
+            parts = re.split(r"[:、.]", line, 1)
+            if len(parts) > 1:
+                return parts[1].strip()
+            return line
+    if lines:
+        idx = chapter_number - 1
+        if idx < len(lines):
+            line = lines[idx].strip()
+            parts = re.split(r"[:、.]", line, 1)
+            if len(parts) > 1:
+                return parts[1].strip()
+            return line
+    return ""
+
+
 @router.get("/write", response_class=HTMLResponse)
 async def write_chapter_form(request: Request, book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
     next_chapter = book.current_chapter + 1
-    prev_ending = get_prev_ending(book_id, next_chapter)  # 获取上一章结尾（如果有）
+    prev_ending = get_prev_ending(book_id, next_chapter)
+    core_event = extract_chapter_outline(book.memory_summary, next_chapter)
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(
         "write_chapter.html",
-        {"request": request, "book": book, "chapter_number": next_chapter, "prev_ending": prev_ending},
+        {
+            "request": request,
+            "book": book,
+            "chapter_number": next_chapter,
+            "prev_ending": prev_ending,
+            "core_event": core_event,
+        },
     )
 
 
