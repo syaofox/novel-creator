@@ -33,6 +33,16 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 line-length = 120
 target-version = "py313"
+exclude = [
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".venv",
+    "venv",
+    "books",
+    "app/static",
+    "app/templates",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
