@@ -1,14 +1,16 @@
 <ul class="menu bg-base-200 rounded-box">
-    {% for ch in chapters %}
+  {% for ch in chapters %}
     <li>
-        <a href="/books/{{ book.id }}/chapters/{{ ch.chapter_number }}" 
-           hx-get="/books/{{ book.id }}/chapters/{{ ch.chapter_number }}" 
-           hx-target="#main-workspace" 
-           hx-swap="innerHTML">
-            第{{ ch.chapter_number }}章 {{ ch.title }}
-        </a>
+      <a
+        href="/books/{{ book.id }}/chapters/{{ ch.chapter_number }}"
+        hx-get="/books/{{ book.id }}/chapters/{{ ch.chapter_number }}"
+        hx-target="#main-workspace"
+        hx-swap="innerHTML"
+      >
+        第{{ ch.chapter_number }}章 {{ ch.title }}
+      </a>
     </li>
-    {% else %}
+  {% else %}
     <li>暂无章节</li>
-    {% endfor %}
+  {% endfor %}
 </ul>

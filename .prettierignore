@@ -1,0 +1,7 @@
+.git
+__pycache__
+.venv
+venv
+books
+app/static
+node_modules
