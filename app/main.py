@@ -53,12 +53,17 @@ templates = Jinja2Templates(directory="app/templates")
 async def home(request: Request, status: str | None = None, db: Session = Depends(get_db)):
     from app.models import Book
 
-    if status == "finished":
+    if status == "已完结":
         books = db.query(Book).filter(Book.status == "已完结").order_by(Book.updated_at.desc()).all()
     else:
         books = db.query(Book).filter(Book.status == "进行中").order_by(Book.updated_at.desc()).all()
 
-    return templates.TemplateResponse("index.html", {"request": request, "books": books})
+    is_htmx = request.headers.get("HX-Request") == "true"
+
+    if is_htmx:
+        return templates.TemplateResponse("partials/book_list.html", {"request": request, "books": books})
+
+    return templates.TemplateResponse("index.html", {"request": request, "books": books, "status": status or "进行中"})
 
 
 # 异常处理等可以添加

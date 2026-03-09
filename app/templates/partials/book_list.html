@@ -1,0 +1,20 @@
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for book in books %}
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title">{{ book.title }}</h2>
+        <p>类型：{{ book.genre }}</p>
+        <p>进度：{{ book.current_chapter }}/{{ book.target_chapters }}</p>
+        <p>最后更新：{{ book.updated_at or book.created_at }}</p>
+        <div class="card-actions justify-end">
+          <a href="/books/{{ book.id }}" class="btn btn-primary">进入创作</a>
+          <a href="/books/{{ book.id }}/export" class="btn btn-outline">导出</a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p class="col-span-full text-center">
+      暂无书籍，点击右上角"新建小说"开始创作。
+    </p>
+  {% endfor %}
+</div>

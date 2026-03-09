@@ -1,26 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="tabs tabs-boxed mb-4">
-    <a class="tab tab-active" hx-get="/?status=进行中" hx-target="#book-list" hx-swap="innerHTML">进行中</a>
-    <a class="tab" hx-get="/?status=已完结" hx-target="#book-list" hx-swap="innerHTML">已完结</a>
-</div>
-<div id="book-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <!-- 这里将由HTMX动态加载书籍列表 -->
-    {% for book in books %}
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <h2 class="card-title">{{ book.title }}</h2>
-            <p>类型：{{ book.genre }}</p>
-            <p>进度：{{ book.current_chapter }}/{{ book.target_chapters }}</p>
-            <p>最后更新：{{ book.updated_at or book.created_at }}</p>
-            <div class="card-actions justify-end">
-                <a href="/books/{{ book.id }}" class="btn btn-primary">进入创作</a>
-                <a href="/books/{{ book.id }}/export" class="btn btn-outline">导出</a>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <p class="col-span-full text-center">暂无书籍，点击右上角“新建小说”开始创作。</p>
-    {% endfor %}
-</div>
+  <div class="tabs tabs-boxed mb-4" id="tabs">
+    <a
+      class="tab {% if status != '已完结' %}tab-active{% endif %}"
+      hx-get="/?status=进行中"
+      hx-target="#book-list"
+      hx-swap="innerHTML"
+      hx-push-url="true"
+      hx-on::before-request="document.getElementById('tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active')); this.classList.add('tab-active')"
+      >进行中</a
+    >
+    <a
+      class="tab {% if status == '已完结' %}tab-active{% endif %}"
+      hx-get="/?status=已完结"
+      hx-target="#book-list"
+      hx-swap="innerHTML"
+      hx-push-url="true"
+      hx-on::before-request="document.getElementById('tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active')); this.classList.add('tab-active')"
+      >已完结</a
+    >
+  </div>
+  <div id="book-list">{% include "partials/book_list.html" %}</div>
 {% endblock %}
