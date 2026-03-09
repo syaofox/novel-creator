@@ -19,7 +19,10 @@
             <label class="label">
                 <span class="label-text">默认模型</span>
             </label>
-            <input type="text" name="default_model" value="{{ config.default_model }}" class="input input-bordered" />
+            <select name="default_model" class="select select-bordered">
+                <option value="deepseek-reasoner" {% if config.default_model == 'deepseek-reasoner' %}selected{% endif %}>deepseek-reasoner</option>
+                <option value="deepseek-chat" {% if config.default_model == 'deepseek-chat' %}selected{% endif %}>deepseek-chat</option>
+            </select>
         </div>
         <div class="form-control mt-6">
             <button type="submit" class="btn btn-primary">保存</button>

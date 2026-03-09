@@ -27,6 +27,12 @@
             <input type="number" name="max_tokens" min="1" max="32768" value="{{ book.config.max_tokens }}" class="input input-bordered" />
         </div>
         <div class="form-control">
+            <label class="label cursor-pointer">
+                <span class="label-text">流式输出</span>
+                <input type="checkbox" name="stream" {% if book.config.stream %}checked{% endif %} class="toggle toggle-primary" />
+            </label>
+        </div>
+        <div class="form-control">
             <label class="label">
                 <span class="label-text">破限前缀</span>
             </label>

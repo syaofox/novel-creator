@@ -25,11 +25,12 @@ async def save_settings(request: Request, book_id: int, db: Session = Depends(ge
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
     config = book.config
-    config["temperature"] = float(form.get("temperature", config["temperature"]))
-    config["top_p"] = float(form.get("top_p", config["top_p"]))
-    config["max_tokens"] = int(form.get("max_tokens", config["max_tokens"]))
-    config["jailbreak_prefix"] = form.get("jailbreak_prefix", config["jailbreak_prefix"])
-    config["system_template"] = form.get("system_template", config["system_template"])
+    config["temperature"] = float(form.get("temperature", config.get("temperature", 0.78)))
+    config["top_p"] = float(form.get("top_p", config.get("top_p", 0.92)))
+    config["max_tokens"] = int(form.get("max_tokens", config.get("max_tokens", 8192)))
+    config["stream"] = form.get("stream") == "on"
+    config["jailbreak_prefix"] = form.get("jailbreak_prefix", config.get("jailbreak_prefix", ""))
+    config["system_template"] = form.get("system_template", config.get("system_template", ""))
     book.config = config
     db.commit()
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)
