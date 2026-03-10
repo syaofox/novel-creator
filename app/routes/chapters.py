@@ -110,14 +110,22 @@ async def write_chapter_form(request: Request, book_id: int, num: int | None = N
 
 
 @router.post("/", response_class=HTMLResponse)
-async def generate_chapter(request: Request, book_id: int, core_event: str = Form(...), db: Session = Depends(get_db)):
+async def generate_chapter(
+    request: Request,
+    book_id: int,
+    chapter_number: int = Form(None),
+    core_event: str = Form(...),
+    db: Session = Depends(get_db),
+):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    current = int(book.current_chapter) if book.current_chapter is not None else 0
-    next_chapter = current + 1
-    prev_ending = get_prev_ending(book_id, int(next_chapter))
+    if chapter_number is None:
+        current = int(book.current_chapter) if book.current_chapter is not None else 0
+        chapter_number = current + 1
+
+    prev_ending = get_prev_ending(book_id, int(chapter_number))
 
     stream = book.config.get("stream", True)
     from fastapi.templating import Jinja2Templates
@@ -129,7 +137,13 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
             return templates.TemplateResponse(
                 request,
                 "partials/edit_chapter.html",
-                {"book": book, "chapter_number": next_chapter, "content": "", "stream": True, "core_event": core_event},
+                {
+                    "book": book,
+                    "chapter_number": chapter_number,
+                    "content": "",
+                    "stream": True,
+                    "core_event": core_event,
+                },
             )
         except Exception as e:
             import traceback
@@ -147,7 +161,7 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
             global_config=global_config,
         )
         try:
-            content = await ai_service.write_chapter(book, int(next_chapter), core_event, prev_ending)
+            content = await ai_service.write_chapter(book, int(chapter_number), core_event, prev_ending)
         except Exception as e:
             return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
         try:
@@ -156,7 +170,7 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
                 "partials/edit_chapter.html",
                 {
                     "book": book,
-                    "chapter_number": next_chapter,
+                    "chapter_number": chapter_number,
                     "content": content,
                     "stream": False,
                     "core_event": core_event,

@@ -1,7 +1,10 @@
 <div>
   <h2 class="text-xl font-bold mb-4">
-    {% if editing %}编辑第 {{ chapter_number }} 章{% else %}写第
-    {{ chapter_number }} 章{% endif %}
+    {% if editing %}
+      编辑第 {{ chapter_number }} 章
+    {% else %}
+      写第 {{ chapter_number }} 章
+    {% endif %}
   </h2>
 
   {% if editing %}
@@ -42,6 +45,7 @@
       hx-target="#main-workspace"
       hx-swap="innerHTML"
     >
+      <input type="hidden" name="chapter_number" value="{{ chapter_number }}" />
       <div class="form-control">
         <label class="label">
           <span class="label-text">本章核心事件</span>
