@@ -35,8 +35,8 @@ class AiService:
         global_config: dict[str, Any] | None = None,
     ):
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
-        self.model = model
         self.global_config = global_config or {}
+        self.model = self.global_config.get("default_model") or model
 
     def _log_request(self, method: str, params: dict[str, Any]):
         logger.info(f"=== API 请求: {method} ===")
