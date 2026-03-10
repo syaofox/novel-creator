@@ -1,5 +1,4 @@
-novel.db
-__pycache__/
+*.db
 *.py[cod]
 *$py.class
 *.so
@@ -35,6 +34,8 @@ htmlcov/
 *.cover
 .hypothesis/
 *.log
+
+data/
 *.db
 *.sqlite
 *.sqlite3
