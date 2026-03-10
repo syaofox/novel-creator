@@ -27,6 +27,7 @@ env/
 .env
 .env.local
 
+__pycache__/
 .ruff_cache/
 .pytest_cache/
 .coverage
@@ -36,9 +37,6 @@ htmlcov/
 *.log
 
 data/
-*.db
-*.sqlite
-*.sqlite3
 
 .DS_Store
 .idea/
