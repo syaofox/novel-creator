@@ -2,7 +2,16 @@
 {% block content %}
   <div class="max-w-2xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">新建小说</h1>
-    <form action="/books/preview" method="post" class="space-y-4">
+    <div
+      id="loading"
+      class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+      <div class="text-center">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+        <p class="mt-2 text-white">正在初始化AI创作...</p>
+      </div>
+    </div>
+    <form id="bookForm" class="space-y-4">
       <div class="form-control">
         <label class="label">
           <span class="label-text">书名</span>
@@ -206,8 +215,56 @@
       </div>
 
       <div class="form-control mt-6">
-        <button type="submit" class="btn btn-primary">开始初始化</button>
+        <button type="button" class="btn btn-primary" onclick="startInit()">
+          开始初始化
+        </button>
       </div>
     </form>
   </div>
+
+  <script>
+    function startInit() {
+      const form = document.getElementById("bookForm");
+      const formData = new FormData(form);
+
+      const params = new URLSearchParams();
+      params.append("title", formData.get("title") || "");
+      params.append("basic_idea", formData.get("basic_idea") || "");
+      params.append("target_chapters", formData.get("target_chapters") || "30");
+      params.append("jailbreak_prefix", formData.get("jailbreak_prefix") || "");
+      params.append("style", formData.get("style") || "");
+      params.append("temperature", formData.get("temperature") || "0.78");
+      params.append("top_p", formData.get("top_p") || "0.92");
+      params.append("max_tokens", formData.get("max_tokens") || "8192");
+      params.append("stream", formData.get("stream") ? "true" : "false");
+      params.append("system_template", formData.get("system_template") || "");
+
+      const genre = formData.getAll("genre");
+      genre.forEach((g) => params.append("genre", g));
+
+      const paramsStr = params.toString();
+      const previewUrl = "/books/preview?" + paramsStr;
+      const streamUrl = "/books/init-stream?" + paramsStr;
+
+      sessionStorage.setItem("initStreamUrl", streamUrl);
+      sessionStorage.setItem(
+        "initFormData",
+        JSON.stringify({
+          title: formData.get("title") || "",
+          genre: genre.join(", "),
+          target_chapters: formData.get("target_chapters") || "30",
+          basic_idea: formData.get("basic_idea") || "",
+          temperature: formData.get("temperature") || "0.78",
+          top_p: formData.get("top_p") || "0.92",
+          max_tokens: formData.get("max_tokens") || "8192",
+          stream: formData.get("stream") ? "on" : "",
+          jailbreak_prefix: formData.get("jailbreak_prefix") || "",
+          system_template: formData.get("system_template") || "",
+          style: formData.get("style") || "",
+        }),
+      );
+
+      window.location.href = previewUrl;
+    }
+  </script>
 {% endblock %}

@@ -2,6 +2,19 @@
 {% block content %}
   <div class="max-w-4xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">预览并确认小说设定</h1>
+    <div id="streamStatus" class="hidden alert alert-info mb-4">
+      <span class="loading loading-spinner"></span>
+      <span>AI 正在生成中...</span>
+    </div>
+    <div id="rawOutput" class="hidden card bg-base-100 shadow-xl mb-4">
+      <div class="card-body">
+        <h2 class="card-title text-sm">AI 原始输出（实时）</h2>
+        <pre
+          id="rawContent"
+          class="text-xs bg-base-200 p-2 rounded max-h-48 overflow-auto whitespace-pre-wrap"
+        ></pre>
+      </div>
+    </div>
 
     <form action="/books" method="post" class="space-y-4">
       <input type="hidden" name="title" value="{{ title }}" />
@@ -47,6 +60,7 @@
           <h2 class="card-title">人物卡</h2>
           <textarea
             name="characters"
+            id="characters"
             rows="6"
             class="textarea textarea-bordered"
           >
@@ -60,6 +74,7 @@
           <h2 class="card-title">世界观</h2>
           <textarea
             name="world_view"
+            id="world_view"
             rows="6"
             class="textarea textarea-bordered"
           >
@@ -71,7 +86,12 @@
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <h2 class="card-title">风格规范</h2>
-          <textarea name="style" rows="4" class="textarea textarea-bordered">
+          <textarea
+            name="style"
+            id="style"
+            rows="4"
+            class="textarea textarea-bordered"
+          >
 {{ style }}</textarea
           >
         </div>
@@ -117,11 +137,20 @@
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <h2 class="card-title">其他信息</h2>
-          <textarea name="other" rows="4" class="textarea textarea-bordered">
+          <textarea
+            name="other"
+            id="other"
+            rows="4"
+            class="textarea textarea-bordered"
+          >
 {{ other }}</textarea
           >
         </div>
       </div>
+
+      <textarea name="foreshadowing" id="foreshadowing" class="hidden">
+{{ foreshadowing }}</textarea
+      >
 
       <div class="flex gap-4">
         <a href="/books/new" class="btn btn-outline">返回修改</a>
@@ -175,6 +204,221 @@
     </form>
 
     <script>
+      function parseInitResult(fullText) {
+        console.log("Parsing content:", fullText.substring(0, 500));
+        const fields = [
+          "characters",
+          "world_view",
+          "style",
+          "outline",
+          "foreshadowing",
+          "other",
+        ];
+        const result = {};
+
+        for (const field of fields) {
+          const pattern = new RegExp(
+            `【${field}】([\\s\\S]*?)【${field}】`,
+            "i",
+          );
+          const match = fullText.match(pattern);
+          console.log(
+            `Field ${field}: match =`,
+            !!match,
+            match ? match[1].substring(0, 50) : "",
+          );
+          if (match && match[1]) {
+            result[field] = match[1].trim();
+          } else {
+            result[field] = "";
+          }
+        }
+
+        console.log("Parsed result:", result);
+        return result;
+      }
+
+      (function () {
+        const streamUrl = sessionStorage.getItem("initStreamUrl");
+        const formDataStr = sessionStorage.getItem("initFormData");
+
+        if (streamUrl && formDataStr) {
+          const formData = JSON.parse(formDataStr);
+
+          document.getElementById("streamStatus").classList.remove("hidden");
+          document.getElementById("rawOutput").classList.remove("hidden");
+
+          Object.keys(formData).forEach((key) => {
+            const input = document.querySelector(`input[name="${key}"]`);
+            if (input) {
+              input.value = formData[key];
+            }
+          });
+
+          if (formData.style) {
+            const styleTextarea = document.getElementById("style");
+            if (styleTextarea) styleTextarea.value = formData.style;
+          }
+
+          let fullContent = "";
+          const rawContentEl = document.getElementById("rawContent");
+
+          const eventSource = new EventSource(streamUrl);
+
+          eventSource.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+
+            if (data.done) {
+              document.getElementById("streamStatus").classList.add("hidden");
+
+              let parsed = parseInitResult(fullContent);
+
+              // 如果标记解析失败，尝试直接解析JSON
+              if (!parsed.characters && !parsed.world_view) {
+                console.log("Tag parsing failed, trying JSON parse");
+                try {
+                  const jsonData = JSON.parse(fullContent);
+                  const toString = (val) => {
+                    if (typeof val === "string") return val;
+                    if (typeof val === "object")
+                      return JSON.stringify(val, null, 2);
+                    return String(val);
+                  };
+                  parsed = {
+                    characters: toString(jsonData.characters),
+                    world_view: toString(
+                      jsonData.world_view || jsonData.worldview,
+                    ),
+                    style: toString(jsonData.style),
+                    outline: jsonData.outline
+                      ? JSON.stringify(jsonData.outline)
+                      : "",
+                    foreshadowing: toString(jsonData.foreshadowing),
+                    other: toString(jsonData.other),
+                  };
+                  console.log("JSON parse success:", parsed);
+                } catch (e) {
+                  console.log("JSON parse failed too:", e);
+                }
+              }
+
+              if (parsed.characters) {
+                document.getElementById("characters").value = parsed.characters;
+              }
+              if (parsed.world_view) {
+                document.getElementById("world_view").value = parsed.world_view;
+              }
+              if (parsed.style) {
+                document.getElementById("style").value = parsed.style;
+              }
+              if (parsed.outline) {
+                document.getElementById("rawContent").innerHTML +=
+                  "\n\n[已解析大纲]\n";
+                try {
+                  const outlineData = JSON.parse(parsed.outline);
+                  if (Array.isArray(outlineData)) {
+                    const chapterInputs = document.querySelectorAll(
+                      ".space-y-3 > .border",
+                    );
+                    outlineData.forEach((ch, idx) => {
+                      if (chapterInputs[idx]) {
+                        const titleInput = chapterInputs[idx].querySelector(
+                          'input[name="chapter_title"]',
+                        );
+                        const coreEventInput = chapterInputs[idx].querySelector(
+                          'textarea[name="chapter_core_event"]',
+                        );
+                        if (titleInput && ch.title) titleInput.value = ch.title;
+                        if (coreEventInput && ch.core_event)
+                          coreEventInput.value = ch.core_event;
+                      }
+                    });
+                  }
+                } catch (e) {
+                  console.log("Outline is not JSON, keeping as text");
+                }
+              }
+              if (parsed.foreshadowing) {
+                document.getElementById("foreshadowing").value =
+                  parsed.foreshadowing;
+              }
+              if (parsed.other) {
+                document.getElementById("other").value = parsed.other;
+              }
+              if (parsed.world_view) {
+                document.getElementById("world_view").value = parsed.world_view;
+              }
+              if (parsed.style) {
+                document.getElementById("style").value = parsed.style;
+              }
+              if (parsed.outline) {
+                document.getElementById("rawContent").innerHTML +=
+                  "\n\n[已解析大纲]\n";
+                try {
+                  const outlineData = JSON.parse(parsed.outline);
+                  if (Array.isArray(outlineData)) {
+                    const chapterInputs = document.querySelectorAll(
+                      ".space-y-3 > .border",
+                    );
+                    outlineData.forEach((ch, idx) => {
+                      if (chapterInputs[idx]) {
+                        const titleInput = chapterInputs[idx].querySelector(
+                          'input[name="chapter_title"]',
+                        );
+                        const coreEventInput = chapterInputs[idx].querySelector(
+                          'textarea[name="chapter_core_event"]',
+                        );
+                        if (titleInput && ch.title) titleInput.value = ch.title;
+                        if (coreEventInput && ch.core_event)
+                          coreEventInput.value = ch.core_event;
+                      }
+                    });
+                  }
+                } catch (e) {
+                  console.log("Outline is not JSON, keeping as text");
+                }
+              }
+              if (parsed.foreshadowing) {
+                document.getElementById("foreshadowing").value =
+                  parsed.foreshadowing;
+              }
+              if (parsed.other) {
+                document.getElementById("other").value = parsed.other;
+              }
+
+              setTimeout(() => {
+                document.getElementById("rawOutput").classList.add("hidden");
+              }, 3000);
+
+              eventSource.close();
+              sessionStorage.removeItem("initStreamUrl");
+              sessionStorage.removeItem("initFormData");
+              return;
+            }
+
+            if (data.error) {
+              document.getElementById("streamStatus").className =
+                "alert alert-error mb-4";
+              document.getElementById("streamStatus").innerHTML =
+                "<span>错误: " + data.error + "</span>";
+              eventSource.close();
+              return;
+            }
+
+            console.log("Received data:", data);
+            if (data.content) {
+              fullContent += data.content;
+              rawContentEl.textContent = fullContent;
+              rawContentEl.scrollTop = rawContentEl.scrollHeight;
+            }
+          };
+
+          eventSource.onerror = function () {
+            eventSource.close();
+          };
+        }
+      })();
+
       function buildOutlineFromForm() {
         const chapters = [];
         const chapterCards = document.querySelectorAll(".space-y-3 > .border");
