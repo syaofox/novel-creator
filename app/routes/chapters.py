@@ -300,6 +300,19 @@ async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Ses
     )
 
 
+@router.get("/list", response_class=HTMLResponse)
+async def get_chapter_list(book_id: int, db: Session = Depends(get_db)):
+    """获取章节列表"""
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+    chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory="app/templates")
+    return templates.TemplateResponse("partials/chapter_list.html", {"book": book, "chapters": chapters})
+
+
 @router.post("/save", response_class=HTMLResponse)
 async def save_chapter_endpoint(
     request: Request,
