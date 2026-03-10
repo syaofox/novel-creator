@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">预览并确认小说设定</h1>
+
+    <form action="/books" method="post" class="space-y-4">
+      <input type="hidden" name="title" value="{{ title }}" />
+      <input type="hidden" name="genre" value="{{ genre }}" />
+      <input
+        type="hidden"
+        name="target_chapters"
+        value="{{ target_chapters }}"
+      />
+      <input type="hidden" name="basic_idea" value="{{ basic_idea }}" />
+      <input type="hidden" name="temperature" value="{{ temperature }}" />
+      <input type="hidden" name="top_p" value="{{ top_p }}" />
+      <input type="hidden" name="max_tokens" value="{{ max_tokens }}" />
+      <input type="hidden" name="stream" value="{{ 'on' if stream else '' }}" />
+      <input
+        type="hidden"
+        name="jailbreak_prefix"
+        value="{{ jailbreak_prefix }}"
+      />
+      <input
+        type="hidden"
+        name="system_template"
+        value="{{ system_template }}"
+      />
+
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">基本信息</h2>
+          <div class="grid grid-cols-2 gap-4">
+            <div><strong>书名：</strong>{{ title }}</div>
+            <div><strong>类型：</strong>{{ genre }}</div>
+            <div><strong>目标章节数：</strong>{{ target_chapters }}</div>
+          </div>
+          <div class="mt-2">
+            <strong>初始创意：</strong>
+            <div class="whitespace-pre-wrap text-sm mt-1">{{ basic_idea }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">人物卡</h2>
+          <textarea
+            name="characters"
+            rows="6"
+            class="textarea textarea-bordered"
+          >
+{{ characters }}</textarea
+          >
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">世界观</h2>
+          <textarea
+            name="world_view"
+            rows="6"
+            class="textarea textarea-bordered"
+          >
+{{ world_view }}</textarea
+          >
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">风格规范</h2>
+          <textarea name="style" rows="4" class="textarea textarea-bordered">
+{{ style }}</textarea
+          >
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">主线大纲</h2>
+          <textarea name="outline" rows="8" class="textarea textarea-bordered">
+{{ outline }}</textarea
+          >
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">伏笔清单</h2>
+          <textarea
+            name="foreshadowing"
+            rows="4"
+            class="textarea textarea-bordered"
+          >
+{{ foreshadowing }}</textarea
+          >
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">其他信息</h2>
+          <textarea name="other" rows="4" class="textarea textarea-bordered">
+{{ other }}</textarea
+          >
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <a href="/books/new" class="btn btn-outline">返回修改</a>
+        <button type="submit" class="btn btn-primary">确认创建</button>
+      </div>
+    </form>
+
+    <form action="/books/preview" method="post" class="mt-4">
+      <input type="hidden" name="title" value="{{ title }}" />
+      <input type="hidden" name="genre" value="{{ genre }}" />
+      <input
+        type="hidden"
+        name="target_chapters"
+        value="{{ target_chapters }}"
+      />
+      <input type="hidden" name="basic_idea" value="{{ basic_idea }}" />
+      <input type="hidden" name="temperature" value="{{ temperature }}" />
+      <input type="hidden" name="top_p" value="{{ top_p }}" />
+      <input type="hidden" name="max_tokens" value="{{ max_tokens }}" />
+      <input type="hidden" name="stream" value="{{ 'on' if stream else '' }}" />
+      <input
+        type="hidden"
+        name="jailbreak_prefix"
+        value="{{ jailbreak_prefix }}"
+      />
+      <input
+        type="hidden"
+        name="system_template"
+        value="{{ system_template }}"
+      />
+      <input type="hidden" name="style" value="{{ style }}" />
+      <input type="hidden" name="characters" value="{{ characters }}" />
+      <input type="hidden" name="world_view" value="{{ world_view }}" />
+      <input type="hidden" name="outline" value="{{ outline }}" />
+      <input type="hidden" name="foreshadowing" value="{{ foreshadowing }}" />
+      <input type="hidden" name="other" value="{{ other }}" />
+      <button type="submit" class="btn btn-secondary">重新生成</button>
+    </form>
+  </div>
+{% endblock %}
