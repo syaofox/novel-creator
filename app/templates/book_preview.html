@@ -333,38 +333,53 @@
       function parseInitResult(fullText) {
         console.log("Parsing content:", fullText.substring(0, 500));
 
-        let textToParse = fullText;
+        const tryParse = (textToParse) => {
+          const toString = (val) => {
+            if (typeof val === "string") return val;
+            if (typeof val === "object") return JSON.stringify(val, null, 2);
+            return String(val);
+          };
+          const jsonData = JSON.parse(textToParse);
+          return {
+            characters: jsonData.characters || [],
+            world_view: jsonData.world_view || jsonData.worldview || {},
+            style: jsonData.style || {},
+            outline: jsonData.outline || [],
+            foreshadowing: jsonData.foreshadowing || [],
+            other: jsonData.other || {},
+            _raw: {
+              characters: toString(jsonData.characters),
+              world_view: toString(jsonData.world_view || jsonData.worldview),
+              style: toString(jsonData.style),
+              outline: jsonData.outline ? JSON.stringify(jsonData.outline) : "",
+              foreshadowing: toString(jsonData.foreshadowing),
+              other: toString(jsonData.other),
+            },
+          };
+        };
+
+        let jsonText = fullText;
         const jsonCodeBlockMatch = fullText.match(/```json\s*([\s\S]*?)```/i);
         if (jsonCodeBlockMatch && jsonCodeBlockMatch[1]) {
           console.log("Found JSON code block, extracting...");
-          textToParse = jsonCodeBlockMatch[1].trim();
+          jsonText = jsonCodeBlockMatch[1].trim();
           try {
-            const jsonData = JSON.parse(textToParse);
-            const toString = (val) => {
-              if (typeof val === "string") return val;
-              if (typeof val === "object") return JSON.stringify(val, null, 2);
-              return String(val);
-            };
-            return {
-              characters: jsonData.characters || [],
-              world_view: jsonData.world_view || jsonData.worldview || {},
-              style: jsonData.style || {},
-              outline: jsonData.outline || [],
-              foreshadowing: jsonData.foreshadowing || [],
-              other: jsonData.other || {},
-              _raw: {
-                characters: toString(jsonData.characters),
-                world_view: toString(jsonData.world_view || jsonData.worldview),
-                style: toString(jsonData.style),
-                outline: jsonData.outline
-                  ? JSON.stringify(jsonData.outline)
-                  : "",
-                foreshadowing: toString(jsonData.foreshadowing),
-                other: toString(jsonData.other),
-              },
-            };
+            return tryParse(jsonText);
           } catch (e) {
             console.log("JSON code block parse failed:", e);
+          }
+        }
+
+        console.log("No JSON code block, trying to extract JSON from text...");
+        const startIdx = fullText.indexOf("{");
+        const lastIdx = fullText.lastIndexOf("}");
+        if (startIdx !== -1 && lastIdx !== -1 && lastIdx > startIdx) {
+          jsonText = fullText.substring(startIdx, lastIdx + 1);
+          console.log("Extracted JSON text:", jsonText.substring(0, 200));
+          try {
+            return tryParse(jsonText);
+          } catch (e) {
+            console.log("Extracted JSON parse failed:", e);
           }
         }
 
