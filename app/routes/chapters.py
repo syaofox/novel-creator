@@ -357,6 +357,7 @@ async def save_chapter_endpoint(
             chapter.status = "已完成"
         db.commit()
         db.refresh(chapter)
+        chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
     except Exception as e:
         import traceback
 
@@ -365,9 +366,11 @@ async def save_chapter_endpoint(
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse(
-        request, "partials/chapter_generated.html", {"book": book, "chapter": chapter, "content": content[:500] + "..."}
+    chapter_list_html = templates.get_template("partials/chapter_list.html").render(book=book, chapters=chapters)
+    content_html = templates.get_template("partials/chapter_generated.html").render(
+        book=book, chapter=chapter, content=content[:500] + "...", chapter_list_html=chapter_list_html
     )
+    return HTMLResponse(content=content_html)
 
 
 @router.post("/stream")

@@ -1,14 +1,9 @@
-<div class="alert alert-success shadow-lg" id="save-success">
+<div id="chapter-list" hx-swap-oob="true">{{ chapter_list_html }}</div>
+<div class="alert alert-success shadow-lg">
   <div>
     <span>第{{ chapter.chapter_number }}章保存成功！</span>
   </div>
 </div>
-<script>
-  htmx.ajax("GET", "/books/{{ book.id }}/chapters/list", {
-    target: "#chapter-list",
-    swap: "innerHTML",
-  });
-</script>
 <div class="mt-4">
   <h3 class="text-lg font-bold">预览</h3>
   <div class="border rounded p-4 whitespace-pre-wrap">{{ content }}</div>
