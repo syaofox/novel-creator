@@ -32,7 +32,12 @@
       hx-post="/books/{{ book.id }}/ai/update-summary"
       hx-target="#memory-summary"
       hx-swap="innerHTML"
+      hx-indicator="#update-summary-loading"
     >
+      <span
+        id="update-summary-loading"
+        class="htmx-indicator loading loading-spinner loading-xs"
+      ></span>
       更新摘要
     </button>
   </div>

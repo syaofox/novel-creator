@@ -1,5 +1,10 @@
-<div class="alert alert-info shadow-lg">
+<div class="alert alert-info shadow-lg text-sm">
   <div>
-    <span>{{ review }}</span>
+    <span class="whitespace-pre-wrap">{{ review }}</span>
   </div>
 </div>
+<script>
+  document.querySelector(
+    '#review-result-container input[type="checkbox"]',
+  ).checked = true;
+</script>

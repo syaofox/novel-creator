@@ -50,7 +50,12 @@
               hx-post="/books/{{ book.id }}/ai/update-summary"
               hx-target="#memory-summary"
               hx-swap="innerHTML"
+              hx-indicator="#update-summary-loading"
             >
+              <span
+                id="update-summary-loading"
+                class="htmx-indicator loading loading-spinner loading-xs"
+              ></span>
               更新摘要
             </button>
             <div class="collapse collapse-arrow bg-base-200 mt-2">
@@ -83,10 +88,24 @@
               hx-get="/books/{{ book.id }}/ai/global-review"
               hx-target="#review-result"
               hx-swap="innerHTML"
+              hx-indicator="#global-review-loading"
             >
+              <span
+                id="global-review-loading"
+                class="htmx-indicator loading loading-spinner loading-xs"
+              ></span>
               全局回顾
             </button>
-            <div id="review-result" class="mt-2"></div>
+            <div
+              class="collapse collapse-arrow bg-base-200 mt-2"
+              id="review-result-container"
+            >
+              <input type="checkbox" />
+              <div class="collapse-title text-sm font-medium py-2 min-h-0">
+                全局回顾结果
+              </div>
+              <div class="collapse-content text-sm" id="review-result"></div>
+            </div>
             <a
               href="/books/{{ book.id }}/settings"
               class="btn btn-sm btn-outline w-full"
