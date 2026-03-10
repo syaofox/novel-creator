@@ -62,24 +62,55 @@ def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
 
 
 @router.get("/write", response_class=HTMLResponse)
-async def write_chapter_form(request: Request, book_id: int, db: Session = Depends(get_db)):
+async def write_chapter_form(request: Request, book_id: int, num: int | None = None, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    next_chapter = int(book.current_chapter) + 1
-    prev_ending = get_prev_ending(book_id, next_chapter)
-    core_event = extract_chapter_outline(str(book.memory_summary), next_chapter)
+
+    if num is not None:
+        chapter_num = num
+        if chapter_num < 1 or chapter_num > book.target_chapters:
+            raise HTTPException(status_code=400, detail="章节号超出范围")
+        if chapter_num > 1:
+            prev_chapter = (
+                db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_num - 1).first()
+            )
+            if not prev_chapter or prev_chapter.status != "已完成":
+                raise HTTPException(status_code=400, detail="请先完成上一章")
+    else:
+        chapter_num = int(book.current_chapter) + 1
+
+    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_num).first()
+
+    core_event = (
+        chapter.core_event
+        if chapter and chapter.core_event
+        else extract_chapter_outline(str(book.memory_summary), chapter_num)
+    )
+
+    prev_ending = get_prev_ending(book_id, chapter_num)
+
+    is_editing = chapter is not None and chapter.status == "已完成"
+    existing_content = ""
+    if is_editing:
+        from app.services.file_service import read_chapter
+
+        existing_content = read_chapter(book_id, chapter_num)
+
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(
+        request,
         "write_chapter.html",
         {
-            "request": request,
             "book": book,
-            "chapter_number": next_chapter,
+            "chapter_number": chapter_num,
             "prev_ending": prev_ending,
             "core_event": core_event,
+            "editing": is_editing,
+            "chapter": chapter,
+            "existing_content": existing_content,
         },
     )
 
@@ -100,18 +131,11 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
     templates = Jinja2Templates(directory="app/templates")
 
     if stream:
-        # 流式模式：返回空内容，前端通过 JavaScript 调用流式端点
         try:
             return templates.TemplateResponse(
+                request,
                 "partials/edit_chapter.html",
-                {
-                    "request": request,
-                    "book": book,
-                    "chapter_number": next_chapter,
-                    "content": "",
-                    "stream": True,
-                    "core_event": core_event,
-                },
+                {"book": book, "chapter_number": next_chapter, "content": "", "stream": True, "core_event": core_event},
             )
         except Exception as e:
             import traceback
@@ -134,9 +158,9 @@ async def generate_chapter(request: Request, book_id: int, core_event: str = For
             return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
         try:
             return templates.TemplateResponse(
+                request,
                 "partials/edit_chapter.html",
                 {
-                    "request": request,
                     "book": book,
                     "chapter_number": next_chapter,
                     "content": content,
@@ -167,7 +191,7 @@ async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Ses
 
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(
-        "chapter_view.html", {"request": request, "book": book, "chapter": chapter, "content": content}
+        request, "chapter_view.html", {"book": book, "chapter": chapter, "content": content}
     )
 
 
@@ -183,16 +207,19 @@ async def save_chapter_endpoint(
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    # 验证章节号是否合理
+    if chapter_number < 1 or chapter_number > book.target_chapters:
+        raise HTTPException(status_code=400, detail="章节号超出范围")
+
+    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_number).first()
+
     current = int(book.current_chapter) if book.current_chapter is not None else 0
-    if chapter_number != current + 1:
-        # 可能是编辑已存在的章节？暂时不允许
+
+    is_new_chapter = chapter is None
+    if is_new_chapter and chapter_number != current + 1:
         raise HTTPException(status_code=400, detail="章节编号不连续")
 
-    # 提取标题
     title = extract_title(content) or f"第{chapter_number}章"
 
-    # 保存文件
     try:
         save_chapter(book_id, chapter_number, content)
     except Exception as e:
@@ -202,12 +229,16 @@ async def save_chapter_endpoint(
             content=f"保存章节文件失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
         )
 
-    # 保存数据库记录
     try:
-        chapter = Chapter(book_id=book_id, chapter_number=chapter_number, title=title)
-        db.add(chapter)
-        book.current_chapter = chapter_number
+        if is_new_chapter:
+            chapter = Chapter(book_id=book_id, chapter_number=chapter_number, title=title, status="已完成")
+            db.add(chapter)
+            book.current_chapter = chapter_number
+        else:
+            chapter.title = title
+            chapter.status = "已完成"
         db.commit()
+        db.refresh(chapter)
     except Exception as e:
         import traceback
 
@@ -217,8 +248,7 @@ async def save_chapter_endpoint(
 
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(
-        "partials/chapter_generated.html",
-        {"request": request, "book": book, "chapter": chapter, "content": content[:500] + "..."},
+        request, "partials/chapter_generated.html", {"book": book, "chapter": chapter, "content": content[:500] + "..."}
     )
 
 

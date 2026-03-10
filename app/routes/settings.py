@@ -42,7 +42,7 @@ async def settings_form(request: Request, book_id: int, db: Session = Depends(ge
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("settings.html", {"request": request, "book": book})
+    return templates.TemplateResponse(request, "settings.html", {"book": book})
 
 
 @book_settings_router.post("/", response_class=HTMLResponse)
@@ -84,7 +84,7 @@ async def global_settings_form(request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(config)
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("global_settings.html", {"request": request, "config": config})
+    return templates.TemplateResponse(request, "global_settings.html", {"config": config})
 
 
 @global_settings_router.post("/global", response_class=HTMLResponse)

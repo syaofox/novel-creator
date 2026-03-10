@@ -54,7 +54,7 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
     book.memory_summary = new_summary
     db.commit()
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("partials/memory_summary.html", {"request": request, "book": book})
+    return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
 
 
 @router.get("/global-review", response_class=HTMLResponse)
@@ -74,7 +74,7 @@ async def global_review(request: Request, book_id: int, db: Session = Depends(ge
     except Exception as e:
         return HTMLResponse(content=f"回顾失败: {str(e)}", status_code=500)
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("partials/review_result.html", {"request": request, "review": review_result})
+    return templates.TemplateResponse(request, "partials/review_result.html", {"review": review_result})
 
 
 @router.post("/compress-summary", response_class=HTMLResponse)
@@ -96,7 +96,7 @@ async def compress_summary(request: Request, book_id: int, db: Session = Depends
     book.memory_summary = compressed
     db.commit()
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("partials/memory_summary.html", {"request": request, "book": book})
+    return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
 
 
 @router.post("/update-style", response_class=HTMLResponse)
@@ -108,4 +108,4 @@ async def update_style(request: Request, book_id: int, db: Session = Depends(get
     book.style = form.get("style", "")
     db.commit()
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("partials/style_summary.html", {"request": request, "book": book})
+    return templates.TemplateResponse(request, "partials/style_summary.html", {"book": book})

@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
-from app import models  # 导入模型以确保 Base.metadata 包含所有表
+from app.models import Book, Chapter, GlobalConfig  # 导入模型以确保 Base.metadata 包含所有表
 from app.config import settings
 
 # 使用内存数据库进行测试

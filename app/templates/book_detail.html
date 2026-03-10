@@ -97,7 +97,7 @@
               class="btn btn-sm btn-outline w-full"
               >导出全书</a
             >
-            {% if book.status == "进行中" %}
+            {% if book.current_chapter >= book.target_chapters and book.status == "进行中" %}
               <form action="/books/{{ book.id }}/finish" method="post">
                 <button type="submit" class="btn btn-sm btn-warning w-full">
                   标记完结

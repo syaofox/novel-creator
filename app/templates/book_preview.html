@@ -80,22 +80,37 @@
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <h2 class="card-title">主线大纲</h2>
-          <textarea name="outline" rows="8" class="textarea textarea-bordered">
-{{ outline }}</textarea
-          >
-        </div>
-      </div>
-
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title">伏笔清单</h2>
-          <textarea
-            name="foreshadowing"
-            rows="4"
-            class="textarea textarea-bordered"
-          >
-{{ foreshadowing }}</textarea
-          >
+          <p class="text-sm text-gray-500 mb-2">编辑每章的标题和核心事件</p>
+          <div class="space-y-3">
+            {% for ch in chapter_list %}
+              <div class="border rounded p-3 bg-base-200">
+                <div class="font-bold mb-2">第{{ ch.chapter }}章</div>
+                <div class="grid grid-cols-1 gap-2">
+                  <input
+                    type="hidden"
+                    name="chapter_num"
+                    value="{{ ch.chapter }}"
+                  />
+                  <input
+                    type="text"
+                    name="chapter_title"
+                    value="{{ ch.title }}"
+                    placeholder="章节标题"
+                    class="input input-bordered w-full"
+                  />
+                  <textarea
+                    name="chapter_core_event"
+                    rows="2"
+                    placeholder="本章核心事件"
+                    class="textarea textarea-bordered w-full"
+                  >
+{{ ch.core_event }}</textarea
+                  >
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <textarea name="outline" class="hidden">{{ outline }}</textarea>
         </div>
       </div>
 
@@ -110,7 +125,13 @@
 
       <div class="flex gap-4">
         <a href="/books/new" class="btn btn-outline">返回修改</a>
-        <button type="submit" class="btn btn-primary">确认创建</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="validateAndSubmit()"
+        >
+          确认创建
+        </button>
       </div>
     </form>
 
@@ -140,10 +161,53 @@
       <input type="hidden" name="style" value="{{ style }}" />
       <input type="hidden" name="characters" value="{{ characters }}" />
       <input type="hidden" name="world_view" value="{{ world_view }}" />
-      <input type="hidden" name="outline" value="{{ outline }}" />
+      <input
+        type="hidden"
+        name="outline"
+        id="regen-outline"
+        value="{{ outline }}"
+      />
       <input type="hidden" name="foreshadowing" value="{{ foreshadowing }}" />
       <input type="hidden" name="other" value="{{ other }}" />
-      <button type="submit" class="btn btn-secondary">重新生成</button>
+      <button type="button" class="btn btn-secondary" onclick="regenerate()">
+        重新生成
+      </button>
     </form>
+
+    <script>
+      function buildOutlineFromForm() {
+        const chapters = [];
+        const chapterCards = document.querySelectorAll(".space-y-3 > .border");
+        chapterCards.forEach((card) => {
+          const numInput = card.querySelector('input[name="chapter_num"]');
+          const titleInput = card.querySelector('input[name="chapter_title"]');
+          const coreEventInput = card.querySelector(
+            'textarea[name="chapter_core_event"]',
+          );
+          if (numInput && titleInput) {
+            chapters.push({
+              chapter: parseInt(numInput.value),
+              title: titleInput.value,
+              core_event: coreEventInput ? coreEventInput.value : "",
+            });
+          }
+        });
+        return JSON.stringify({ outline: chapters }, null, 2);
+      }
+
+      function validateAndSubmit() {
+        const form = document.querySelector('form[action="/books"]');
+        const outlineTextarea = form.querySelector('textarea[name="outline"]');
+        outlineTextarea.value = buildOutlineFromForm();
+        form.submit();
+      }
+
+      function regenerate() {
+        const form = document.querySelector('form[action="/books/preview"]');
+        const outlineInput = form.querySelector('input[name="outline"]');
+        outlineInput.value = buildOutlineFromForm();
+        form.submit();
+      }
+    </script>
   </div>
 {% endblock %}

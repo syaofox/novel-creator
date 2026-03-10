@@ -48,9 +48,9 @@ class Chapter(Base):
     book_id = Column(Integer, ForeignKey("books.id"), nullable=False)
     chapter_number = Column(Integer, nullable=False)
     title = Column(String, nullable=False)
+    core_event = Column(Text, default="")
+    status = Column(String, default="未完成")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # 可以添加与书籍的关系
 
 
 # 新增：全局配置表（单行，id=1）

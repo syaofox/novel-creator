@@ -1,40 +1,78 @@
 <div>
-  <h2 class="text-xl font-bold mb-4">写第 {{ chapter_number }} 章</h2>
-  <form
-    hx-post="/books/{{ book.id }}/chapters/"
-    hx-target="#main-workspace"
-    hx-swap="innerHTML"
-  >
-    <div class="form-control">
-      <label class="label">
-        <span class="label-text">本章核心事件</span>
-      </label>
-      <textarea
-        name="core_event"
-        rows="3"
-        class="textarea textarea-bordered"
-        placeholder="例如：主角遇到神秘老人，获得传承..."
-      >
+  <h2 class="text-xl font-bold mb-4">
+    {% if editing %}编辑第 {{ chapter_number }} 章{% else %}写第
+    {{ chapter_number }} 章{% endif %}
+  </h2>
+
+  {% if editing %}
+    <div class="alert alert-warning mb-4">
+      <div>
+        <span>你正在重新编辑已完成的章节。保存后将覆盖原内容。</span>
+      </div>
+    </div>
+    <form
+      hx-post="/books/{{ book.id }}/chapters/save"
+      hx-target="#main-workspace"
+      hx-swap="innerHTML"
+    >
+      <input type="hidden" name="chapter_number" value="{{ chapter_number }}" />
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">章节内容</span>
+        </label>
+        <textarea
+          name="content"
+          rows="30"
+          class="textarea textarea-bordered font-mono whitespace-pre-wrap"
+          placeholder="章节内容..."
+        >
+{{ existing_content }}</textarea
+        >
+      </div>
+      <div class="form-control mt-4">
+        <button type="submit" class="btn btn-primary">保存修改</button>
+        <button type="button" class="btn btn-ghost" onclick="history.back()">
+          取消
+        </button>
+      </div>
+    </form>
+  {% else %}
+    <form
+      hx-post="/books/{{ book.id }}/chapters/"
+      hx-target="#main-workspace"
+      hx-swap="innerHTML"
+    >
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">本章核心事件</span>
+        </label>
+        <textarea
+          name="core_event"
+          rows="3"
+          class="textarea textarea-bordered"
+          placeholder="例如：主角遇到神秘老人，获得传承..."
+        >
 {{ core_event }}</textarea
-      >
-    </div>
-    <div class="form-control">
-      <label class="label">
-        <span class="label-text">上一章结尾（参考）</span>
-      </label>
-      <textarea
-        readonly
-        rows="4"
-        class="textarea textarea-bordered bg-gray-100"
-      >
+        >
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">上一章结尾（参考）</span>
+        </label>
+        <textarea
+          readonly
+          rows="4"
+          class="textarea textarea-bordered bg-gray-100"
+        >
 {{ prev_ending }}</textarea
-      >
-    </div>
-    <div class="form-control mt-4">
-      <button type="submit" class="btn btn-primary">生成章节</button>
-      <button type="button" class="btn btn-ghost" onclick="history.back()">
-        取消
-      </button>
-    </div>
-  </form>
+        >
+      </div>
+      <div class="form-control mt-4">
+        <button type="submit" class="btn btn-primary">生成章节</button>
+        <button type="button" class="btn btn-ghost" onclick="history.back()">
+          取消
+        </button>
+      </div>
+    </form>
+  {% endif %}
 </div>

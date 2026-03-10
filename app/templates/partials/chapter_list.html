@@ -1,15 +1,50 @@
 <ul class="menu bg-base-200 rounded-box">
   {% for ch in chapters %}
-    <li>
-      <a
-        href="/books/{{ book.id }}/chapters/{{ ch.chapter_number }}"
-        hx-get="/books/{{ book.id }}/chapters/{{ ch.chapter_number }}"
-        hx-target="#main-workspace"
-        hx-swap="innerHTML"
-      >
-        第{{ ch.chapter_number }}章 {{ ch.title }}
-      </a>
-    </li>
+    {% if ch.status == "已完成" %}
+      <li>
+        <a
+          hx-get="/books/{{ book.id }}/chapters/write?num={{ ch.chapter_number }}"
+          hx-target="#main-workspace"
+          hx-swap="innerHTML"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 text-success"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+          第{{ ch.chapter_number }}章 {{ ch.title }}
+        </a>
+      </li>
+    {% else %}
+      <li class="opacity-50">
+        <span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          第{{ ch.chapter_number }}章 {{ ch.title }}
+        </span>
+      </li>
+    {% endif %}
   {% else %}
     <li>暂无章节</li>
   {% endfor %}
