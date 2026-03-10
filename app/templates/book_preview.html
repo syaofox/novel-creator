@@ -52,13 +52,49 @@
         <div class="card-body">
           <h2 class="card-title">基本信息</h2>
           <div class="grid grid-cols-2 gap-4">
-            <div><strong>书名：</strong>{{ title }}</div>
-            <div><strong>类型：</strong>{{ genre }}</div>
-            <div><strong>目标章节数：</strong>{{ target_chapters }}</div>
+            <div>
+              <label class="label"
+                ><span class="label-text font-bold">书名</span></label
+              >
+              <input
+                type="text"
+                name="title"
+                id="title"
+                value="{{ title }}"
+                class="input input-bordered w-full"
+                placeholder="输入书名"
+              />
+              <div id="suggestedTitle" class="hidden mt-1">
+                <span class="text-xs text-gray-500">AI 建议：</span>
+                <button
+                  type="button"
+                  class="btn btn-xs btn-ghost text-primary"
+                  onclick="useSuggestedTitle()"
+                ></button>
+              </div>
+            </div>
+            <div>
+              <label class="label"
+                ><span class="label-text font-bold">类型</span></label
+              >
+              <div class="py-2">{{ genre }}</div>
+            </div>
+            <div>
+              <label class="label"
+                ><span class="label-text font-bold">目标章节数</span></label
+              >
+              <div class="py-2">{{ target_chapters }}</div>
+            </div>
           </div>
           <div class="mt-2">
-            <strong>初始创意：</strong>
-            <div class="whitespace-pre-wrap text-sm mt-1">{{ basic_idea }}</div>
+            <label class="label"
+              ><span class="label-text font-bold">初始创意</span></label
+            >
+            <div
+              class="whitespace-pre-wrap text-sm mt-1 bg-base-200 p-3 rounded"
+            >
+              {{ basic_idea }}
+            </div>
           </div>
         </div>
       </div>
@@ -66,42 +102,99 @@
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <h2 class="card-title">人物卡</h2>
-          <textarea
-            name="characters"
-            id="characters"
-            rows="6"
-            class="textarea textarea-bordered"
-          >
-{{ characters }}</textarea
-          >
+          <div id="characters-container" class="space-y-4"></div>
+          <textarea name="characters" id="characters" class="hidden"></textarea>
         </div>
       </div>
 
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <h2 class="card-title">世界观</h2>
-          <textarea
-            name="world_view"
-            id="world_view"
-            rows="6"
-            class="textarea textarea-bordered"
-          >
-{{ world_view }}</textarea
-          >
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="label"><span class="label-text">设定</span></label>
+              <textarea
+                id="world_setting"
+                rows="3"
+                class="textarea textarea-bordered w-full"
+                placeholder="世界观设定"
+              ></textarea>
+            </div>
+            <div>
+              <label class="label"
+                ><span class="label-text">特殊规则</span></label
+              >
+              <textarea
+                id="world_special_rules"
+                rows="2"
+                class="textarea textarea-bordered w-full"
+                placeholder="特殊规则"
+              ></textarea>
+            </div>
+            <div>
+              <label class="label"><span class="label-text">主题</span></label>
+              <textarea
+                id="world_themes"
+                rows="2"
+                class="textarea textarea-bordered w-full"
+                placeholder="主题"
+              ></textarea>
+            </div>
+          </div>
+          <textarea name="world_view" id="world_view" class="hidden"></textarea>
         </div>
       </div>
 
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <h2 class="card-title">风格规范</h2>
-          <textarea
-            name="style"
-            id="style"
-            rows="4"
-            class="textarea textarea-bordered"
-          >
-{{ style }}</textarea
-          >
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="label"
+                ><span class="label-text">叙事视角</span></label
+              >
+              <input
+                type="text"
+                id="style_perspective"
+                class="input input-bordered w-full"
+                placeholder="叙事视角"
+              />
+            </div>
+            <div>
+              <label class="label"
+                ><span class="label-text">语言风格</span></label
+              >
+              <textarea
+                id="style_language"
+                rows="2"
+                class="textarea textarea-bordered w-full"
+                placeholder="语言风格"
+              ></textarea>
+            </div>
+            <div>
+              <label class="label"
+                ><span class="label-text">节奏特点</span></label
+              >
+              <input
+                type="text"
+                id="style_pace"
+                class="input input-bordered w-full"
+                placeholder="节奏特点"
+              />
+            </div>
+            <div>
+              <label class="label"
+                ><span class="label-text">目标读者</span></label
+              >
+              <input
+                type="text"
+                id="style_audience"
+                class="input input-bordered w-full"
+                placeholder="目标读者"
+              />
+            </div>
+          </div>
+          <textarea name="style" id="style" class="hidden"></textarea>
         </div>
       </div>
 
@@ -144,21 +237,46 @@
 
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-          <h2 class="card-title">其他信息</h2>
+          <h2 class="card-title">伏笔清单</h2>
+          <div id="foreshadowing-list" class="space-y-2"></div>
           <textarea
-            name="other"
-            id="other"
-            rows="4"
-            class="textarea textarea-bordered"
-          >
-{{ other }}</textarea
-          >
+            name="foreshadowing"
+            id="foreshadowing"
+            class="hidden"
+          ></textarea>
         </div>
       </div>
 
-      <textarea name="foreshadowing" id="foreshadowing" class="hidden">
-{{ foreshadowing }}</textarea
-      >
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">其他信息</h2>
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="label"
+                ><span class="label-text">关键要点</span></label
+              >
+              <textarea
+                id="other_key_points"
+                rows="3"
+                class="textarea textarea-bordered w-full"
+                placeholder="关键要点"
+              ></textarea>
+            </div>
+            <div>
+              <label class="label"
+                ><span class="label-text">写作指导</span></label
+              >
+              <textarea
+                id="other_writing_guidance"
+                rows="3"
+                class="textarea textarea-bordered w-full"
+                placeholder="写作指导"
+              ></textarea>
+            </div>
+          </div>
+          <textarea name="other" id="other" class="hidden"></textarea>
+        </div>
+      </div>
 
       <div class="flex gap-4">
         <a href="/books/new" class="btn btn-outline">返回修改</a>
@@ -214,15 +332,6 @@
     <script>
       function parseInitResult(fullText) {
         console.log("Parsing content:", fullText.substring(0, 500));
-        const fields = [
-          "characters",
-          "world_view",
-          "style",
-          "outline",
-          "foreshadowing",
-          "other",
-        ];
-        const result = {};
 
         let textToParse = fullText;
         const jsonCodeBlockMatch = fullText.match(/```json\s*([\s\S]*?)```/i);
@@ -237,110 +346,289 @@
               return String(val);
             };
             return {
-              characters: toString(jsonData.characters),
-              world_view: toString(jsonData.world_view || jsonData.worldview),
-              style: toString(jsonData.style),
-              outline: jsonData.outline ? JSON.stringify(jsonData.outline) : "",
-              foreshadowing: toString(jsonData.foreshadowing),
-              other: toString(jsonData.other),
+              characters: jsonData.characters || [],
+              world_view: jsonData.world_view || jsonData.worldview || {},
+              style: jsonData.style || {},
+              outline: jsonData.outline || [],
+              foreshadowing: jsonData.foreshadowing || [],
+              other: jsonData.other || {},
+              _raw: {
+                characters: toString(jsonData.characters),
+                world_view: toString(jsonData.world_view || jsonData.worldview),
+                style: toString(jsonData.style),
+                outline: jsonData.outline
+                  ? JSON.stringify(jsonData.outline)
+                  : "",
+                foreshadowing: toString(jsonData.foreshadowing),
+                other: toString(jsonData.other),
+              },
             };
           } catch (e) {
-            console.log("JSON code block parse failed, trying tag parsing:", e);
+            console.log("JSON code block parse failed:", e);
           }
         }
 
-        for (const field of fields) {
-          const pattern = new RegExp(
-            `【${field}】([\\s\\S]*?)【${field}】`,
-            "i",
-          );
-          const match = textToParse.match(pattern);
-          console.log(
-            `Field ${field}: match =`,
-            !!match,
-            match ? match[1].substring(0, 50) : "",
-          );
-          if (match && match[1]) {
-            result[field] = match[1].trim();
-          } else {
-            result[field] = "";
-          }
-        }
+        console.log("No JSON found, returning empty result");
+        return {
+          characters: [],
+          world_view: {},
+          style: {},
+          outline: [],
+          foreshadowing: [],
+          other: {},
+          _raw: {},
+        };
+      }
 
-        if (!result.characters && !result.world_view) {
-          console.log("Tag parsing failed, trying direct JSON parse");
-          try {
-            const jsonData = JSON.parse(textToParse);
-            const toString = (val) => {
-              if (typeof val === "string") return val;
-              if (typeof val === "object") return JSON.stringify(val, null, 2);
-              return String(val);
-            };
-            return {
-              characters: toString(jsonData.characters),
-              world_view: toString(jsonData.world_view || jsonData.worldview),
-              style: toString(jsonData.style),
-              outline: jsonData.outline ? JSON.stringify(jsonData.outline) : "",
-              foreshadowing: toString(jsonData.foreshadowing),
-              other: toString(jsonData.other),
-            };
-          } catch (e) {
-            console.log("JSON parse failed too:", e);
-          }
+      function renderCharacterCards(characters) {
+        const container = document.getElementById("characters-container");
+        container.innerHTML = "";
+        if (!Array.isArray(characters)) {
+          return;
         }
+        characters.forEach((char, idx) => {
+          const card = document.createElement("div");
+          card.className = "border rounded-lg p-4 bg-base-200";
+          card.innerHTML = `
+            <div class="flex justify-between items-center mb-3">
+              <span class="font-bold text-lg">角色 ${idx + 1}</span>
+              <button type="button" class="btn btn-sm btn-ghost text-error" onclick="removeCharacterCard(${idx})">删除</button>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="label py-1"><span class="label-text-alt">姓名</span></label>
+                <input type="text" class="input input-sm input-bordered w-full" data-char-field="name" value="${escapeHtml(char.name || "")}" placeholder="姓名">
+              </div>
+              <div>
+                <label class="label py-1"><span class="label-text-alt">昵称</span></label>
+                <input type="text" class="input input-sm input-bordered w-full" data-char-field="nickname" value="${escapeHtml(char.nickname || "")}" placeholder="昵称">
+              </div>
+              <div>
+                <label class="label py-1"><span class="label-text-alt">年龄</span></label>
+                <input type="text" class="input input-sm input-bordered w-full" data-char-field="age" value="${char.age || ""}" placeholder="年龄">
+              </div>
+              <div>
+                <label class="label py-1"><span class="label-text-alt">人物关系</span></label>
+                <input type="text" class="input input-sm input-bordered w-full" data-char-field="relationships" value="${escapeHtml(char.relationships || "")}" placeholder="人物关系">
+              </div>
+              <div class="col-span-2">
+                <label class="label py-1"><span class="label-text-alt">外貌描述</span></label>
+                <textarea class="textarea textarea-sm textarea-bordered w-full" data-char-field="appearance" rows="2" placeholder="外貌描述">${escapeHtml(char.appearance || "")}</textarea>
+              </div>
+              <div class="col-span-2">
+                <label class="label py-1"><span class="label-text-alt">性格特点</span></label>
+                <textarea class="textarea textarea-sm textarea-bordered w-full" data-char-field="personality" rows="2" placeholder="性格特点">${escapeHtml(char.personality || "")}</textarea>
+              </div>
+              <div class="col-span-2">
+                <label class="label py-1"><span class="label-text-alt">背景故事</span></label>
+                <textarea class="textarea textarea-sm textarea-bordered w-full" data-char-field="background" rows="2" placeholder="背景故事">${escapeHtml(char.background || "")}</textarea>
+              </div>
+              <div class="col-span-2">
+                <label class="label py-1"><span class="label-text-alt">角色目标</span></label>
+                <textarea class="textarea textarea-sm textarea-bordered w-full" data-char-field="goal" rows="2" placeholder="角色目标">${escapeHtml(char.goal || "")}</textarea>
+              </div>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+        if (characters.length === 0) {
+          container.innerHTML =
+            '<p class="text-gray-500 text-sm">暂无人物信息</p>';
+        }
+      }
 
-        console.log("Parsed result:", result);
-        return result;
+      function addCharacterCard() {
+        const current = getCharactersFromUI();
+        current.push({});
+        renderCharacterCards(current);
+      }
+
+      function removeCharacterCard(idx) {
+        const current = getCharactersFromUI();
+        current.splice(idx, 1);
+        renderCharacterCards(current);
+      }
+
+      function getCharactersFromUI() {
+        const cards = document.querySelectorAll(
+          "#characters-container > div.border",
+        );
+        const characters = [];
+        cards.forEach((card) => {
+          const char = {};
+          card.querySelectorAll("[data-char-field]").forEach((el) => {
+            char[el.dataset.charField] = el.value;
+          });
+          characters.push(char);
+        });
+        return characters;
+      }
+
+      function renderWorldView(worldView) {
+        if (typeof worldView !== "object" || !worldView) return;
+        document.getElementById("world_setting").value =
+          worldView.setting || "";
+        document.getElementById("world_special_rules").value =
+          worldView.special_rules || "";
+        document.getElementById("world_themes").value = Array.isArray(
+          worldView.themes,
+        )
+          ? worldView.themes.join("\n")
+          : worldView.themes || "";
+      }
+
+      function getWorldViewFromUI() {
+        return {
+          setting: document.getElementById("world_setting").value,
+          special_rules: document.getElementById("world_special_rules").value,
+          themes: document
+            .getElementById("world_themes")
+            .value.split("\n")
+            .filter((t) => t.trim()),
+        };
+      }
+
+      function renderStyle(style) {
+        if (typeof style !== "object" || !style) return;
+        document.getElementById("style_perspective").value =
+          style.narrative_perspective || "";
+        document.getElementById("style_language").value =
+          style.language_style || "";
+        document.getElementById("style_pace").value = style.pace || "";
+        document.getElementById("style_audience").value =
+          style.target_audience || "";
+      }
+
+      function getStyleFromUI() {
+        return {
+          narrative_perspective:
+            document.getElementById("style_perspective").value,
+          language_style: document.getElementById("style_language").value,
+          pace: document.getElementById("style_pace").value,
+          target_audience: document.getElementById("style_audience").value,
+        };
+      }
+
+      function renderForeshadowing(foreshadowing) {
+        const container = document.getElementById("foreshadowing-list");
+        container.innerHTML = "";
+        const items = Array.isArray(foreshadowing) ? foreshadowing : [];
+        items.forEach((item, idx) => {
+          const row = document.createElement("div");
+          row.className = "flex gap-2";
+          row.innerHTML = `
+            <input type="text" class="input input-sm input-bordered flex-1" data-foreshadowing-idx="${idx}" value="${escapeHtml(typeof item === "string" ? item : "")}" placeholder="伏笔">
+            <button type="button" class="btn btn-sm btn-ghost text-error" onclick="removeForeshadowingItem(${idx})">×</button>
+          `;
+          container.appendChild(row);
+        });
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "btn btn-sm btn-outline";
+        addBtn.textContent = "+ 添加伏笔";
+        addBtn.onclick = addForeshadowingItem;
+        container.appendChild(addBtn);
+      }
+
+      function addForeshadowingItem() {
+        const container = document.getElementById("foreshadowing-list");
+        const idx = container.querySelectorAll(
+          "[data-foreshadowing-idx]",
+        ).length;
+        const row = document.createElement("div");
+        row.className = "flex gap-2";
+        row.innerHTML = `
+          <input type="text" class="input input-sm input-bordered flex-1" data-foreshadowing-idx="${idx}" value="" placeholder="伏笔">
+          <button type="button" class="btn btn-sm btn-ghost text-error" onclick="removeForeshadowingItem(${idx})">×</button>
+        `;
+        container.insertBefore(row, container.lastElementChild);
+      }
+
+      function removeForeshadowingItem(idx) {
+        renderForeshadowing(getForeshadowingFromUI());
+      }
+
+      function getForeshadowingFromUI() {
+        const inputs = document.querySelectorAll("[data-foreshadowing-idx]");
+        return Array.from(inputs)
+          .map((el) => el.value)
+          .filter((v) => v.trim());
+      }
+
+      function renderOther(other) {
+        if (typeof other !== "object" || !other) return;
+        const suggestedTitle = other.novel_title || "";
+        if (suggestedTitle) {
+          const suggestedDiv = document.getElementById("suggestedTitle");
+          suggestedDiv.classList.remove("hidden");
+          const btn = suggestedDiv.querySelector("button");
+          btn.textContent = suggestedTitle;
+          btn.onclick = () => {
+            document.getElementById("title").value = suggestedTitle;
+          };
+        }
+        document.getElementById("other_key_points").value =
+          other.key_points || "";
+        document.getElementById("other_writing_guidance").value =
+          other.writing_guidance || "";
+      }
+
+      function getOtherFromUI() {
+        return {
+          novel_title: document.getElementById("title").value,
+          key_points: document.getElementById("other_key_points").value,
+          writing_guidance: document.getElementById("other_writing_guidance")
+            .value,
+        };
       }
 
       function applyParsedResult(parsed) {
-        if (parsed.characters) {
-          document.getElementById("characters").value = parsed.characters;
-        }
-        if (parsed.world_view) {
-          document.getElementById("world_view").value = parsed.world_view;
-        }
-        if (parsed.style) {
-          document.getElementById("style").value = parsed.style;
-        }
-        if (parsed.outline) {
-          document.getElementById("rawContent").value += "\n\n[已解析大纲]\n";
-          try {
-            const outlineData = JSON.parse(parsed.outline);
-            if (Array.isArray(outlineData)) {
-              const chapterInputs = document.querySelectorAll(
-                ".space-y-3 > .border",
-              );
-              outlineData.forEach((ch, idx) => {
-                if (chapterInputs[idx]) {
-                  const titleInput = chapterInputs[idx].querySelector(
-                    'input[name="chapter_title"]',
-                  );
-                  const coreEventInput = chapterInputs[idx].querySelector(
-                    'textarea[name="chapter_core_event"]',
-                  );
-                  if (titleInput && ch.title) titleInput.value = ch.title;
-                  if (coreEventInput && ch.core_event)
-                    coreEventInput.value = ch.core_event;
-                }
-              });
-            }
-          } catch (e) {
-            console.log("Outline is not JSON, keeping as text");
+        renderCharacterCards(parsed.characters || []);
+        renderWorldView(parsed.world_view || {});
+        renderStyle(parsed.style || {});
+        renderForeshadowing(parsed.foreshadowing || []);
+        renderOther(parsed.other || {});
+
+        if (parsed._raw) {
+          if (parsed._raw.characters) {
+            document.getElementById("characters").value =
+              parsed._raw.characters;
+          }
+          if (parsed._raw.world_view) {
+            document.getElementById("world_view").value =
+              parsed._raw.world_view;
+          }
+          if (parsed._raw.style) {
+            document.getElementById("style").value = parsed._raw.style;
+          }
+          if (parsed._raw.foreshadowing) {
+            document.getElementById("foreshadowing").value =
+              parsed._raw.foreshadowing;
+          }
+          if (parsed._raw.other) {
+            document.getElementById("other").value = parsed._raw.other;
           }
         }
-        if (parsed.foreshadowing) {
-          document.getElementById("foreshadowing").value = parsed.foreshadowing;
-        }
-        if (parsed.other) {
-          document.getElementById("other").value = parsed.other;
-        }
+      }
+
+      function escapeHtml(str) {
+        if (!str) return "";
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
       }
 
       function manualParse() {
         const rawContent = document.getElementById("rawContent").value;
         const parsed = parseInitResult(rawContent);
-        if (!parsed.characters && !parsed.world_view && !parsed.style) {
+        if (
+          !parsed.characters?.length &&
+          !parsed.world_view?.setting &&
+          !parsed.style?.language_style
+        ) {
           alert("解析失败，请检查内容格式是否正确");
           return;
         }
@@ -363,11 +651,6 @@
               input.value = formData[key];
             }
           });
-
-          if (formData.style) {
-            const styleTextarea = document.getElementById("style");
-            if (styleTextarea) styleTextarea.value = formData.style;
-          }
 
           let fullContent = "";
           const rawContentEl = document.getElementById("rawContent");
@@ -433,10 +716,37 @@
         return JSON.stringify({ outline: chapters }, null, 2);
       }
 
+      function buildFormData() {
+        const characters = getCharactersFromUI();
+        const world_view = getWorldViewFromUI();
+        const style = getStyleFromUI();
+        const foreshadowing = getForeshadowingFromUI();
+        const other = getOtherFromUI();
+
+        document.getElementById("characters").value = JSON.stringify(
+          characters,
+          null,
+          2,
+        );
+        document.getElementById("world_view").value = JSON.stringify(
+          world_view,
+          null,
+          2,
+        );
+        document.getElementById("style").value = JSON.stringify(style, null, 2);
+        document.getElementById("foreshadowing").value = JSON.stringify(
+          foreshadowing,
+          null,
+          2,
+        );
+        document.getElementById("other").value = JSON.stringify(other, null, 2);
+      }
+
       function validateAndSubmit() {
         const form = document.querySelector('form[action="/books"]');
         const outlineTextarea = form.querySelector('textarea[name="outline"]');
         outlineTextarea.value = buildOutlineFromForm();
+        buildFormData();
         form.submit();
       }
 
@@ -444,6 +754,7 @@
         const form = document.querySelector('form[action="/books/preview"]');
         const outlineInput = form.querySelector('input[name="outline"]');
         outlineInput.value = buildOutlineFromForm();
+        buildFormData();
         form.submit();
       }
     </script>
