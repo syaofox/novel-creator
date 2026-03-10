@@ -175,7 +175,7 @@ async def generate_chapter(
         ai_service = AiService(
             api_key=app_settings.deepseek_api_key,
             base_url=app_settings.deepseek_base_url,
-            model=app_settings.default_model,
+            model=global_config.get("default_model") or app_settings.default_model,
             global_config=global_config,
         )
         try:
@@ -250,7 +250,7 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: Sessi
         ai_service = AiService(
             api_key=app_settings.deepseek_api_key,
             base_url=app_settings.deepseek_base_url,
-            model=app_settings.default_model,
+            model=global_config.get("default_model") or app_settings.default_model,
             global_config=global_config,
         )
         try:
@@ -377,7 +377,7 @@ async def stream_chapter(
     ai_service = AiService(
         api_key=app_settings.deepseek_api_key,
         base_url=app_settings.deepseek_base_url,
-        model=app_settings.default_model,
+        model=global_config.get("default_model") or app_settings.default_model,
         global_config=global_config,
     )
 
