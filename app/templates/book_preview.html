@@ -6,12 +6,27 @@
       <span class="loading loading-spinner"></span>
       <span>AI 正在生成中...</span>
     </div>
-    <div id="rawOutput" class="hidden card bg-base-100 shadow-xl mb-4">
+    <div id="rawOutput" class="card bg-base-100 shadow-xl mb-4">
       <div class="card-body">
-        <h2 class="card-title text-sm">AI 原始输出（实时）</h2>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="card-title text-sm">AI 原始输出（实时）</h2>
+          <div class="flex items-center gap-2">
+            <span class="text-xs">高度</span>
+            <input
+              type="range"
+              id="rawHeightSlider"
+              min="60"
+              max="400"
+              value="120"
+              class="range range-xs range-primary"
+              oninput="document.getElementById('rawContent').style.maxHeight = this.value + 'px'"
+            />
+          </div>
+        </div>
         <pre
           id="rawContent"
-          class="text-xs bg-base-200 p-2 rounded max-h-48 overflow-auto whitespace-pre-wrap"
+          class="text-xs bg-base-200 p-2 rounded overflow-auto whitespace-pre-wrap"
+          style="max-height: 120px"
         ></pre>
       </div>
     </div>
@@ -246,7 +261,6 @@
           const formData = JSON.parse(formDataStr);
 
           document.getElementById("streamStatus").classList.remove("hidden");
-          document.getElementById("rawOutput").classList.remove("hidden");
 
           Object.keys(formData).forEach((key) => {
             const input = document.querySelector(`input[name="${key}"]`);
@@ -385,10 +399,6 @@
               if (parsed.other) {
                 document.getElementById("other").value = parsed.other;
               }
-
-              setTimeout(() => {
-                document.getElementById("rawOutput").classList.add("hidden");
-              }, 3000);
 
               eventSource.close();
               sessionStorage.removeItem("initStreamUrl");
