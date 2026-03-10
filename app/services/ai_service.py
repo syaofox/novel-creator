@@ -61,11 +61,16 @@ class AiService:
         else:
             logger.info(f"Content: {content}")
 
-    async def initialize_book(self, basic_idea: str, genre: str, target_chapters: int) -> dict[str, str]:
+    async def initialize_book(
+        self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = ""
+    ) -> dict[str, str]:
         """调用初始化 Prompt，返回解析后的数据"""
         user_prompt = prompts.INIT_PROMPT.format(basic_idea=basic_idea, genre=genre, target_chapters=target_chapters)
+        system_content = (
+            (jailbreak_prefix + "\n\n") if jailbreak_prefix else ""
+        ) + "你是一个专业的小说创作辅助AI，请严格按照要求输出JSON格式。"
         messages: list[ChatCompletionMessageParam] = [
-            {"role": "system", "content": "你是一个专业的小说创作辅助AI，请严格按照要求输出JSON格式。"},
+            {"role": "system", "content": system_content},
             {"role": "user", "content": user_prompt},
         ]
         params = {

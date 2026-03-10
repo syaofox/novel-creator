@@ -42,7 +42,7 @@ async def preview_book(
 ):
     ai_service = AiService(api_key=app_settings.deepseek_api_key, base_url=app_settings.deepseek_base_url)
     try:
-        init_data = await ai_service.initialize_book(basic_idea, genre, target_chapters)
+        init_data = await ai_service.initialize_book(basic_idea, genre, target_chapters, jailbreak_prefix)
     except Exception as e:
         init_data = {
             "characters": f"AI初始化失败: {str(e)}，请手动填写",
