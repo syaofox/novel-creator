@@ -2,10 +2,9 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Book, GlobalConfig
+from app.models import Book, Chapter, GlobalConfig
 from app.services.ai_service import AiService
 from app.config import settings as app_settings
-from app.services.file_service import get_all_chapters_text
 from fastapi.templating import Jinja2Templates
 
 router = APIRouter(prefix="/books/{book_id}/ai", tags=["ai"])
@@ -44,8 +43,8 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    # 获取所有章节全文（或者只获取新章节？这里简单获取全部）
-    full_text = get_all_chapters_text(book_id)
+    chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
+    full_text = "\n\n".join(str(ch.content) for ch in chapters if ch.content)
     global_config = get_global_config_dict(db)
     ai_service = AiService(
         api_key=app_settings.deepseek_api_key,

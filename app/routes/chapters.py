@@ -6,11 +6,25 @@ import re
 from app.database import get_db
 from app.models import Book, Chapter, GlobalConfig
 from app.services.ai_service import AiService
-from app.services.file_service import save_chapter, get_prev_ending
 from app.config import settings as app_settings
 from app.utils.helpers import extract_title
 
 router = APIRouter(prefix="/books/{book_id}/chapters", tags=["chapters"])
+
+
+def get_prev_ending_from_db(db: Session, book_id: int, chapter_number: int, chars: int = 600) -> str:
+    """从数据库获取上一章的最后 chars 字符"""
+    if chapter_number <= 1:
+        return ""
+    prev_chapter: Chapter | None = (
+        db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_number - 1).first()
+    )
+    if not prev_chapter:
+        return ""
+    content = str(prev_chapter.content) if prev_chapter.content is not None else ""
+    if not content:
+        return ""
+    return content[-chars:]
 
 
 def get_global_config_dict(db: Session) -> dict:
@@ -86,15 +100,13 @@ async def write_chapter_form(
         else extract_chapter_outline(str(book.memory_summary), chapter_num)
     )
 
-    prev_ending = get_prev_ending(book_id, chapter_num)
+    prev_ending = get_prev_ending_from_db(db, book_id, chapter_num)
 
     is_completed = chapter is not None and chapter.status == "已完成"
     is_editing = is_completed or edit
     existing_content = ""
-    if is_editing:
-        from app.services.file_service import read_chapter
-
-        existing_content = read_chapter(book_id, chapter_num)
+    if is_editing and chapter:
+        existing_content = chapter.content or ""
 
     from fastapi.templating import Jinja2Templates
 
@@ -145,7 +157,7 @@ async def generate_chapter(
         current = int(book.current_chapter) if book.current_chapter is not None else 0
         chapter_number = current + 1
 
-    prev_ending = get_prev_ending(book_id, int(chapter_number))
+    prev_ending = get_prev_ending_from_db(db, book_id, int(chapter_number))
 
     stream = book.config.get("stream", True)
     from fastapi.templating import Jinja2Templates
@@ -219,7 +231,7 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: Sessi
         chapter.core_event if chapter and chapter.core_event else extract_chapter_outline(str(book.memory_summary), num)
     )
 
-    prev_ending = get_prev_ending(book_id, num)
+    prev_ending = get_prev_ending_from_db(db, book_id, num)
 
     stream = book.config.get("stream", True)
     from fastapi.templating import Jinja2Templates
@@ -289,9 +301,7 @@ async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Ses
     chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_num).first()
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
-    from app.services.file_service import read_chapter
-
-    content = read_chapter(book_id, chapter_num)
+    content = chapter.content or ""
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
@@ -339,20 +349,14 @@ async def save_chapter_endpoint(
     title = extract_title(content) or f"第{chapter_number}章"
 
     try:
-        save_chapter(book_id, chapter_number, content)
-    except Exception as e:
-        import traceback
-
-        return HTMLResponse(
-            content=f"保存章节文件失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
-        )
-
-    try:
         if is_new_chapter:
-            chapter = Chapter(book_id=book_id, chapter_number=chapter_number, title=title, status="已完成")
+            chapter = Chapter(
+                book_id=book_id, chapter_number=chapter_number, title=title, content=content, status="已完成"
+            )
             db.add(chapter)
         else:
             chapter.title = title
+            chapter.content = content
             chapter.status = "已完成"
         book.current_chapter = chapter_number
         db.commit()
@@ -361,7 +365,7 @@ async def save_chapter_endpoint(
     except Exception as e:
         import traceback
 
-        return HTMLResponse(content=f"保存数据库失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
+        return HTMLResponse(content=f"保存失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
 
     from fastapi.templating import Jinja2Templates
 
@@ -391,7 +395,7 @@ async def stream_chapter(
         current = int(book.current_chapter) if book.current_chapter is not None else 0
         chapter_number = current + 1
 
-    prev_ending = get_prev_ending(book_id, chapter_number)
+    prev_ending = get_prev_ending_from_db(db, book_id, chapter_number)
 
     global_config = get_global_config_dict(db)
     ai_service = AiService(

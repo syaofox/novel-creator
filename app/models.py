@@ -49,6 +49,7 @@ class Chapter(Base):
     chapter_number = Column(Integer, nullable=False)
     title = Column(String, nullable=False)
     core_event = Column(Text, default="")
+    content = Column(Text, default="")
     status = Column(String, default="未完成")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
