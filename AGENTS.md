@@ -195,7 +195,7 @@ app/
 └── static/           # 静态文件
 alembic/              # 数据库迁移
 tests/                # 测试文件
-books/                # 书籍章节文件存储
+data/                 # 数据库文件
 ```
 
 ## 常见任务
