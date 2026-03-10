@@ -71,12 +71,6 @@ async def write_chapter_form(request: Request, book_id: int, num: int | None = N
         chapter_num = num
         if chapter_num < 1 or chapter_num > book.target_chapters:
             raise HTTPException(status_code=400, detail="章节号超出范围")
-        if chapter_num > 1:
-            prev_chapter = (
-                db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_num - 1).first()
-            )
-            if not prev_chapter or prev_chapter.status != "已完成":
-                raise HTTPException(status_code=400, detail="请先完成上一章")
     else:
         chapter_num = int(book.current_chapter) + 1
 

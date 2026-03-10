@@ -1,20 +1,40 @@
 <div class="alert alert-success shadow-lg">
   <div>
-    <span>第{{ chapter.chapter_number }}章生成成功！</span>
+    <span>第{{ chapter.chapter_number }}章保存成功！</span>
   </div>
 </div>
 <div class="mt-4">
   <h3 class="text-lg font-bold">预览</h3>
   <div class="border rounded p-4 whitespace-pre-wrap">{{ content }}</div>
 </div>
-<div class="mt-4 flex gap-2">
-  <button
-    class="btn btn-sm btn-primary"
-    hx-post="/books/{{ book.id }}/ai/update-summary"
-    hx-target="#memory-summary"
-    hx-swap="innerHTML"
-  >
-    更新摘要
-  </button>
-  <a href="/books/{{ book.id }}" class="btn btn-sm btn-ghost">返回</a>
+<div class="mt-4 flex flex-col gap-2">
+  <div class="flex gap-2">
+    <button
+      class="btn btn-sm btn-primary"
+      hx-get="/books/{{ book.id }}/chapters/write?num={{ chapter.chapter_number }}"
+      hx-target="#main-workspace"
+      hx-swap="innerHTML"
+    >
+      修改本章
+    </button>
+    {% if chapter.chapter_number < book.target_chapters %}
+      <button
+        class="btn btn-sm btn-success"
+        hx-get="/books/{{ book.id }}/chapters/write?num={{ chapter.chapter_number + 1 }}"
+        hx-target="#main-workspace"
+        hx-swap="innerHTML"
+      >
+        进行下一章节创作
+      </button>
+    {% endif %}
+    <button
+      class="btn btn-sm btn-outline"
+      hx-post="/books/{{ book.id }}/ai/update-summary"
+      hx-target="#memory-summary"
+      hx-swap="innerHTML"
+    >
+      更新摘要
+    </button>
+  </div>
+  <a href="/books/{{ book.id }}" class="btn btn-sm btn-ghost">返回书籍</a>
 </div>
