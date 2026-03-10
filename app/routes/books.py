@@ -194,6 +194,7 @@ async def create_book(
         config=config,
         memory_summary=memory_summary,
         style=final_style,
+        current_chapter=0,
     )
     db.add(new_book)
     db.commit()

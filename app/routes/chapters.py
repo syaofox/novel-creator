@@ -351,10 +351,10 @@ async def save_chapter_endpoint(
         if is_new_chapter:
             chapter = Chapter(book_id=book_id, chapter_number=chapter_number, title=title, status="已完成")
             db.add(chapter)
-            book.current_chapter = chapter_number
         else:
             chapter.title = title
             chapter.status = "已完成"
+        book.current_chapter = chapter_number
         db.commit()
         db.refresh(chapter)
         chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
