@@ -13,8 +13,14 @@
           id="rawContent"
           class="textarea textarea-bordered text-xs font-mono"
           rows="6"
-          readonly
         ></textarea>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline mt-2"
+          onclick="manualParse()"
+        >
+          手动解析
+        </button>
       </div>
     </div>
 
@@ -218,12 +224,37 @@
         ];
         const result = {};
 
+        let textToParse = fullText;
+        const jsonCodeBlockMatch = fullText.match(/```json\s*([\s\S]*?)```/i);
+        if (jsonCodeBlockMatch && jsonCodeBlockMatch[1]) {
+          console.log("Found JSON code block, extracting...");
+          textToParse = jsonCodeBlockMatch[1].trim();
+          try {
+            const jsonData = JSON.parse(textToParse);
+            const toString = (val) => {
+              if (typeof val === "string") return val;
+              if (typeof val === "object") return JSON.stringify(val, null, 2);
+              return String(val);
+            };
+            return {
+              characters: toString(jsonData.characters),
+              world_view: toString(jsonData.world_view || jsonData.worldview),
+              style: toString(jsonData.style),
+              outline: jsonData.outline ? JSON.stringify(jsonData.outline) : "",
+              foreshadowing: toString(jsonData.foreshadowing),
+              other: toString(jsonData.other),
+            };
+          } catch (e) {
+            console.log("JSON code block parse failed, trying tag parsing:", e);
+          }
+        }
+
         for (const field of fields) {
           const pattern = new RegExp(
             `【${field}】([\\s\\S]*?)【${field}】`,
             "i",
           );
-          const match = fullText.match(pattern);
+          const match = textToParse.match(pattern);
           console.log(
             `Field ${field}: match =`,
             !!match,
@@ -236,8 +267,85 @@
           }
         }
 
+        if (!result.characters && !result.world_view) {
+          console.log("Tag parsing failed, trying direct JSON parse");
+          try {
+            const jsonData = JSON.parse(textToParse);
+            const toString = (val) => {
+              if (typeof val === "string") return val;
+              if (typeof val === "object") return JSON.stringify(val, null, 2);
+              return String(val);
+            };
+            return {
+              characters: toString(jsonData.characters),
+              world_view: toString(jsonData.world_view || jsonData.worldview),
+              style: toString(jsonData.style),
+              outline: jsonData.outline ? JSON.stringify(jsonData.outline) : "",
+              foreshadowing: toString(jsonData.foreshadowing),
+              other: toString(jsonData.other),
+            };
+          } catch (e) {
+            console.log("JSON parse failed too:", e);
+          }
+        }
+
         console.log("Parsed result:", result);
         return result;
+      }
+
+      function applyParsedResult(parsed) {
+        if (parsed.characters) {
+          document.getElementById("characters").value = parsed.characters;
+        }
+        if (parsed.world_view) {
+          document.getElementById("world_view").value = parsed.world_view;
+        }
+        if (parsed.style) {
+          document.getElementById("style").value = parsed.style;
+        }
+        if (parsed.outline) {
+          document.getElementById("rawContent").value += "\n\n[已解析大纲]\n";
+          try {
+            const outlineData = JSON.parse(parsed.outline);
+            if (Array.isArray(outlineData)) {
+              const chapterInputs = document.querySelectorAll(
+                ".space-y-3 > .border",
+              );
+              outlineData.forEach((ch, idx) => {
+                if (chapterInputs[idx]) {
+                  const titleInput = chapterInputs[idx].querySelector(
+                    'input[name="chapter_title"]',
+                  );
+                  const coreEventInput = chapterInputs[idx].querySelector(
+                    'textarea[name="chapter_core_event"]',
+                  );
+                  if (titleInput && ch.title) titleInput.value = ch.title;
+                  if (coreEventInput && ch.core_event)
+                    coreEventInput.value = ch.core_event;
+                }
+              });
+            }
+          } catch (e) {
+            console.log("Outline is not JSON, keeping as text");
+          }
+        }
+        if (parsed.foreshadowing) {
+          document.getElementById("foreshadowing").value = parsed.foreshadowing;
+        }
+        if (parsed.other) {
+          document.getElementById("other").value = parsed.other;
+        }
+      }
+
+      function manualParse() {
+        const rawContent = document.getElementById("rawContent").value;
+        const parsed = parseInitResult(rawContent);
+        if (!parsed.characters && !parsed.world_view && !parsed.style) {
+          alert("解析失败，请检查内容格式是否正确");
+          return;
+        }
+        applyParsedResult(parsed);
+        alert("解析成功！");
       }
 
       (function () {
@@ -273,120 +381,8 @@
             if (data.done) {
               document.getElementById("streamStatus").classList.add("hidden");
 
-              let parsed = parseInitResult(fullContent);
-
-              // 如果标记解析失败，尝试直接解析JSON
-              if (!parsed.characters && !parsed.world_view) {
-                console.log("Tag parsing failed, trying JSON parse");
-                try {
-                  const jsonData = JSON.parse(fullContent);
-                  const toString = (val) => {
-                    if (typeof val === "string") return val;
-                    if (typeof val === "object")
-                      return JSON.stringify(val, null, 2);
-                    return String(val);
-                  };
-                  parsed = {
-                    characters: toString(jsonData.characters),
-                    world_view: toString(
-                      jsonData.world_view || jsonData.worldview,
-                    ),
-                    style: toString(jsonData.style),
-                    outline: jsonData.outline
-                      ? JSON.stringify(jsonData.outline)
-                      : "",
-                    foreshadowing: toString(jsonData.foreshadowing),
-                    other: toString(jsonData.other),
-                  };
-                  console.log("JSON parse success:", parsed);
-                } catch (e) {
-                  console.log("JSON parse failed too:", e);
-                }
-              }
-
-              if (parsed.characters) {
-                document.getElementById("characters").value = parsed.characters;
-              }
-              if (parsed.world_view) {
-                document.getElementById("world_view").value = parsed.world_view;
-              }
-              if (parsed.style) {
-                document.getElementById("style").value = parsed.style;
-              }
-              if (parsed.outline) {
-                document.getElementById("rawContent").innerHTML +=
-                  "\n\n[已解析大纲]\n";
-                try {
-                  const outlineData = JSON.parse(parsed.outline);
-                  if (Array.isArray(outlineData)) {
-                    const chapterInputs = document.querySelectorAll(
-                      ".space-y-3 > .border",
-                    );
-                    outlineData.forEach((ch, idx) => {
-                      if (chapterInputs[idx]) {
-                        const titleInput = chapterInputs[idx].querySelector(
-                          'input[name="chapter_title"]',
-                        );
-                        const coreEventInput = chapterInputs[idx].querySelector(
-                          'textarea[name="chapter_core_event"]',
-                        );
-                        if (titleInput && ch.title) titleInput.value = ch.title;
-                        if (coreEventInput && ch.core_event)
-                          coreEventInput.value = ch.core_event;
-                      }
-                    });
-                  }
-                } catch (e) {
-                  console.log("Outline is not JSON, keeping as text");
-                }
-              }
-              if (parsed.foreshadowing) {
-                document.getElementById("foreshadowing").value =
-                  parsed.foreshadowing;
-              }
-              if (parsed.other) {
-                document.getElementById("other").value = parsed.other;
-              }
-              if (parsed.world_view) {
-                document.getElementById("world_view").value = parsed.world_view;
-              }
-              if (parsed.style) {
-                document.getElementById("style").value = parsed.style;
-              }
-              if (parsed.outline) {
-                document.getElementById("rawContent").value +=
-                  "\n\n[已解析大纲]\n";
-                try {
-                  const outlineData = JSON.parse(parsed.outline);
-                  if (Array.isArray(outlineData)) {
-                    const chapterInputs = document.querySelectorAll(
-                      ".space-y-3 > .border",
-                    );
-                    outlineData.forEach((ch, idx) => {
-                      if (chapterInputs[idx]) {
-                        const titleInput = chapterInputs[idx].querySelector(
-                          'input[name="chapter_title"]',
-                        );
-                        const coreEventInput = chapterInputs[idx].querySelector(
-                          'textarea[name="chapter_core_event"]',
-                        );
-                        if (titleInput && ch.title) titleInput.value = ch.title;
-                        if (coreEventInput && ch.core_event)
-                          coreEventInput.value = ch.core_event;
-                      }
-                    });
-                  }
-                } catch (e) {
-                  console.log("Outline is not JSON, keeping as text");
-                }
-              }
-              if (parsed.foreshadowing) {
-                document.getElementById("foreshadowing").value =
-                  parsed.foreshadowing;
-              }
-              if (parsed.other) {
-                document.getElementById("other").value = parsed.other;
-              }
+              const parsed = parseInitResult(fullContent);
+              applyParsedResult(parsed);
 
               eventSource.close();
               sessionStorage.removeItem("initStreamUrl");
