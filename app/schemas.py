@@ -19,6 +19,7 @@ class BookUpdate(BaseModel):
     target_chapters: int | None = None
     config: dict[str, Any] | None = None
     memory_summary: str | None = None
+    style: str | None = None
     status: str | None = None
 
 
@@ -26,6 +27,7 @@ class BookOut(BookBase):
     id: int
     config: dict[str, Any]
     memory_summary: str
+    style: str
     current_chapter: int
     status: str
     created_at: str

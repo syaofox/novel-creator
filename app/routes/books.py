@@ -37,6 +37,7 @@ async def create_book(
     system_template: str = Form(
         "你是我的长篇小说专属写手。请严格遵守以下内容：\n【小说记忆摘要】\n{memory}\n【写作风格规范】\n{style}"
     ),
+    style: str = Form(""),
     db: Session = Depends(get_db),
 ):
     config = {
@@ -48,6 +49,7 @@ async def create_book(
         "system_template": system_template,
     }
     new_book = Book(title=title, genre=genre, target_chapters=target_chapters, basic_idea=basic_idea, config=config)
+    new_book.style = style
     db.add(new_book)
     db.commit()
     db.refresh(new_book)
@@ -60,16 +62,21 @@ async def create_book(
         # init_data 应包含：人物卡、世界观、风格、大纲、初始摘要
         # 我们按6部分格式拼接：人物卡、世界观、风格、主线进度、伏笔、其他
         # 简单起见，将各部分用换行分隔
+
+        # 如果用户没有自定义风格，使用 AI 生成的风格
+        final_style = style if style else init_data.get("style", "")
+
         memory_parts = [
             f"【人物卡】\n{init_data.get('characters', '')}",
             f"【世界观】\n{init_data.get('world_view', '')}",
-            f"【风格规范】\n{init_data.get('style', '')}",
+            f"【风格规范】\n{final_style}",
             f"【主线进度】\n{init_data.get('outline', '')}",
             f"【伏笔清单】\n{init_data.get('foreshadowing', '')}",
             f"【其他信息】\n{init_data.get('other', '')}",
         ]
         new_book.memory_summary = "\n\n".join(memory_parts)
-        # 也可以将大纲单独存储，但为了简化，放入 memory_summary
+        # 保存风格规范到单独字段
+        new_book.style = final_style
     except Exception as e:
         # 初始化失败，至少设置一个默认摘要
         new_book.memory_summary = f"初始化失败: {str(e)}，请稍后手动更新摘要。"
