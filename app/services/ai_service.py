@@ -47,8 +47,6 @@ class AiService:
         logger.info(f"Stream: {params.get('stream')}")
         for i, msg in enumerate(params.get("messages", [])):
             content = msg.get("content", "")
-            if len(content) > 200:
-                content = content[:200] + "..."
             logger.info(f"Message[{i}] ({msg.get('role')}): {content}")
 
     def _log_response(self, response: Any):
@@ -56,10 +54,7 @@ class AiService:
         logger.info(f"Model: {response.model}")
         logger.info(f"Usage: {response.usage}")
         content = response.choices[0].message.content
-        if content and len(content) > 200:
-            logger.info(f"Content: {content[:200]}...")
-        else:
-            logger.info(f"Content: {content}")
+        logger.info(f"Content: {content}")
 
     async def initialize_book(
         self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = ""
