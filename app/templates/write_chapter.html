@@ -13,6 +13,27 @@
         <span>你正在重新编辑已完成的章节。保存后将覆盖原内容。</span>
       </div>
     </div>
+    <div class="form-control mb-4">
+      <label class="label">
+        <span class="label-text">本章核心事件</span>
+      </label>
+      <textarea
+        name="core_event"
+        rows="3"
+        class="textarea textarea-bordered"
+        placeholder="本章核心事件"
+      >
+{{ core_event }}</textarea
+      >
+    </div>
+    <div class="form-control mb-4">
+      <label class="label">
+        <span class="label-text">上一章结尾（参考）</span>
+      </label>
+      <textarea readonly rows="4" class="textarea textarea-bordered bg-gray-50">
+{{ prev_ending }}</textarea
+      >
+    </div>
     <form
       hx-post="/books/{{ book.id }}/chapters/save"
       hx-target="#main-workspace"
@@ -20,9 +41,7 @@
     >
       <input type="hidden" name="chapter_number" value="{{ chapter_number }}" />
       <div class="form-control">
-        <label class="label">
-          <span class="label-text">章节内容</span>
-        </label>
+        <label class="label"> <span class="label-text">章节内容</span> </label>
         <textarea
           name="content"
           rows="30"
@@ -46,7 +65,7 @@
       hx-swap="innerHTML"
     >
       <input type="hidden" name="chapter_number" value="{{ chapter_number }}" />
-      <div class="form-control">
+      <div class="form-control mb-4">
         <label class="label">
           <span class="label-text">本章核心事件</span>
         </label>
@@ -59,7 +78,7 @@
 {{ core_event }}</textarea
         >
       </div>
-      <div class="form-control">
+      <div class="form-control mb-4">
         <label class="label">
           <span class="label-text">上一章结尾（参考）</span>
         </label>

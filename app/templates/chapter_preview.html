@@ -1,0 +1,74 @@
+<div>
+  <h2 class="text-xl font-bold mb-4">
+    第 {{ chapter_number }} 章 {{ chapter.title }}
+  </h2>
+
+  <div class="alert alert-info mb-4">
+    <div>
+      <span>已完成章节</span>
+    </div>
+  </div>
+
+  <div class="form-control mb-4">
+    <label class="label">
+      <span class="label-text">本章核心事件</span>
+    </label>
+    <textarea readonly rows="3" class="textarea textarea-bordered bg-gray-50">
+{{ core_event }}</textarea
+    >
+  </div>
+
+  <div class="form-control mb-4">
+    <label class="label">
+      <span class="label-text">上一章结尾（参考）</span>
+    </label>
+    <textarea readonly rows="4" class="textarea textarea-bordered bg-gray-50">
+{{ prev_ending }}</textarea
+    >
+  </div>
+
+  <div class="mt-4">
+    <h3 class="text-lg font-bold mb-2">章节内容</h3>
+    <div class="border rounded p-4 whitespace-pre-wrap">{{ content }}</div>
+  </div>
+
+  <div class="mt-4 flex flex-col gap-2">
+    <div class="flex gap-2 flex-wrap">
+      <button
+        class="btn btn-sm btn-primary"
+        hx-get="/books/{{ book.id }}/chapters/write?num={{ chapter_number }}&edit=true"
+        hx-target="#main-workspace"
+        hx-swap="innerHTML"
+      >
+        修改本章
+      </button>
+      {% if chapter_number < book.target_chapters %}
+        <button
+          class="btn btn-sm btn-success"
+          hx-get="/books/{{ book.id }}/chapters/write?num={{ chapter_number + 1 }}"
+          hx-target="#main-workspace"
+          hx-swap="innerHTML"
+        >
+          进行下一章节创作
+        </button>
+      {% endif %}
+      <button
+        class="btn btn-sm btn-outline"
+        hx-post="/books/{{ book.id }}/ai/update-summary"
+        hx-target="#memory-summary"
+        hx-swap="innerHTML"
+      >
+        更新摘要
+      </button>
+      <button
+        class="btn btn-sm btn-warning"
+        hx-get="/books/{{ book.id }}/chapters/regenerate?num={{ chapter_number }}"
+        hx-target="#main-workspace"
+        hx-swap="innerHTML"
+      >
+        重新生成
+      </button>
+    </div>
+    <a href="/books/{{ book.id }}" class="btn btn-sm btn-ghost">返回书籍</a>
+  </div>
+</div>

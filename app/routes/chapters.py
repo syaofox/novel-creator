@@ -62,7 +62,9 @@ def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
 
 
 @router.get("/write", response_class=HTMLResponse)
-async def write_chapter_form(request: Request, book_id: int, num: int | None = None, db: Session = Depends(get_db)):
+async def write_chapter_form(
+    request: Request, book_id: int, num: int | None = None, edit: bool = False, db: Session = Depends(get_db)
+):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
@@ -84,7 +86,8 @@ async def write_chapter_form(request: Request, book_id: int, num: int | None = N
 
     prev_ending = get_prev_ending(book_id, chapter_num)
 
-    is_editing = chapter is not None and chapter.status == "已完成"
+    is_completed = chapter is not None and chapter.status == "已完成"
+    is_editing = is_completed or edit
     existing_content = ""
     if is_editing:
         from app.services.file_service import read_chapter
@@ -94,6 +97,21 @@ async def write_chapter_form(request: Request, book_id: int, num: int | None = N
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
+
+    if is_completed and not edit:
+        return templates.TemplateResponse(
+            request,
+            "chapter_preview.html",
+            {
+                "book": book,
+                "chapter_number": chapter_num,
+                "chapter": chapter,
+                "prev_ending": prev_ending,
+                "core_event": core_event,
+                "content": existing_content,
+            },
+        )
+
     return templates.TemplateResponse(
         request,
         "write_chapter.html",
@@ -184,6 +202,83 @@ async def generate_chapter(
             )
 
 
+@router.get("/regenerate", response_class=HTMLResponse)
+async def regenerate_chapter(request: Request, book_id: int, num: int, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    if num < 1 or num > book.target_chapters:
+        raise HTTPException(status_code=400, detail="章节号超出范围")
+
+    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == num).first()
+
+    core_event = (
+        chapter.core_event if chapter and chapter.core_event else extract_chapter_outline(str(book.memory_summary), num)
+    )
+
+    prev_ending = get_prev_ending(book_id, num)
+
+    stream = book.config.get("stream", True)
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory="app/templates")
+
+    if stream:
+        try:
+            return templates.TemplateResponse(
+                request,
+                "partials/edit_chapter.html",
+                {
+                    "book": book,
+                    "chapter_number": num,
+                    "content": "",
+                    "stream": True,
+                    "core_event": core_event,
+                    "prev_ending": prev_ending,
+                    "regenerate": True,
+                },
+            )
+        except Exception as e:
+            import traceback
+
+            return HTMLResponse(
+                content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
+            )
+    else:
+        global_config = get_global_config_dict(db)
+        ai_service = AiService(
+            api_key=app_settings.deepseek_api_key,
+            base_url=app_settings.deepseek_base_url,
+            model=app_settings.default_model,
+            global_config=global_config,
+        )
+        try:
+            content = await ai_service.write_chapter(book, int(num), core_event, prev_ending)
+        except Exception as e:
+            return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
+        try:
+            return templates.TemplateResponse(
+                request,
+                "partials/edit_chapter.html",
+                {
+                    "book": book,
+                    "chapter_number": num,
+                    "content": content,
+                    "stream": False,
+                    "core_event": core_event,
+                    "prev_ending": prev_ending,
+                    "regenerate": True,
+                },
+            )
+        except Exception as e:
+            import traceback
+
+            return HTMLResponse(
+                content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
+            )
+
+
 @router.get("/{chapter_num}", response_class=HTMLResponse)
 async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -261,14 +356,22 @@ async def save_chapter_endpoint(
 
 
 @router.post("/stream")
-async def stream_chapter(request: Request, book_id: int, core_event: str = Form(...), db: Session = Depends(get_db)):
+async def stream_chapter(
+    request: Request,
+    book_id: int,
+    chapter_number: int = Form(None),
+    core_event: str = Form(...),
+    db: Session = Depends(get_db),
+):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    current = int(book.current_chapter) if book.current_chapter is not None else 0
-    next_chapter = current + 1
-    prev_ending = get_prev_ending(book_id, int(next_chapter))
+    if chapter_number is None:
+        current = int(book.current_chapter) if book.current_chapter is not None else 0
+        chapter_number = current + 1
+
+    prev_ending = get_prev_ending(book_id, chapter_number)
 
     global_config = get_global_config_dict(db)
     ai_service = AiService(
@@ -280,7 +383,7 @@ async def stream_chapter(request: Request, book_id: int, core_event: str = Form(
 
     async def generate():
         try:
-            async for chunk in ai_service.stream_write_chapter(book, next_chapter, core_event, prev_ending):
+            async for chunk in ai_service.stream_write_chapter(book, chapter_number, core_event, prev_ending):
                 yield chunk
         except Exception as e:
             import traceback

@@ -1,6 +1,10 @@
 <div class="alert alert-success shadow-lg">
   <div>
-    <span>第{{ chapter_number }}章生成成功！请审核并编辑内容，然后保存。</span>
+    {% if regenerate %}
+      <span>第{{ chapter_number }}章重新生成成功！请审核并编辑内容，然后保存。</span>
+    {% else %}
+      <span>第{{ chapter_number }}章生成成功！请审核并编辑内容，然后保存。</span>
+    {% endif %}
     {% if stream %}
     <div class="mt-2">
       <div id="stream-status" class="text-sm text-blue-600">正在流式生成内容...</div>
@@ -8,6 +12,31 @@
     {% endif %}
   </div>
 </div>
+
+<div class="form-control mb-4">
+  <label class="label">
+    <span class="label-text">本章核心事件</span>
+  </label>
+  <textarea
+    readonly
+    rows="3"
+    class="textarea textarea-bordered bg-gray-50"
+  >
+{{ core_event }}</textarea>
+</div>
+
+<div class="form-control mb-4">
+  <label class="label">
+    <span class="label-text">上一章结尾（参考）</span>
+  </label>
+  <textarea
+    readonly
+    rows="4"
+    class="textarea textarea-bordered bg-gray-50"
+  >
+{{ prev_ending }}</textarea>
+</div>
+
 <div class="mt-4">
   <form
     hx-post="/books/{{ book.id }}/chapters/save"
@@ -41,11 +70,13 @@
     const textarea = document.getElementById('chapter-content');
     const statusEl = document.getElementById('stream-status');
     const bookId = {{ book.id }};
+    const chapterNumber = {{ chapter_number }};
     const coreEvent = {{ core_event|tojson }};
     
     async function startStreaming() {
       const formData = new FormData();
       formData.append('core_event', coreEvent);
+      formData.append('chapter_number', chapterNumber);
       
       try {
         const response = await fetch(`/books/${bookId}/chapters/stream`, {
