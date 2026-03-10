@@ -366,11 +366,13 @@ async def save_chapter_endpoint(
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory="app/templates")
+    chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
     chapter_list_html = templates.get_template("partials/chapter_list.html").render(book=book, chapters=chapters)
     content_html = templates.get_template("partials/chapter_generated.html").render(
-        book=book, chapter=chapter, content=content[:500] + "...", chapter_list_html=chapter_list_html
+        book=book, chapter=chapter, content=content[:500] + "..."
     )
-    return HTMLResponse(content=content_html)
+    oob_html = f'<div id="chapter-list" hx-swap-oob="true">{chapter_list_html}</div>'
+    return HTMLResponse(content=oob_html + content_html)
 
 
 @router.post("/stream")
