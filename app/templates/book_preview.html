@@ -597,12 +597,31 @@
         };
       }
 
+      function renderOutline(outline) {
+        if (!Array.isArray(outline) || outline.length === 0) return;
+        const chapterCards = document.querySelectorAll(".space-y-3 > .border");
+        outline.forEach((ch, idx) => {
+          if (chapterCards[idx]) {
+            const titleInput = chapterCards[idx].querySelector(
+              'input[name="chapter_title"]',
+            );
+            const coreEventInput = chapterCards[idx].querySelector(
+              'textarea[name="chapter_core_event"]',
+            );
+            if (titleInput && ch.title) titleInput.value = ch.title;
+            if (coreEventInput && ch.core_event)
+              coreEventInput.value = ch.core_event;
+          }
+        });
+      }
+
       function applyParsedResult(parsed) {
         renderCharacterCards(parsed.characters || []);
         renderWorldView(parsed.world_view || {});
         renderStyle(parsed.style || {});
         renderForeshadowing(parsed.foreshadowing || []);
         renderOther(parsed.other || {});
+        renderOutline(parsed.outline || []);
 
         if (parsed._raw) {
           if (parsed._raw.characters) {
@@ -615,6 +634,10 @@
           }
           if (parsed._raw.style) {
             document.getElementById("style").value = parsed._raw.style;
+          }
+          if (parsed._raw.outline) {
+            document.getElementById("regen-outline").value =
+              parsed._raw.outline;
           }
           if (parsed._raw.foreshadowing) {
             document.getElementById("foreshadowing").value =
