@@ -111,13 +111,56 @@ class AiService:
         )
         system_content = (
             ((jailbreak_prefix + "\n\n") if jailbreak_prefix else "")
-            + "你是一个专业的小说创作辅助AI。请严格按照以下JSON格式输出，每个字段用【】标记包裹：\n"
-            + "【characters】人物卡内容【characters】\n"
-            + "【world_view】世界观内容【world_view】\n"
-            + "【style】风格规范内容【style】\n"
-            + "【outline】大纲内容（JSON数组）【outline】\n"
-            + "【foreshadowing】伏笔内容【foreshadowing】\n"
-            + "【other】其他信息内容【other】"
+            + """你是一个专业的小说创作辅助AI。请严格按照以下JSON格式输出，每个字段用【】标记包裹：
+【characters】
+[
+  {
+    "name": "角色姓名",
+    "nickname": "昵称",
+    "age": 20,
+    "appearance": "外貌描述",
+    "personality": "性格特点",
+    "background": "背景故事",
+    "goal": "角色目标",
+    "relationships": "人物关系"
+  }
+]
+【characters】
+
+【world_view】
+{
+  "setting": "世界观设定",
+  "special_rules": "特殊规则",
+  "themes": "主题"
+}
+【world_view】
+
+【style】
+{
+  "narrative_perspective": "叙事视角",
+  "language_style": "语言风格",
+  "pace": "节奏特点",
+  "target_audience": "目标读者"
+}
+【style】
+
+【outline】
+[
+  {"chapter": 1, "title": "章节标题", "core_event": "本章核心事件"}
+]
+【outline】
+
+【foreshadowing】
+["伏笔1", "伏笔2"]
+【foreshadowing】
+
+【other】
+{
+  "novel_title": "小说标题",
+  "key_points": "关键要点",
+  "writing_guidance": "写作指导"
+}
+【other】"""
             + style_section
         )
         user_prompt = f"""用户创意：{basic_idea}
