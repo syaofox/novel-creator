@@ -242,7 +242,12 @@ class AiService:
             },
             {"role": "user", "content": user_prompt},
         ]
-        params = {"model": self.model, "messages": messages, "temperature": 0.5, "max_tokens": 2000}
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": _get_config_value(book, self.global_config, "temperature", 0.5),
+            "max_tokens": _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS),
+        }
         self._log_request("update_summary", params)
         response = await self.client.chat.completions.create(**params)
         self._log_response(response)
@@ -258,7 +263,12 @@ class AiService:
             },
             {"role": "user", "content": user_prompt},
         ]
-        params = {"model": self.model, "messages": messages, "temperature": 0.7, "max_tokens": 2000}
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": _get_config_value(book, self.global_config, "temperature", 0.7),
+            "max_tokens": _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS),
+        }
         self._log_request("global_review", params)
         response = await self.client.chat.completions.create(**params)
         self._log_response(response)
@@ -271,7 +281,12 @@ class AiService:
             {"role": "system", "content": "你是一个摘要压缩专家，请将以下小说摘要压缩至2500字以内，保留6部分格式。"},
             {"role": "user", "content": user_prompt},
         ]
-        params = {"model": self.model, "messages": messages, "temperature": 0.5, "max_tokens": 1500}
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": _get_config_value(book, self.global_config, "temperature", 0.5),
+            "max_tokens": _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS),
+        }
         self._log_request("compress_summary", params)
         response = await self.client.chat.completions.create(**params)
         self._log_response(response)
