@@ -143,6 +143,7 @@ class AiService:
                 yield {"content": content}
 
         logger.info(f"Stream completed, total content length: {len(full_content)}")
+        logger.info(f"Full content: {full_content}")
 
     async def stream_write_chapter(self, book: Book, chapter_number: int, core_event: str, prev_ending: str):
         """流式生成下一章正文，异步生成内容块"""
