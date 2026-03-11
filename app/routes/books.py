@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, Form, HTTPException
+from fastapi import APIRouter, Depends, Request, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -123,7 +123,7 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
 async def preview_book(
     request: Request,
     title: str = "",
-    genre: str = "",
+    genre: list[str] = Query(default=[]),
     target_chapters: int = 30,
     basic_idea: str = "",
     temperature: float = DEFAULT_TEMPERATURE,
@@ -190,7 +190,7 @@ async def preview_book(
 @router.get("/init-stream")
 async def init_book_stream(
     basic_idea: str = "",
-    genre: str = "",
+    genre: list[str] = Query(default=[]),
     target_chapters: int = 30,
     jailbreak_prefix: str = "",
     style: str = "",
