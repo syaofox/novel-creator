@@ -42,23 +42,18 @@
               <input type="checkbox" checked />
               <div class="collapse-title text-lg font-medium">记忆摘要</div>
               <div class="collapse-content">
-                <div class="flex items-center gap-2 mb-2">
-                  <div class="text-sm font-medium">创作进度</div>
-                  <div class="flex-1 h-2 bg-base-300 rounded-full overflow-hidden">
-                    <div class="h-full bg-success transition-all duration-300" style="width: {{ (book.current_chapter / book.target_chapters * 100)|int }}%"></div>
-                  </div>
-                  <div class="text-sm text-base-content/70">{{ book.current_chapter }}/{{ book.target_chapters }}</div>
-                </div>
-                <div id="memory-summary" class="text-sm">
-                  {% include "partials/memory_summary.html" %}
-                </div>
+                <textarea
+                  id="memory-summary"
+                  class="textarea textarea-bordered w-full h-48 text-xs font-mono"
+                  placeholder="摘要内容"
+                >{{ book.memory_summary or '' }}</textarea>
+                <button
+                  class="btn btn-xs btn-outline w-full mt-2"
+                  onclick="saveSummary()"
+                >
+                  保存摘要
+                </button>
               </div>
-            </div>
-            <div
-              id="summary-stream-status"
-              class="text-sm text-blue-600 hidden"
-            >
-              正在流式更新摘要...
             </div>
             <button
               class="btn btn-sm btn-outline w-full"
@@ -80,9 +75,9 @@
             >
               <span
                 id="update-summary-loading"
-                class="htmx-indicator loading loading-spinner loading-xs"
+                class="loading loading-spinner loading-xs hidden"
               ></span>
-              更新摘要
+              <span id="update-summary-text">更新摘要</span>
             </button>
             <div class="collapse collapse-arrow bg-base-200 mt-2">
               <input type="checkbox" />
@@ -286,14 +281,14 @@
     async function streamSummary() {
       const bookId = {{ book.id }};
       const summaryEl = document.getElementById('memory-summary');
-      const statusEl = document.getElementById('summary-stream-status');
       const btn = document.getElementById('update-summary-btn');
+      const loadingSpinner = document.getElementById('update-summary-loading');
+      const btnText = document.getElementById('update-summary-text');
       
       btn.disabled = true;
-      statusEl.classList.remove('hidden');
-      statusEl.textContent = '正在流式更新摘要...';
-      statusEl.className = 'text-sm text-blue-600';
-      summaryEl.innerHTML = '<div class="text-base-content/50">更新中...</div>';
+      loadingSpinner.classList.remove('hidden');
+      btnText.classList.add('hidden');
+      summaryEl.value = '更新中...';
       
       try {
         const response = await fetch(`/books/${bookId}/ai/stream-summary`, {
@@ -313,36 +308,39 @@
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
           received += chunk;
-          
-          const sections = parseSummary(received);
-          summaryEl.innerHTML = renderSummarySections(sections);
+          summaryEl.value = received;
         }
-        
-        statusEl.textContent = '流式更新完成。';
-        statusEl.className = 'text-sm text-success';
-        
-        await fetch(`/books/${bookId}/ai/save-summary`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ summary: received }),
-        });
       } catch (error) {
-        statusEl.textContent = '流式更新失败: ' + error.message;
-        statusEl.className = 'text-sm text-error';
-        summaryEl.innerHTML = `<div class="text-error">${error.message}</div>`;
+        summaryEl.value = '更新失败: ' + error.message;
         console.error('Streaming error:', error);
       } finally {
         btn.disabled = false;
+        loadingSpinner.classList.add('hidden');
+        btnText.classList.remove('hidden');
       }
     }
     
-    document.addEventListener('DOMContentLoaded', function() {
-      const summaryText = {{ book.memory_summary|tojson }};
-      if (summaryText && summaryText.includes('【')) {
-        const sections = parseSummary(summaryText);
-        const summaryEl = document.getElementById('memory-summary');
-        summaryEl.innerHTML = renderSummarySections(sections);
+    async function saveSummary() {
+      const bookId = {{ book.id }};
+      const summaryEl = document.getElementById('memory-summary');
+      const summary = summaryEl.value;
+      
+      try {
+        const response = await fetch(`/books/${bookId}/ai/save-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ summary: summary }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+        
+        summaryEl.classList.add('border-success');
+        setTimeout(() => summaryEl.classList.remove('border-success'), 1000);
+      } catch (error) {
+        alert('保存失败: ' + error.message);
       }
-    });
+    }
   </script>
 {% endblock %}
