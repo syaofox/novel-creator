@@ -464,6 +464,37 @@ class AiService:
         self._log_response(response)
         return response.choices[0].message.content or ""
 
+    async def stream_update_summary(self, book: Book, new_chapter_text: str):
+        """流式生成新摘要"""
+        user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
+            old_summary=book.memory_summary, new_chapter=new_chapter_text
+        )
+        messages: list[ChatCompletionMessageParam] = [
+            {
+                "role": "system",
+                "content": "你是一个小说摘要生成专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。",
+            },
+            {"role": "user", "content": user_prompt},
+        ]
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": _get_config_value(book, self.global_config, "temperature", 0.5),
+            "max_tokens": _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS),
+            "stream": True,
+        }
+        self._log_request("stream_update_summary", params)
+        response = await self.client.chat.completions.create(**params)
+        first_chunk = True
+        async for chunk in response:
+            if first_chunk:
+                logger.info("=== API 响应（流式摘要） ===")
+                logger.info(f"Model: {chunk.model}")
+                first_chunk = False
+            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+        logger.info("Stream summary completed")
+
     async def global_review(self, book: Book) -> str:
         """全局回顾，返回格式化检查结果"""
         user_prompt = prompts.REVIEW_PROMPT.format(memory_summary=book.memory_summary)
