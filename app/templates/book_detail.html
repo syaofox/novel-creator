@@ -39,10 +39,19 @@
           <h2 class="card-title">工具</h2>
           <div class="space-y-2">
             <div class="collapse collapse-arrow bg-base-200">
-              <input type="checkbox" />
+              <input type="checkbox" checked />
               <div class="collapse-title text-lg font-medium">记忆摘要</div>
-              <div class="collapse-content" id="memory-summary">
-                {% include "partials/memory_summary.html" %}
+              <div class="collapse-content">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="text-sm font-medium">创作进度</div>
+                  <div class="flex-1 h-2 bg-base-300 rounded-full overflow-hidden">
+                    <div class="h-full bg-success transition-all duration-300" style="width: {{ (book.current_chapter / book.target_chapters * 100)|int }}%"></div>
+                  </div>
+                  <div class="text-sm text-base-content/70">{{ book.current_chapter }}/{{ book.target_chapters }}</div>
+                </div>
+                <div id="memory-summary" class="text-sm">
+                  {% include "partials/memory_summary.html" %}
+                </div>
               </div>
             </div>
             <div
@@ -139,6 +148,141 @@
     </div>
   </div>
   <script>
+    const SUMMARY_FIELDS = ['人物卡', '世界观', '风格规范', '主线进度', '伏笔清单', '其他信息'];
+    
+    function parseSummary(text) {
+      const sections = {};
+      const lines = text.split('\n');
+      let currentField = null;
+      let currentContent = [];
+      
+      for (const line of lines) {
+        const match = line.match(/^【(.+?)】$/);
+        if (match) {
+          if (currentField && currentContent.length > 0) {
+            sections[currentField] = currentContent.join('\n').trim();
+          }
+          currentField = match[1];
+          currentContent = [];
+        } else if (currentField) {
+          currentContent.push(line);
+        }
+      }
+      
+      if (currentField && currentContent.length > 0) {
+        sections[currentField] = currentContent.join('\n').trim();
+      }
+      
+      return sections;
+    }
+    
+    function renderForeshadowingList(text) {
+      if (!text) return '<span class="text-base-content/50">暂无伏笔</span>';
+      
+      const items = text.split('\n').filter(line => line.trim());
+      if (items.length === 0) return '<span class="text-base-content/50">暂无伏笔</span>';
+      
+      return '<ul class="list-disc list-inside space-y-1">' + 
+        items.map(item => `<li class="text-warning">${escapeHtml(item.trim())}</li>`).join('') + 
+        '</ul>';
+    }
+    
+    function renderOutline(text) {
+      if (!text) return '<span class="text-base-content/50">暂无大纲</span>';
+      
+      const lines = text.split('\n').filter(line => line.trim());
+      return '<div class="space-y-1 text-xs">' + 
+        lines.map(line => {
+          const completed = {{ book.current_chapter }};
+          const match = line.match(/^第(\d+)章/);
+          let chapterNum = 0;
+          if (match) chapterNum = parseInt(match[1]);
+          
+          const isCompleted = chapterNum > 0 && chapterNum <= completed;
+          const statusClass = isCompleted ? 'text-success' : (chapterNum === completed + 1 ? 'text-primary font-bold' : 'text-base-content/50');
+          
+          return `<div class="${statusClass}">${escapeHtml(line.trim())}</div>`;
+        }).join('') + 
+        '</div>';
+    }
+    
+    function renderSummarySections(sections) {
+      let html = '';
+      
+      if (sections['主线进度']) {
+        html += `
+          <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
+            <input type="checkbox" checked />
+            <div class="collapse-title text-sm py-2 min-h-0 font-medium text-primary">📍 主线进度</div>
+            <div class="collapse-content text-xs">
+              ${renderOutline(sections['主线进度'])}
+            </div>
+          </div>`;
+      }
+      
+      if (sections['伏笔清单']) {
+        html += `
+          <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
+            <input type="checkbox" />
+            <div class="collapse-title text-sm py-2 min-h-0 font-medium text-warning">🔮 伏笔清单</div>
+            <div class="collapse-content text-xs">
+              ${renderForeshadowingList(sections['伏笔清单'])}
+            </div>
+          </div>`;
+      }
+      
+      if (sections['人物卡']) {
+        html += `
+          <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
+            <input type="checkbox" />
+            <div class="collapse-title text-sm py-2 min-h-0">👤 人物卡</div>
+            <div class="collapse-content text-xs whitespace-pre-wrap">${escapeHtml(sections['人物卡'])}</div>
+          </div>`;
+      }
+      
+      if (sections['世界观']) {
+        html += `
+          <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
+            <input type="checkbox" />
+            <div class="collapse-title text-sm py-2 min-h-0">🌍 世界观</div>
+            <div class="collapse-content text-xs whitespace-pre-wrap">${escapeHtml(sections['世界观'])}</div>
+          </div>`;
+      }
+      
+      if (sections['风格规范']) {
+        html += `
+          <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
+            <input type="checkbox" />
+            <div class="collapse-title text-sm py-2 min-h-0">✍️ 风格规范</div>
+            <div class="collapse-content text-xs whitespace-pre-wrap">${escapeHtml(sections['风格规范'])}</div>
+          </div>`;
+      }
+      
+      if (sections['其他信息']) {
+        html += `
+          <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
+            <input type="checkbox" />
+            <div class="collapse-title text-sm py-2 min-h-0">📝 其他信息</div>
+            <div class="collapse-content text-xs whitespace-pre-wrap">${escapeHtml(sections['其他信息'])}</div>
+          </div>`;
+      }
+      
+      if (!html) {
+        html = `<div class="whitespace-pre-wrap text-sm">${escapeHtml(Object.values(sections).join('\n\n') || '')}</div>`;
+      }
+      
+      return html;
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.replace(/&/g, '&amp;')
+                 .replace(/</g, '&lt;')
+                 .replace(/>/g, '&gt;')
+                 .replace(/"/g, '&quot;')
+                 .replace(/'/g, '&#039;');
+    }
+    
     async function streamSummary() {
       const bookId = {{ book.id }};
       const summaryEl = document.getElementById('memory-summary');
@@ -147,7 +291,9 @@
       
       btn.disabled = true;
       statusEl.classList.remove('hidden');
-      summaryEl.innerHTML = '';
+      statusEl.textContent = '正在流式更新摘要...';
+      statusEl.className = 'text-sm text-blue-600';
+      summaryEl.innerHTML = '<div class="text-base-content/50">更新中...</div>';
       
       try {
         const response = await fetch(`/books/${bookId}/ai/stream-summary`, {
@@ -167,11 +313,13 @@
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
           received += chunk;
-          summaryEl.innerHTML = markedContent(received);
+          
+          const sections = parseSummary(received);
+          summaryEl.innerHTML = renderSummarySections(sections);
         }
         
         statusEl.textContent = '流式更新完成。';
-        statusEl.className = 'text-sm text-green-600';
+        statusEl.className = 'text-sm text-success';
         
         await fetch(`/books/${bookId}/ai/save-summary`, {
           method: 'POST',
@@ -180,15 +328,21 @@
         });
       } catch (error) {
         statusEl.textContent = '流式更新失败: ' + error.message;
-        statusEl.className = 'text-sm text-red-600';
+        statusEl.className = 'text-sm text-error';
+        summaryEl.innerHTML = `<div class="text-error">${error.message}</div>`;
         console.error('Streaming error:', error);
       } finally {
         btn.disabled = false;
       }
     }
     
-    function markedContent(text) {
-      return text.replace(/\n/g, '<br>');
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+      const summaryText = {{ book.memory_summary|tojson }};
+      if (summaryText && summaryText.includes('【')) {
+        const sections = parseSummary(summaryText);
+        const summaryEl = document.getElementById('memory-summary');
+        summaryEl.innerHTML = renderSummarySections(sections);
+      }
+    });
   </script>
 {% endblock %}

@@ -34,7 +34,8 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
         global_config=global_config,
     )
     try:
-        new_summary = await ai_service.update_summary(book, full_text)
+        chapter_number = book.current_chapter or 1
+        new_summary = await ai_service.update_summary(book, full_text, chapter_number)
     except TimeoutError:
         logger.error("Timeout during summary update")
         return HTMLResponse(content="更新超时，请稍后重试", status_code=504)
@@ -68,7 +69,8 @@ async def stream_summary(book_id: int, db: Session = Depends(get_db)):
 
     async def generate():
         try:
-            async for chunk in ai_service.stream_update_summary(book, full_text):
+            chapter_number = book.current_chapter or 1
+            async for chunk in ai_service.stream_update_summary(book, full_text, chapter_number):
                 yield chunk
         except TimeoutError:
             logger.error("Timeout during streaming summary update")

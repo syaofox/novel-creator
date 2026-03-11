@@ -27,19 +27,6 @@
         进行下一章节创作
       </button>
     {% endif %}
-    <button
-      class="btn btn-sm btn-outline"
-      hx-post="/books/{{ book.id }}/ai/update-summary"
-      hx-target="#memory-summary"
-      hx-swap="innerHTML"
-      hx-indicator="#update-summary-loading"
-    >
-      <span
-        id="update-summary-loading"
-        class="htmx-indicator loading loading-spinner loading-xs"
-      ></span>
-      更新摘要
-    </button>
   </div>
   <a href="/books/{{ book.id }}" class="btn btn-sm btn-ghost">返回书籍</a>
 </div>

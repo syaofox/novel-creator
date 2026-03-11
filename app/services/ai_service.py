@@ -441,15 +441,21 @@ class AiService:
         self._log_response(response)
         return response.choices[0].message.content or ""
 
-    async def update_summary(self, book: Book, new_chapter_text: str) -> str:
+    async def update_summary(self, book: Book, new_chapter_text: str, chapter_number: int | None = None) -> str:
         """根据新章节和旧摘要生成新摘要"""
+        if chapter_number is None:
+            chapter_number = int(book.current_chapter) if book.current_chapter else 1
+        next_chapter = min(chapter_number + 1, book.target_chapters)
         user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
-            old_summary=book.memory_summary, new_chapter=new_chapter_text
+            old_summary=book.memory_summary,
+            new_chapter=new_chapter_text,
+            chapter_number=chapter_number,
+            next_chapter=next_chapter,
         )
         messages: list[ChatCompletionMessageParam] = [
             {
                 "role": "system",
-                "content": "你是一个小说摘要生成专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。",
+                "content": "你是一个小说摘要更新专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。重点关注伏笔回收和主线进度更新。",
             },
             {"role": "user", "content": user_prompt},
         ]
@@ -464,15 +470,21 @@ class AiService:
         self._log_response(response)
         return response.choices[0].message.content or ""
 
-    async def stream_update_summary(self, book: Book, new_chapter_text: str):
+    async def stream_update_summary(self, book: Book, new_chapter_text: str, chapter_number: int | None = None):
         """流式生成新摘要"""
+        if chapter_number is None:
+            chapter_number = int(book.current_chapter) if book.current_chapter else 1
+        next_chapter = min(chapter_number + 1, book.target_chapters)
         user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
-            old_summary=book.memory_summary, new_chapter=new_chapter_text
+            old_summary=book.memory_summary,
+            new_chapter=new_chapter_text,
+            chapter_number=chapter_number,
+            next_chapter=next_chapter,
         )
         messages: list[ChatCompletionMessageParam] = [
             {
                 "role": "system",
-                "content": "你是一个小说摘要生成专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。",
+                "content": "你是一个小说摘要更新专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。重点关注伏笔回收和主线进度更新。",
             },
             {"role": "user", "content": user_prompt},
         ]

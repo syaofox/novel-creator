@@ -53,19 +53,6 @@
         </button>
       {% endif %}
       <button
-        class="btn btn-sm btn-outline"
-        hx-post="/books/{{ book.id }}/ai/update-summary"
-        hx-target="#memory-summary"
-        hx-swap="innerHTML"
-        hx-indicator="#update-summary-loading"
-      >
-        <span
-          id="update-summary-loading"
-          class="htmx-indicator loading loading-spinner loading-xs"
-        ></span>
-        更新摘要
-      </button>
-      <button
         class="btn btn-sm btn-warning"
         hx-get="/books/{{ book.id }}/chapters/regenerate?num={{ chapter_number }}"
         hx-target="#main-workspace"
