@@ -330,7 +330,6 @@ async def export_book(book_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="书籍不存在")
 
     book_dir = get_book_dir(book_id)
-    chapters_dir = book_dir / "chapters"
     export_dir = book_dir / "exports"
     export_dir.mkdir(parents=True, exist_ok=True)
 
@@ -340,12 +339,9 @@ async def export_book(book_id: int, db: Session = Depends(get_db)):
         outfile.write(f"《{book.title}》\n\n")
         chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
         for ch in chapters:
-            chapter_file = chapters_dir / f"{ch.chapter_number}.txt"
-            if chapter_file.exists():
-                content = chapter_file.read_text(encoding="utf-8")
-                outfile.write(f"第{ch.chapter_number}章 {ch.title}\n\n")
-                outfile.write(content)
-                outfile.write("\n\n")
+            outfile.write(f"第{ch.chapter_number}章 {ch.title}\n\n")
+            outfile.write(ch.content or "")
+            outfile.write("\n\n")
     return FileResponse(path=export_path, filename=f"{book.title}.txt", media_type="text/plain")
 
 
