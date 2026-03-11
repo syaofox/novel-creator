@@ -333,12 +333,13 @@
       function parseInitResult(fullText) {
         console.log("Parsing content:", fullText.substring(0, 500));
 
+        const toString = (val) => {
+          if (typeof val === "string") return val;
+          if (typeof val === "object") return JSON.stringify(val, null, 2);
+          return String(val);
+        };
+
         const tryParse = (textToParse) => {
-          const toString = (val) => {
-            if (typeof val === "string") return val;
-            if (typeof val === "object") return JSON.stringify(val, null, 2);
-            return String(val);
-          };
           const jsonData = JSON.parse(textToParse);
           return {
             characters: jsonData.characters || [],
@@ -358,7 +359,96 @@
           };
         };
 
+        const tryParseMarkers = (text) => {
+          const extract = (key) => {
+            const regex = new RegExp(`【${key}】([\\s\\S]*?)【${key}】`, "i");
+            const match = text.match(regex);
+            return match ? match[1].trim() : "";
+          };
+          const chars = extract("characters");
+          const wv = extract("world_view");
+          const style = extract("style");
+          const outline = extract("outline");
+          const foreshadow = extract("foreshadowing");
+          const other = extract("other");
+
+          let parsed = {};
+          if (chars) {
+            try {
+              parsed.characters = JSON.parse(chars);
+            } catch {
+              parsed.characters = chars;
+            }
+          }
+          if (wv) {
+            try {
+              parsed.world_view = JSON.parse(wv);
+            } catch {
+              parsed.world_view = wv;
+            }
+          }
+          if (style) {
+            try {
+              parsed.style = JSON.parse(style);
+            } catch {
+              parsed.style = style;
+            }
+          }
+          if (outline) {
+            try {
+              parsed.outline = JSON.parse(outline);
+            } catch {
+              parsed.outline = outline;
+            }
+          }
+          if (foreshadow) {
+            try {
+              parsed.foreshadowing = JSON.parse(foreshadow);
+            } catch {
+              parsed.foreshadowing = foreshadow;
+            }
+          }
+          if (other) {
+            try {
+              parsed.other = JSON.parse(other);
+            } catch {
+              parsed.other = other;
+            }
+          }
+
+          return {
+            characters: parsed.characters || [],
+            world_view: parsed.world_view || {},
+            style: parsed.style || {},
+            outline: parsed.outline || [],
+            foreshadowing: parsed.foreshadowing || [],
+            other: parsed.other || {},
+            _raw: {
+              characters: toString(parsed.characters),
+              world_view: toString(parsed.world_view),
+              style: toString(parsed.style),
+              outline: parsed.outline ? JSON.stringify(parsed.outline) : "",
+              foreshadowing: toString(parsed.foreshadowing),
+              other: toString(parsed.other),
+            },
+          };
+        };
+
         let jsonText = fullText;
+
+        if (fullText.includes("【") && fullText.includes("】")) {
+          console.log("Found 【】 markers, trying marker-based parsing...");
+          const result = tryParseMarkers(fullText);
+          if (
+            result.characters.length ||
+            Object.keys(result.world_view).length ||
+            Object.keys(result.style).length
+          ) {
+            console.log("Marker-based parsing succeeded");
+            return result;
+          }
+        }
+
         const jsonCodeBlockMatch = fullText.match(/```json\s*([\s\S]*?)```/i);
         if (jsonCodeBlockMatch && jsonCodeBlockMatch[1]) {
           console.log("Found JSON code block, extracting...");
@@ -689,6 +779,18 @@
               input.value = formData[key];
             }
           });
+
+          if (
+            formData.style &&
+            typeof formData.style === "string" &&
+            formData.style.trim()
+          ) {
+            const styleText = formData.style.trim();
+            document.getElementById("style_perspective").value = styleText;
+            document.getElementById("style_language").value = styleText;
+            document.getElementById("style_pace").value = styleText;
+            document.getElementById("style_audience").value = styleText;
+          }
 
           let fullContent = "";
           const rawContentEl = document.getElementById("rawContent");
