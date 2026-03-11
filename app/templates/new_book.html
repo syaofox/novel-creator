@@ -141,14 +141,25 @@
       </div>
       <div class="form-control">
         <label class="label">
-          <span class="label-text">写作风格规范（可选）</span>
+          <span class="label-text">写作风格规范</span>
         </label>
+        <select
+          id="stylePreset"
+          class="select select-bordered w-full mb-2"
+          onchange="updateStyleFromPreset()"
+        >
+          <option value="">-- 选择预设风格 --</option>
+          {% for name, content in style_presets.items() %}
+          <option value="{{ name }}">{{ name }}</option>
+          {% endfor %}
+        </select>
         <textarea
+          id="styleTextarea"
           name="style"
           rows="4"
           class="textarea textarea-bordered"
-          placeholder="如不填写，将使用默认风格规范：&#10;{{ default_style }}"
-        ></textarea>
+          placeholder="选择预设风格或手动输入自定义风格规范..."
+        >{{ default_style }}</textarea>
       </div>
 
       <div class="divider">参数设置（可选）</div>
@@ -232,7 +243,6 @@
           class="textarea textarea-bordered"
         >{{ system_template }}</textarea>
       </div>
-      </div>
 
       <div class="form-control mt-6">
         <button type="button" class="btn btn-primary" onclick="startInit()">
@@ -243,6 +253,18 @@
   </div>
 
   <script>
+    const stylePresets = {{ style_presets | tojson }};
+
+    function updateStyleFromPreset() {
+      const select = document.getElementById("stylePreset");
+      const textarea = document.getElementById("styleTextarea");
+      const selectedName = select.value;
+
+      if (selectedName && stylePresets[selectedName]) {
+        textarea.value = stylePresets[selectedName];
+      }
+    }
+
     function startInit() {
       const form = document.getElementById("bookForm");
       const formData = new FormData(form);

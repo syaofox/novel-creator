@@ -21,6 +21,7 @@ from app.constants import (
     DEFAULT_JAILBREAK_PREFIX,
     DEFAULT_SYSTEM_TEMPLATE,
     DEFAULT_STYLE,
+    STYLE_PRESETS,
     TEMPLATE_DIR,
 )
 
@@ -93,6 +94,7 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
             "default_top_p": DEFAULT_TOP_P,
             "default_max_tokens": DEFAULT_MAX_TOKENS,
             "default_style": DEFAULT_STYLE,
+            "style_presets": STYLE_PRESETS,
         },
     )
 
@@ -137,6 +139,7 @@ async def preview_book(
             "jailbreak_prefix": jailbreak_prefix,
             "system_template": system_template,
             "style": default_style,
+            "style_presets": STYLE_PRESETS,
             "characters": "",
             "world_view": "",
             "outline": "",
