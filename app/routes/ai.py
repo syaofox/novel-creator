@@ -24,8 +24,17 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
-    full_text = "\n\n".join(str(ch.content) for ch in chapters if ch.content)
+
+    chapter_number = book.current_chapter or 1
+    if chapter_number < 1:
+        return HTMLResponse(content="请先完成至少一章内容", status_code=400)
+
+    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_number).first()
+    if not chapter or not chapter.content:
+        return HTMLResponse(content="当前章节不存在或内容为空，请先保存章节", status_code=400)
+
+    new_chapter_text = chapter.content
+
     global_config = get_global_config_dict(db)
     ai_service = AiService(
         api_key=app_settings.deepseek_api_key,
@@ -34,8 +43,7 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
         global_config=global_config,
     )
     try:
-        chapter_number = book.current_chapter or 1
-        new_summary = await ai_service.update_summary(book, full_text, chapter_number)
+        new_summary = await ai_service.update_summary(book, new_chapter_text, chapter_number)
     except TimeoutError:
         logger.error("Timeout during summary update")
         return HTMLResponse(content="更新超时，请稍后重试", status_code=504)
@@ -57,8 +65,17 @@ async def stream_summary(book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
-    full_text = "\n\n".join(str(ch.content) for ch in chapters if ch.content)
+
+    chapter_number = book.current_chapter or 1
+    if chapter_number < 1:
+        return HTMLResponse(content="请先完成至少一章内容", status_code=400)
+
+    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_number).first()
+    if not chapter or not chapter.content:
+        return HTMLResponse(content="当前章节不存在或内容为空，请先保存章节", status_code=400)
+
+    new_chapter_text = chapter.content
+
     global_config = get_global_config_dict(db)
     ai_service = AiService(
         api_key=app_settings.deepseek_api_key,
@@ -69,8 +86,7 @@ async def stream_summary(book_id: int, db: Session = Depends(get_db)):
 
     async def generate():
         try:
-            chapter_number = book.current_chapter or 1
-            async for chunk in ai_service.stream_update_summary(book, full_text, chapter_number):
+            async for chunk in ai_service.stream_update_summary(book, new_chapter_text, chapter_number):
                 yield chunk
         except TimeoutError:
             logger.error("Timeout during streaming summary update")
