@@ -1,8 +1,14 @@
+from datetime import datetime, timezone, timedelta
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey
 from sqlalchemy.sql import func
 
 from app.database import Base
 from app.constants import get_default_ai_config, DEFAULT_JAILBREAK_PREFIX, DEFAULT_SYSTEM_TEMPLATE, DEFAULT_STYLE
+
+
+def get_china_now():
+    return datetime.now(timezone(timedelta(hours=8)))
 
 
 class Book(Base):
@@ -18,8 +24,8 @@ class Book(Base):
     style = Column(Text, default=DEFAULT_STYLE)
     current_chapter = Column(Integer, default=0)
     status = Column(String, default="进行中")  # 进行中 / 已完结
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_china_now)
+    updated_at = Column(DateTime(timezone=True), default=get_china_now, onupdate=get_china_now)
 
     # 可扩展字段：人物卡、世界观、风格、大纲（可以存储在memory_summary中，也可以单独加字段，简化版本暂时不单独加）
     # 如果单独加，可以加：
@@ -39,7 +45,7 @@ class Chapter(Base):
     core_event = Column(Text, default="")
     content = Column(Text, default="")
     status = Column(String, default="未完成")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=get_china_now)
 
 
 # 新增：全局配置表（单行，id=1）

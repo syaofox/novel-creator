@@ -10,6 +10,7 @@ from app.models import Book, Chapter, GlobalConfig
 from app.services.ai_service import AiService
 from app.config import settings as app_settings
 from app.utils.config_helper import get_global_config_dict
+from app.models import get_china_now
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
         logger.exception("Error during summary update")
         return HTMLResponse(content=f"更新摘要失败: {str(e)}", status_code=500)
     book.memory_summary = new_summary
+    book.updated_at = get_china_now()
     db.commit()
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
@@ -98,6 +100,7 @@ async def compress_summary(request: Request, book_id: int, db: Session = Depends
         logger.exception("Error during summary compression")
         return HTMLResponse(content=f"压缩摘要失败: {str(e)}", status_code=500)
     book.memory_summary = compressed
+    book.updated_at = get_china_now()
     db.commit()
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
@@ -110,6 +113,7 @@ async def update_style(request: Request, book_id: int, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="书籍不存在")
     form = await request.form()
     book.style = form.get("style", "")
+    book.updated_at = get_china_now()
     db.commit()
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(request, "partials/style_summary.html", {"book": book})

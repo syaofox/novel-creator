@@ -17,6 +17,7 @@ from app.services.ai_service import AiService
 from app.services.file_service import delete_book_files
 from app.utils.config_helper import get_global_config_dict
 from app.utils.helpers import get_book_dir
+from app.models import get_china_now
 from app.constants import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
@@ -353,5 +354,6 @@ async def finish_book(book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if book:
         book.status = "已完结"  # type: ignore
+        book.updated_at = get_china_now()
         db.commit()
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)

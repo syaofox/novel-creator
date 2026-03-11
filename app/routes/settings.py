@@ -15,6 +15,7 @@ from app.constants import (
     TEMPLATE_DIR,
     DEFAULT_MODEL,
 )
+from app.models import get_china_now
 
 
 # 书籍设置路由
@@ -44,6 +45,7 @@ async def save_settings(request: Request, book_id: int, db: Session = Depends(ge
     config["jailbreak_prefix"] = form.get("jailbreak_prefix", config.get("jailbreak_prefix", ""))
     config["system_template"] = form.get("system_template", config.get("system_template", ""))
     book.config = config
+    book.updated_at = get_china_now()
     db.commit()
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)
 
