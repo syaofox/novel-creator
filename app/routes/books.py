@@ -125,7 +125,7 @@ async def preview_book(
     request: Request,
     title: str = "",
     genre: list[str] = Query(default=[]),
-    target_chapters: int = 30,
+    target_chapters: int = 3,
     basic_idea: str = "",
     temperature: float = DEFAULT_TEMPERATURE,
     top_p: float = DEFAULT_TOP_P,
