@@ -44,38 +44,53 @@ def parse_chapter_titles(outline: str, target_chapters: int) -> list[dict]:
             return title[:max_length].strip() + "..."
         return title
 
+    def repair_json(json_str: str) -> str:
+        import re
+
+        repaired = json_str
+        repaired = re.sub(r'[""]', '"', repaired)
+        repaired = re.sub(r"[\u201C\u201D]", '"', repaired)
+        return repaired
+
     chapters = []
 
     try:
         data = json.loads(outline)
-        if isinstance(data, dict) and "outline" in data:
-            data = data["outline"]
-        if isinstance(data, list):
-            for item in data:
-                if isinstance(item, dict):
-                    title = item.get("title", "")
-                    if not title:
-                        title = f"第{len(chapters) + 1}章"
-                    title = truncate_title(title)
-                    core_event = item.get("core_event", "")
-                    if not isinstance(core_event, str):
-                        core_event = str(core_event) if core_event else ""
-                    chapters.append(
-                        {"chapter": item.get("chapter", len(chapters) + 1), "title": title, "core_event": core_event}
-                    )
     except json.JSONDecodeError:
-        lines = outline.split("\n")
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            match = re.match(r"^(?:第\s*(\d+)\s*章|(\d+)[:、.]\s*)(.+)$", line)
-            if match:
-                num = int(match.group(1) or match.group(2))
-                title = truncate_title(match.group(3).strip())
-                chapters.append({"chapter": num, "title": title, "core_event": ""})
-            elif chapters or line:
-                chapters.append({"chapter": len(chapters) + 1, "title": truncate_title(line), "core_event": ""})
+        try:
+            data = json.loads(repair_json(outline))
+        except json.JSONDecodeError:
+            lines = outline.split("\n")
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                match = re.match(r"^(?:第\s*(\d+)\s*章|(\d+)[:、.]\s*)(.+)$", line)
+                if match:
+                    num = int(match.group(1) or match.group(2))
+                    title = truncate_title(match.group(3).strip())
+                    chapters.append({"chapter": num, "title": title, "core_event": ""})
+                elif chapters or line:
+                    chapters.append({"chapter": len(chapters) + 1, "title": truncate_title(line), "core_event": ""})
+            while len(chapters) < target_chapters:
+                chapters.append({"chapter": len(chapters) + 1, "title": f"第{len(chapters) + 1}章", "core_event": ""})
+            return chapters[:target_chapters]
+
+    if isinstance(data, dict) and "outline" in data:
+        data = data["outline"]
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict):
+                title = item.get("title", "")
+                if not title:
+                    title = f"第{len(chapters) + 1}章"
+                title = truncate_title(title)
+                core_event = item.get("core_event", "")
+                if not isinstance(core_event, str):
+                    core_event = str(core_event) if core_event else ""
+                chapters.append(
+                    {"chapter": item.get("chapter", len(chapters) + 1), "title": title, "core_event": core_event}
+                )
 
     while len(chapters) < target_chapters:
         chapters.append({"chapter": len(chapters) + 1, "title": f"第{len(chapters) + 1}章", "core_event": ""})

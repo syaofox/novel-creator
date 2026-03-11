@@ -344,18 +344,36 @@
             return JSON.parse(jsonStr);
           } catch (e) {
             console.log("JSON parse failed, attempting repair:", e.message);
-            // 尝试修复缺少引号的字符串值
-            // 匹配模式: "key": 未加引号的值 (值不包含逗号、花括号、方括号、引号，但可能包含中文)
-            let repaired = jsonStr.replace(
-              /"([^"]+)":\s*([^"{}\[\],\s][^,}\]\n]*)/g,
-              '"$1": "$2"',
-            );
-            // 尝试再次解析
+            let repaired = jsonStr;
             try {
               return JSON.parse(repaired);
-            } catch (e2) {
-              console.log("Repaired JSON also failed:", e2.message);
-              throw e2;
+            } catch (e1) {
+              console.log(
+                "First repair attempt failed, trying advanced repair",
+              );
+              // 修复中文/智能引号为标准双引号
+              repaired = repaired
+                .replace(/[""]/g, '"')
+                .replace(/[""]/g, '"')
+                .replace(/[\u2018\u2019]/g, "'")
+                .replace(/[\u201C\u201D]/g, '"');
+              try {
+                return JSON.parse(repaired);
+              } catch (e2) {
+                console.log("Chinese quotes repair failed, trying escape fix");
+                // 修复字符串内部的中文引号（如 "我"）导致的 JSON 破坏
+                // 匹配字符串值内未转义的中文引号并转义
+                repaired = repaired.replace(
+                  /([^\u0000-\u001F\\])([""\u201C\u201D])([^\u0000-\u001F\\])/g,
+                  '$1\\"$3',
+                );
+                try {
+                  return JSON.parse(repaired);
+                } catch (e3) {
+                  console.log("Escape fix also failed:", e3.message);
+                  throw e3;
+                }
+              }
             }
           }
         };
