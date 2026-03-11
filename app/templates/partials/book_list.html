@@ -9,6 +9,15 @@
         <div class="card-actions justify-end">
           <a href="/books/{{ book.id }}" class="btn btn-primary">进入创作</a>
           <a href="/books/{{ book.id }}/export" class="btn btn-outline">导出</a>
+          <form
+            action="/books/{{ book.id }}/delete"
+            method="post"
+            onsubmit="return confirm('确定要删除《{{ book.title }}》吗？此操作不可恢复！')"
+          >
+            <button type="submit" class="btn btn-error btn-outline">
+              删除
+            </button>
+          </form>
         </div>
       </div>
     </div>

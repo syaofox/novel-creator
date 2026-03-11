@@ -11,6 +11,7 @@ from typing import Any
 from app.database import get_db
 from app.models import Book, Chapter, GlobalConfig
 from app.services.ai_service import AiService
+from app.services.file_service import delete_book_files
 from app.config import settings as app_settings
 from app.utils.helpers import get_book_dir
 from app.constants import (
@@ -321,6 +322,20 @@ async def book_detail(request: Request, book_id: int, db: Session = Depends(get_
 
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
     return templates.TemplateResponse(request, "book_detail.html", {"book": book, "chapters": chapters})
+
+
+@router.post("/{book_id}/delete")
+async def delete_book(book_id: int, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    db.query(Chapter).filter(Chapter.book_id == book_id).delete()
+    db.delete(book)
+    db.commit()
+    delete_book_files(book_id)
+
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/{book_id}/export")

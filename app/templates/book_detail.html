@@ -116,6 +116,15 @@
               class="btn btn-sm btn-outline w-full"
               >导出全书</a
             >
+            <form
+              action="/books/{{ book.id }}/delete"
+              method="post"
+              onsubmit="return confirm('确定要删除这本书吗？此操作不可恢复！')"
+            >
+              <button type="submit" class="btn btn-sm btn-error w-full">
+                删除书籍
+              </button>
+            </form>
             {% if book.current_chapter >= book.target_chapters and book.status == "进行中" %}
               <form action="/books/{{ book.id }}/finish" method="post">
                 <button type="submit" class="btn btn-sm btn-warning w-full">
