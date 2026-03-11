@@ -16,17 +16,14 @@
 ## 构建与运行
 
 ```bash
-# 安装依赖
-uv sync
+# 安装依赖(开发)
+uv sync --all-extras
 
-# 激活虚拟环境
-source .venv/bin/activate
+# 安装依赖(生产)
+uv sync
 
 # 开发服务器
 uvicorn app.main:app --reload
-
-# 或
-fastapi dev app/main.py
 
 # 数据库迁移
 alembic revision --autogenerate -m "description"
@@ -37,38 +34,38 @@ alembic upgrade head
 
 ```bash
 # Python 代码检查
-ruff check .
-ruff check . --fix
-ruff format .
+uv run ruff check .
+uv run ruff check . --fix
+uv run ruff format .
 
 # HTML/Jinja2 模板
 npx prettier --check app/templates/**/*.html
 npx prettier --write app/templates/**/*.html
 
 # 完整检查
-ruff check . && ruff format . --check && npx prettier --check app/templates/**/*.html
+uv run ruff check . && uv run ruff format . --check && npx prettier --check app/templates/**/*.html
 ```
 
 ## 测试
 
 ```bash
 # 运行所有测试
-pytest
+uv run pytest
 
 # 带覆盖率
-pytest --cov=app --cov-report=html
+uv run pytest --cov=app --cov-report=html
 
 # 运行单个测试文件
-pytest tests/test_routes.py
+uv run pytest tests/test_routes.py
 
 # 运行单个测试函数 (推荐方式)
-pytest tests/test_routes.py::test_home
+uv run pytest tests/test_routes.py::test_home
 
 # 详细输出 + 失败时停止
-pytest -v -x
+uv run pytest -v -x
 
 # 运行指定标记
-pytest -m "asyncio"
+uv run pytest -m "asyncio"
 ```
 
 ## 代码风格指南
