@@ -355,7 +355,7 @@ async def export_book(book_id: int, db: Session = Depends(get_db)):
         chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
         for ch in chapters:
             outfile.write(f"第{ch.chapter_number}章 {ch.title}\n\n")
-            outfile.write(ch.content or "")
+            outfile.write(str(ch.content or ""))
             outfile.write("\n\n")
     return FileResponse(path=export_path, filename=f"{book.title}.txt", media_type="text/plain")
 

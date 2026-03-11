@@ -1,0 +1,14 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.13",
+  "reportMissingImports": false,
+  "reportMissingTypeStubs": false,
+  "reportGeneralTypeIssues": false,
+  "reportAttributeAccessIssue": false,
+  "reportArgumentType": false,
+  "reportPossiblyUnboundVariable": false,
+  "reportIndexIssue": false,
+  "typeCheckingMode": "basic",
+  "include": ["app/**/*.py"]
+}
