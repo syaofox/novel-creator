@@ -123,7 +123,7 @@
           type="number"
           name="target_chapters"
           min="1"
-          value="30"
+          value="3"
           required
           class="input input-bordered"
         />
@@ -272,7 +272,7 @@
       const params = new URLSearchParams();
       params.append("title", formData.get("title") || "");
       params.append("basic_idea", formData.get("basic_idea") || "");
-      params.append("target_chapters", formData.get("target_chapters") || "30");
+      params.append("target_chapters", formData.get("target_chapters") || "3");
       params.append("jailbreak_prefix", formData.get("jailbreak_prefix") || "");
       params.append("style", formData.get("style") || "");
       params.append(
@@ -300,7 +300,7 @@
         JSON.stringify({
           title: formData.get("title") || "",
           genre: genre.join(", "),
-          target_chapters: formData.get("target_chapters") || "30",
+          target_chapters: formData.get("target_chapters") || "3",
           basic_idea: formData.get("basic_idea") || "",
           temperature:
             formData.get("temperature") || "{{ default_temperature }}",

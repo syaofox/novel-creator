@@ -192,7 +192,7 @@ async def preview_book(
 async def init_book_stream(
     basic_idea: str = "",
     genre: list[str] = Query(default=[]),
-    target_chapters: int = 30,
+    target_chapters: int = 3,
     jailbreak_prefix: str = "",
     style: str = "",
     db: Session = Depends(get_db),
