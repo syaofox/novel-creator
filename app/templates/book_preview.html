@@ -339,8 +339,29 @@
           return String(val);
         };
 
+        const tryParseJsonWithRepair = (jsonStr) => {
+          try {
+            return JSON.parse(jsonStr);
+          } catch (e) {
+            console.log("JSON parse failed, attempting repair:", e.message);
+            // 尝试修复缺少引号的字符串值
+            // 匹配模式: "key": 未加引号的值 (值不包含逗号、花括号、方括号、引号，但可能包含中文)
+            let repaired = jsonStr.replace(
+              /"([^"]+)":\s*([^"{}\[\],\s][^,}\]\n]*)/g,
+              '"$1": "$2"',
+            );
+            // 尝试再次解析
+            try {
+              return JSON.parse(repaired);
+            } catch (e2) {
+              console.log("Repaired JSON also failed:", e2.message);
+              throw e2;
+            }
+          }
+        };
+
         const tryParse = (textToParse) => {
-          const jsonData = JSON.parse(textToParse);
+          const jsonData = tryParseJsonWithRepair(textToParse);
           return {
             characters: jsonData.characters || [],
             world_view: jsonData.world_view || jsonData.worldview || {},
@@ -376,7 +397,7 @@
 
           if (chars) {
             try {
-              const charsObj = JSON.parse(chars);
+              const charsObj = tryParseJsonWithRepair(chars);
               if (Array.isArray(charsObj)) {
                 parsed.characters = charsObj;
               } else if (typeof charsObj === "object") {
@@ -410,7 +431,7 @@
 
           if (outline) {
             try {
-              parsed.outline = JSON.parse(outline);
+              parsed.outline = tryParseJsonWithRepair(outline);
             } catch {
               parsed.outline = [];
             }

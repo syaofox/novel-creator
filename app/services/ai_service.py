@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Any, cast
 
 from openai import AsyncOpenAI
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def _get_config_value(book: Book, global_config: dict[str, Any] | None, key: str, default: Any) -> Any:
     """获取配置值：优先使用书籍配置，其次使用全局配置，最后使用默认值"""
-    book_config = dict(book.config) if book.config is not None else {}
+    book_config = book.config if book.config is not None else {}  # type: ignore
     if key in book_config:
         return book_config[key]
     if global_config is not None and key in global_config:
@@ -33,6 +34,94 @@ def _get_config_value(book: Book, global_config: dict[str, Any] | None, key: str
             return bool(int(value)) if value else default
         return value
     return default
+
+
+def _extract_json(content: str) -> str:
+    """从可能包含额外文本的内容中提取 JSON 字符串"""
+    # 尝试直接解析
+    try:
+        json.loads(content)
+        return content
+    except json.JSONDecodeError:
+        pass
+
+    # 尝试提取 ```json ... ``` 代码块
+    json_block_pattern = r"```json\s*(.*?)\s*```"
+    matches = re.findall(json_block_pattern, content, re.DOTALL)
+    if matches:
+        for match in matches:
+            try:
+                json.loads(match)
+                return match
+            except json.JSONDecodeError:
+                continue
+
+    # 尝试提取第一个 { 和最后一个 } 之间的内容
+    start = content.find("{")
+    end = content.rfind("}")
+    if start != -1 and end != -1 and start < end:
+        candidate = content[start : end + 1]
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            pass
+
+    # 如果都不行，返回原始内容
+    return content
+
+
+def _parse_marked_content(content: str) -> dict[str, str]:
+    """解析标记格式的内容，提取各个字段
+
+    格式示例：
+    【characters】...【characters】
+    【world_view】...【world_view】
+    也支持前缀如：[Pasted ~24 【characters】...
+    """
+    # 定义可能的字段名
+    fields = ["characters", "world_view", "style", "outline", "foreshadowing", "other"]
+    result = {}
+
+    for field in fields:
+        field_marker = f"【{field}】"
+        # 方法1：查找成对标记（允许标记前有任意文本）
+        # 查找第一个开始标记
+        start_idx = content.find(field_marker)
+        if start_idx == -1:
+            result[field] = ""
+            continue
+
+        # 查找结束标记（从开始标记之后开始搜索）
+        end_marker = f"【{field}】"
+        end_idx = content.find(end_marker, start_idx + len(field_marker))
+
+        if end_idx != -1:
+            # 找到成对标记
+            field_content = content[start_idx + len(field_marker) : end_idx].strip()
+            result[field] = field_content
+        else:
+            # 没有找到结束标记，尝试提取到下一个字段标记或末尾
+            next_marker_pos = -1
+            # 查找下一个字段标记（任何字段）
+            for other_field in fields:
+                if other_field == field:
+                    continue
+                marker = f"【{other_field}】"
+                pos = content.find(marker, start_idx + len(field_marker))
+                if pos != -1 and (next_marker_pos == -1 or pos < next_marker_pos):
+                    next_marker_pos = pos
+
+            if next_marker_pos != -1:
+                # 提取到下一个字段标记之前的内容
+                field_content = content[start_idx + len(field_marker) : next_marker_pos].strip()
+                result[field] = field_content
+            else:
+                # 提取到末尾
+                field_content = content[start_idx + len(field_marker) :].strip()
+                result[field] = field_content
+
+    return result
 
 
 class AiService:
@@ -71,8 +160,14 @@ class AiService:
         """调用初始化 Prompt，返回解析后的数据"""
         user_prompt = prompts.INIT_PROMPT.format(basic_idea=basic_idea, genre=genre, target_chapters=target_chapters)
         system_content = (
-            (jailbreak_prefix + "\n\n") if jailbreak_prefix else ""
-        ) + "你是一个专业的小说创作辅助AI，请严格按照要求输出JSON格式。"
+            ((jailbreak_prefix + "\n\n") if jailbreak_prefix else "")
+            + """你是一个专业的小说创作辅助AI，请严格按照要求输出JSON格式。
+重要：JSON 必须是有效的 JSON 语法。确保：
+1. 所有字符串值必须用双引号括起来（例如："value"），不要使用单引号或省略引号
+2. 对象键必须用双引号括起来
+3. 不要有尾随逗号
+4. 确保所有中文字符在引号内"""
+        )
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_prompt},
@@ -90,9 +185,30 @@ class AiService:
         if content is None:
             return {"characters": "", "world_view": "", "style": "", "outline": "", "foreshadowing": "", "other": ""}
         try:
-            data = json.loads(content)
-            return cast(dict[str, str], data)
+            # 尝试提取并解析 JSON
+            json_str = _extract_json(content)
+            data = json.loads(json_str)
+            # 确保返回的字典包含所有必需字段
+            result = cast(dict[str, str], data)
+            # 确保字段存在，如果缺失则提供空值
+            required_fields = ["characters", "world_view", "style", "outline", "foreshadowing", "other"]
+            for field in required_fields:
+                if field not in result:
+                    result[field] = ""
+            return result
         except json.JSONDecodeError:
+            logger.warning(f"无法解析 API 返回的 JSON，尝试解析标记格式，原始内容：{content[:500]}...")
+            # 尝试解析标记格式
+            parsed = _parse_marked_content(content)
+            # 检查是否有字段被成功解析
+            if any(parsed.values()):
+                # 确保所有字段都存在
+                required_fields = ["characters", "world_view", "style", "outline", "foreshadowing", "other"]
+                for field in required_fields:
+                    if field not in parsed:
+                        parsed[field] = ""
+                return parsed
+            # 如果标记解析也失败，返回原始内容作为 characters 字段
             return {
                 "characters": content,
                 "world_view": "",
@@ -111,7 +227,34 @@ class AiService:
         )
         system_content = (
             ((jailbreak_prefix + "\n\n") if jailbreak_prefix else "")
-            + """你是一个专业的小说创作辅助AI。请严格按照以下JSON格式输出，每个字段用【】标记包裹：
+            + """你是一个专业的小说创作辅助AI。请严格按照以下格式输出，每个字段用【】标记包裹，中间是有效的JSON。
+
+重要规则：
+1. 只输出以下6个字段，顺序必须为：characters、world_view、style、outline、foreshadowing、other
+2. 每个字段格式为：【字段名】<JSON内容>【字段名】，标记必须成对出现
+3. JSON内容必须是有效的JSON，符合下方给出的结构
+4. 不要添加任何额外文本、说明、解释或注释
+5. 不要修改字段名，不要省略任何字段
+6. outline数组必须包含恰好{target_chapters}个章节对象，chapter从1开始连续编号
+
+字段格式示例：
+【characters】
+[
+  {
+    "name": "角色姓名",
+    "nickname": "昵称",
+    "age": 20,
+    "appearance": "外貌描述",
+    "personality": "性格特点",
+    "background": "背景故事",
+    "goal": "角色目标",
+    "relationships": "人物关系"
+  }
+]
+【characters】
+
+请严格按照以下结构输出：
+
 【characters】
 [
   {
@@ -158,9 +301,16 @@ class AiService:
 {
   "novel_title": "小说标题",
   "key_points": "关键要点",
-  "writing_guidance": "写作指导"
+   "writing_guidance": "写作指导"
 }
-【other】"""
+【other】
+
+重要：JSON 必须是有效的 JSON 语法。确保：
+1. 所有字符串值必须用双引号括起来（例如："value"），不要使用单引号或省略引号
+2. 对象键必须用双引号括起来
+3. 不要有尾随逗号
+4. 确保所有中文字符在引号内
+"""
             + style_section
         )
         user_prompt = f"""用户创意：{basic_idea}
