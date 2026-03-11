@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from app.services.ai_service import _extract_json, _get_config_value
+from app.services.ai_service import _extract_json, _get_config_value, AiService
 
 
 class TestExtractJson:
@@ -113,3 +113,53 @@ class TestGetConfigValue:
 
         result = _get_config_value(mock_book, global_config, "stream", True)
         assert result is False
+
+
+class TestAiServiceHelperMethods:
+    def test_get_temperature_and_tokens_with_book(self):
+        service = AiService(api_key="test", global_config={"temperature": "0.6", "max_tokens": 4096})
+        mock_book = MagicMock()
+        mock_book.config = {"temperature": 0.5, "max_tokens": 2048}
+
+        temperature, max_tokens = service._get_temperature_and_tokens(mock_book)
+
+        assert temperature == 0.5
+        assert max_tokens == 2048
+
+    def test_get_temperature_and_tokens_without_book(self):
+        service = AiService(api_key="test", global_config={"temperature": "0.6", "max_tokens": 4096})
+
+        temperature, max_tokens = service._get_temperature_and_tokens(None)
+
+        assert temperature == 0.6
+        assert max_tokens == 4096
+
+    def test_get_temperature_and_tokens_empty_config(self):
+        service = AiService(api_key="test", global_config={})
+
+        temperature, max_tokens = service._get_temperature_and_tokens(None)
+
+        assert temperature == 0.78
+        assert max_tokens == 8192
+
+    def test_get_temperature_top_p_tokens(self):
+        service = AiService(api_key="test", global_config={})
+        mock_book = MagicMock()
+        mock_book.config = {"temperature": 0.5, "top_p": 0.9, "max_tokens": 4096}
+
+        temperature, top_p, max_tokens = service._get_temperature_top_p_tokens(mock_book)
+
+        assert temperature == 0.5
+        assert top_p == 0.9
+        assert max_tokens == 4096
+
+    def test_get_temperature_top_p_tokens_with_defaults(self):
+        service = AiService(api_key="test", global_config={})
+        mock_book = MagicMock()
+        mock_book.config = {}
+
+        temperature, top_p, max_tokens = service._get_temperature_top_p_tokens(mock_book)
+
+        assert temperature == 0.78
+        assert top_p == 0.92
+        assert max_tokens == 8192

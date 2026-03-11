@@ -154,6 +154,29 @@ class AiService:
         content = response.choices[0].message.content
         logger.info(f"Content: {content}")
 
+    def _get_temperature_and_tokens(self, book: Book | None = None) -> tuple[float, int]:
+        """获取温度和最大 token 数"""
+        temperature = DEFAULT_TEMPERATURE
+        max_tokens = DEFAULT_MAX_TOKENS
+        if book:
+            temperature = _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE)
+            max_tokens = _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
+        elif self.global_config:
+            temp_value = self.global_config.get("temperature")
+            tokens_value = self.global_config.get("max_tokens")
+            if temp_value is not None:
+                temperature = float(str(temp_value))
+            if tokens_value is not None:
+                max_tokens = int(str(tokens_value))
+        return temperature, max_tokens
+
+    def _get_temperature_top_p_tokens(self, book: Book) -> tuple[float, float, int]:
+        """获取温度、top_p 和最大 token 数"""
+        temperature = _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE)
+        top_p = _get_config_value(book, self.global_config, "top_p", DEFAULT_TOP_P)
+        max_tokens = _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
+        return temperature, top_p, max_tokens
+
     async def initialize_book(
         self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = "", book: Book | None = None
     ) -> dict[str, str]:
@@ -173,20 +196,7 @@ class AiService:
             {"role": "user", "content": user_prompt},
         ]
 
-        # 使用全局配置参数，如果有书籍对象则使用书籍配置
-        temperature = DEFAULT_TEMPERATURE
-        max_tokens = DEFAULT_MAX_TOKENS
-        if book:
-            temperature = _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE)
-            max_tokens = _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
-        else:
-            # 如果没有书籍对象，使用全局配置
-            if self.global_config and "temperature" in self.global_config:
-                temperature_value = self.global_config.get("temperature")
-                temperature = float(str(temperature_value)) if temperature_value is not None else DEFAULT_TEMPERATURE
-            if self.global_config and "max_tokens" in self.global_config:
-                max_tokens_value = self.global_config.get("max_tokens")
-                max_tokens = int(max_tokens_value) if max_tokens_value is not None else DEFAULT_MAX_TOKENS
+        temperature, max_tokens = self._get_temperature_and_tokens(book)
 
         params = {
             "model": self.model,
@@ -343,20 +353,7 @@ class AiService:
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_prompt},
         ]
-        # 使用全局配置参数，如果有书籍对象则使用书籍配置
-        temperature = DEFAULT_TEMPERATURE
-        max_tokens = DEFAULT_MAX_TOKENS
-        if book:
-            temperature = _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE)
-            max_tokens = _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
-        else:
-            # 如果没有书籍对象，使用全局配置
-            if self.global_config and "temperature" in self.global_config:
-                temperature_value = self.global_config.get("temperature")
-                temperature = float(str(temperature_value)) if temperature_value is not None else DEFAULT_TEMPERATURE
-            if self.global_config and "max_tokens" in self.global_config:
-                max_tokens_value = self.global_config.get("max_tokens")
-                max_tokens = int(max_tokens_value) if max_tokens_value is not None else DEFAULT_MAX_TOKENS
+        temperature, max_tokens = self._get_temperature_and_tokens(book)
 
         params = {"model": self.model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
         self._log_request("stream_initialize_book", params)
@@ -393,12 +390,13 @@ class AiService:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
+        temperature, top_p, max_tokens = self._get_temperature_top_p_tokens(book)
         params = {
             "model": self.model,
             "messages": messages,
-            "temperature": _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE),
-            "top_p": _get_config_value(book, self.global_config, "top_p", DEFAULT_TOP_P),
-            "max_tokens": _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS),
+            "temperature": temperature,
+            "top_p": top_p,
+            "max_tokens": max_tokens,
             "stream": True,
         }
         self._log_request("stream_write_chapter", params)
@@ -429,12 +427,13 @@ class AiService:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
+        temperature, top_p, max_tokens = self._get_temperature_top_p_tokens(book)
         params = {
             "model": self.model,
             "messages": messages,
-            "temperature": _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE),
-            "top_p": _get_config_value(book, self.global_config, "top_p", DEFAULT_TOP_P),
-            "max_tokens": _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS),
+            "temperature": temperature,
+            "top_p": top_p,
+            "max_tokens": max_tokens,
             "stream": False,
         }
         self._log_request("write_chapter", params)
