@@ -103,10 +103,13 @@ class AiService:
             }
 
     async def stream_initialize_book(
-        self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = ""
+        self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = "", style: str = ""
     ):
         """流式初始化小说，直接返回原始内容块"""
         user_prompt = prompts.INIT_PROMPT.format(basic_idea=basic_idea, genre=genre, target_chapters=target_chapters)
+        style_instruction = (
+            f"\n\n【用户指定的风格规范】\n{style}\n\n请在生成人物卡时充分考虑用户的风格偏好。" if style else ""
+        )
         system_content = (
             ((jailbreak_prefix + "\n\n") if jailbreak_prefix else "")
             + "你是一个专业的小说创作辅助AI。请严格按照以下JSON格式输出，每个字段用【】标记包裹：\n"
@@ -116,6 +119,7 @@ class AiService:
             + "【outline】大纲内容（JSON数组）【outline】\n"
             + "【foreshadowing】伏笔内容【foreshadowing】\n"
             + "【other】其他信息内容【other】"
+            + style_instruction
         )
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system_content},

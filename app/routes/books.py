@@ -152,7 +152,7 @@ async def preview_book(
 
 @router.get("/init-stream")
 async def init_book_stream(
-    basic_idea: str = "", genre: str = "", target_chapters: int = 30, jailbreak_prefix: str = ""
+    basic_idea: str = "", genre: str = "", target_chapters: int = 30, jailbreak_prefix: str = "", style: str = ""
 ):
     """流式初始化小说,返回 SSE 格式的数据"""
     genre_str = genre if isinstance(genre, str) else ", ".join(genre) if genre else ""
@@ -161,7 +161,7 @@ async def init_book_stream(
         ai_service = AiService(api_key=app_settings.deepseek_api_key, base_url=app_settings.deepseek_base_url)
         try:
             async for chunk in ai_service.stream_initialize_book(
-                basic_idea, genre_str, target_chapters, jailbreak_prefix
+                basic_idea, genre_str, target_chapters, jailbreak_prefix, style
             ):
                 data = json.dumps(chunk, ensure_ascii=False)
                 yield f"data: {data}\n\n"
