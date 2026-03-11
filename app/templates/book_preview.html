@@ -373,47 +373,55 @@
           const other = extract("other");
 
           let parsed = {};
+
           if (chars) {
             try {
-              parsed.characters = JSON.parse(chars);
+              const charsObj = JSON.parse(chars);
+              if (Array.isArray(charsObj)) {
+                parsed.characters = charsObj;
+              } else if (typeof charsObj === "object") {
+                parsed.characters = Object.entries(charsObj).map(
+                  ([name, data]) => ({
+                    name: name,
+                    nickname: data.称呼 || "",
+                    age: data.年龄 || 0,
+                    appearance: data.外貌 || data.性征与癖好 || "",
+                    personality: data.性格 || "",
+                    background: data.背景故事 || data.身份 || "",
+                    goal: "",
+                    relationships: data.关系 || "",
+                  }),
+                );
+              } else {
+                parsed.characters = [];
+              }
             } catch {
-              parsed.characters = chars;
+              parsed.characters = [];
             }
           }
+
           if (wv) {
-            try {
-              parsed.world_view = JSON.parse(wv);
-            } catch {
-              parsed.world_view = wv;
-            }
+            parsed.world_view = wv;
           }
+
           if (style) {
-            try {
-              parsed.style = JSON.parse(style);
-            } catch {
-              parsed.style = style;
-            }
+            parsed.style = style;
           }
+
           if (outline) {
             try {
               parsed.outline = JSON.parse(outline);
             } catch {
-              parsed.outline = outline;
+              parsed.outline = [];
             }
           }
+
           if (foreshadow) {
-            try {
-              parsed.foreshadowing = JSON.parse(foreshadow);
-            } catch {
-              parsed.foreshadowing = foreshadow;
-            }
+            parsed.foreshadowing = foreshadow;
           }
+
           if (other) {
-            try {
-              parsed.other = JSON.parse(other);
-            } catch {
-              parsed.other = other;
-            }
+            parsed.other = other;
           }
 
           return {
@@ -594,14 +602,20 @@
       }
 
       function renderStyle(style) {
-        if (typeof style !== "object" || !style) return;
-        document.getElementById("style_perspective").value =
-          style.narrative_perspective || "";
-        document.getElementById("style_language").value =
-          style.language_style || "";
-        document.getElementById("style_pace").value = style.pace || "";
-        document.getElementById("style_audience").value =
-          style.target_audience || "";
+        if (typeof style === "string" && style.trim()) {
+          document.getElementById("style_perspective").value = style.trim();
+          document.getElementById("style_language").value = style.trim();
+          document.getElementById("style_pace").value = style.trim();
+          document.getElementById("style_audience").value = style.trim();
+        } else if (typeof style === "object" && style) {
+          document.getElementById("style_perspective").value =
+            style.narrative_perspective || "";
+          document.getElementById("style_language").value =
+            style.language_style || "";
+          document.getElementById("style_pace").value = style.pace || "";
+          document.getElementById("style_audience").value =
+            style.target_audience || "";
+        }
       }
 
       function getStyleFromUI() {
@@ -752,11 +766,16 @@
       function manualParse() {
         const rawContent = document.getElementById("rawContent").value;
         const parsed = parseInitResult(rawContent);
-        if (
-          !parsed.characters?.length &&
-          !parsed.world_view?.setting &&
-          !parsed.style?.language_style
-        ) {
+        const hasCharacters = parsed.characters?.length > 0;
+        const hasWorldView =
+          parsed.world_view &&
+          (parsed.world_view.setting || typeof parsed.world_view === "string");
+        const hasStyle =
+          parsed.style &&
+          (parsed.style.language_style || typeof parsed.style === "string");
+        const hasOutline = parsed.outline?.length > 0;
+
+        if (!hasCharacters && !hasWorldView && !hasStyle && !hasOutline) {
           alert("解析失败，请检查内容格式是否正确");
           return;
         }
