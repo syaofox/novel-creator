@@ -106,9 +106,8 @@ class AiService:
         self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = "", style: str = ""
     ):
         """流式初始化小说，直接返回原始内容块"""
-        user_prompt = prompts.INIT_PROMPT.format(basic_idea=basic_idea, genre=genre, target_chapters=target_chapters)
-        style_instruction = (
-            f"\n\n【用户指定的风格规范】\n{style}\n\n请在生成人物卡时充分考虑用户的风格偏好。" if style else ""
+        style_section = (
+            f"\n\n【用户指定的风格规范】\n{style}\n\n请在生成人物卡和大纲时充分考虑用户的风格偏好。" if style else ""
         )
         system_content = (
             ((jailbreak_prefix + "\n\n") if jailbreak_prefix else "")
@@ -119,8 +118,11 @@ class AiService:
             + "【outline】大纲内容（JSON数组）【outline】\n"
             + "【foreshadowing】伏笔内容【foreshadowing】\n"
             + "【other】其他信息内容【other】"
-            + style_instruction
+            + style_section
         )
+        user_prompt = f"""用户创意：{basic_idea}
+小说类型：{genre}
+目标章节数：{target_chapters}"""
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_prompt},
