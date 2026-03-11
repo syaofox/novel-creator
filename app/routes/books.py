@@ -21,6 +21,7 @@ from app.constants import (
     DEFAULT_JAILBREAK_PREFIX,
     DEFAULT_SYSTEM_TEMPLATE,
     DEFAULT_STYLE,
+    DEFAULT_MODEL,
     STYLE_PRESETS,
     TEMPLATE_DIR,
 )
@@ -75,13 +76,49 @@ def parse_chapter_titles(outline: str, target_chapters: int) -> list[dict]:
     return chapters[:target_chapters]
 
 
+def get_global_config_dict(db: Session) -> dict:
+    """获取全局配置字典"""
+    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
+    if not config:
+        return {
+            "temperature": str(DEFAULT_TEMPERATURE),
+            "top_p": str(DEFAULT_TOP_P),
+            "max_tokens": DEFAULT_MAX_TOKENS,
+            "stream": 1 if DEFAULT_STREAM else 0,
+            "jailbreak_prefix": DEFAULT_JAILBREAK_PREFIX,
+            "system_template": DEFAULT_SYSTEM_TEMPLATE,
+            "default_model": DEFAULT_MODEL,
+        }
+    return {
+        "temperature": config.temperature,
+        "top_p": config.top_p,
+        "max_tokens": config.max_tokens,
+        "stream": config.stream,
+        "jailbreak_prefix": config.jailbreak_prefix,
+        "system_template": config.system_template,
+        "default_model": config.default_model,
+    }
+
+
 @router.get("/new", response_class=HTMLResponse)
 async def new_book_form(request: Request, db: Session = Depends(get_db)):
     from fastapi.templating import Jinja2Templates
 
     config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
-    jailbreak_prefix = config.jailbreak_prefix if config else DEFAULT_JAILBREAK_PREFIX
-    system_template = config.system_template if config else DEFAULT_SYSTEM_TEMPLATE
+    if config:
+        jailbreak_prefix = config.jailbreak_prefix
+        system_template = config.system_template
+        temperature = float(str(config.temperature))
+        top_p = float(str(config.top_p))
+        max_tokens = int(config.max_tokens)  # type: ignore
+        stream = bool(config.stream)
+    else:
+        jailbreak_prefix = DEFAULT_JAILBREAK_PREFIX
+        system_template = DEFAULT_SYSTEM_TEMPLATE
+        temperature = DEFAULT_TEMPERATURE
+        top_p = DEFAULT_TOP_P
+        max_tokens = DEFAULT_MAX_TOKENS
+        stream = DEFAULT_STREAM
 
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
     return templates.TemplateResponse(
@@ -90,9 +127,10 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
         {
             "jailbreak_prefix": jailbreak_prefix,
             "system_template": system_template,
-            "default_temperature": DEFAULT_TEMPERATURE,
-            "default_top_p": DEFAULT_TOP_P,
-            "default_max_tokens": DEFAULT_MAX_TOKENS,
+            "default_temperature": temperature,
+            "default_top_p": top_p,
+            "default_max_tokens": max_tokens,
+            "default_stream": stream,
             "default_style": DEFAULT_STYLE,
             "style_presets": STYLE_PRESETS,
         },
@@ -115,6 +153,23 @@ async def preview_book(
     style: str = "",
     db: Session = Depends(get_db),
 ):
+    # 获取全局配置默认值
+    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
+    if config:
+        # 如果参数等于常量默认值或为空，使用全局配置值
+        if temperature == DEFAULT_TEMPERATURE:
+            temperature = float(str(config.temperature))
+        if top_p == DEFAULT_TOP_P:
+            top_p = float(str(config.top_p))
+        if max_tokens == DEFAULT_MAX_TOKENS:
+            max_tokens = int(config.max_tokens)  # type: ignore
+        if stream == DEFAULT_STREAM:
+            stream = bool(config.stream)  # type: ignore
+        if not jailbreak_prefix:
+            jailbreak_prefix = str(config.jailbreak_prefix)
+        if system_template == DEFAULT_SYSTEM_TEMPLATE:
+            system_template = str(config.system_template)
+
     genre_str = genre if isinstance(genre, str) else ", ".join(genre) if genre else ""
 
     default_style = style or DEFAULT_STYLE
@@ -152,13 +207,25 @@ async def preview_book(
 
 @router.get("/init-stream")
 async def init_book_stream(
-    basic_idea: str = "", genre: str = "", target_chapters: int = 30, jailbreak_prefix: str = "", style: str = ""
+    basic_idea: str = "",
+    genre: str = "",
+    target_chapters: int = 30,
+    jailbreak_prefix: str = "",
+    style: str = "",
+    db: Session = Depends(get_db),
 ):
     """流式初始化小说,返回 SSE 格式的数据"""
     genre_str = genre if isinstance(genre, str) else ", ".join(genre) if genre else ""
 
+    global_config = get_global_config_dict(db)
+
     async def generate():
-        ai_service = AiService(api_key=app_settings.deepseek_api_key, base_url=app_settings.deepseek_base_url)
+        ai_service = AiService(
+            api_key=app_settings.deepseek_api_key,
+            base_url=app_settings.deepseek_base_url,
+            model=global_config.get("default_model") or app_settings.default_model,
+            global_config=global_config,
+        )
         try:
             async for chunk in ai_service.stream_initialize_book(
                 basic_idea, genre_str, target_chapters, jailbreak_prefix, style
@@ -286,6 +353,6 @@ async def export_book(book_id: int, db: Session = Depends(get_db)):
 async def finish_book(book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if book:
-        book.status = "已完结"
+        book.status = "已完结"  # type: ignore
         db.commit()
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)

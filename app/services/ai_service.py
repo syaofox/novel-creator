@@ -27,11 +27,11 @@ def _get_config_value(book: Book, global_config: dict[str, Any] | None, key: str
     if global_config is not None and key in global_config:
         value = global_config[key]
         if key in ("temperature", "top_p"):
-            return float(value) if value else default
+            return float(str(value)) if value is not None else default
         if key == "max_tokens":
-            return int(value) if value else default
+            return int(value) if value is not None else default
         if key == "stream":
-            return bool(int(value)) if value else default
+            return bool(int(value)) if value is not None else default
         return value
     return default
 
@@ -155,7 +155,7 @@ class AiService:
         logger.info(f"Content: {content}")
 
     async def initialize_book(
-        self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = ""
+        self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = "", book: Book | None = None
     ) -> dict[str, str]:
         """调用初始化 Prompt，返回解析后的数据"""
         user_prompt = prompts.INIT_PROMPT.format(basic_idea=basic_idea, genre=genre, target_chapters=target_chapters)
@@ -172,10 +172,27 @@ class AiService:
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_prompt},
         ]
+
+        # 使用全局配置参数，如果有书籍对象则使用书籍配置
+        temperature = DEFAULT_TEMPERATURE
+        max_tokens = DEFAULT_MAX_TOKENS
+        if book:
+            temperature = _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE)
+            max_tokens = _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
+        else:
+            # 如果没有书籍对象，使用全局配置
+            if self.global_config and "temperature" in self.global_config:
+                temperature_value = self.global_config.get("temperature")
+                temperature = float(str(temperature_value)) if temperature_value is not None else DEFAULT_TEMPERATURE
+            if self.global_config and "max_tokens" in self.global_config:
+                max_tokens_value = self.global_config.get("max_tokens")
+                max_tokens = int(max_tokens_value) if max_tokens_value is not None else DEFAULT_MAX_TOKENS
+
         params = {
             "model": self.model,
             "messages": messages,
-            "temperature": DEFAULT_TEMPERATURE,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
             "response_format": {"type": "json_object"},
         }
         self._log_request("initialize_book", params)
@@ -219,7 +236,13 @@ class AiService:
             }
 
     async def stream_initialize_book(
-        self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = "", style: str = ""
+        self,
+        basic_idea: str,
+        genre: str,
+        target_chapters: int,
+        jailbreak_prefix: str = "",
+        style: str = "",
+        book: Book | None = None,
     ):
         """流式初始化小说，直接返回原始内容块"""
         style_section = (
@@ -320,12 +343,22 @@ class AiService:
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_prompt},
         ]
-        params = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": DEFAULT_TEMPERATURE,
-            "max_tokens": DEFAULT_MAX_TOKENS,
-        }
+        # 使用全局配置参数，如果有书籍对象则使用书籍配置
+        temperature = DEFAULT_TEMPERATURE
+        max_tokens = DEFAULT_MAX_TOKENS
+        if book:
+            temperature = _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE)
+            max_tokens = _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
+        else:
+            # 如果没有书籍对象，使用全局配置
+            if self.global_config and "temperature" in self.global_config:
+                temperature_value = self.global_config.get("temperature")
+                temperature = float(str(temperature_value)) if temperature_value is not None else DEFAULT_TEMPERATURE
+            if self.global_config and "max_tokens" in self.global_config:
+                max_tokens_value = self.global_config.get("max_tokens")
+                max_tokens = int(max_tokens_value) if max_tokens_value is not None else DEFAULT_MAX_TOKENS
+
+        params = {"model": self.model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
         self._log_request("stream_initialize_book", params)
         response = await self.client.chat.completions.create(**params, stream=True)
         first_chunk = True
@@ -379,6 +412,35 @@ class AiService:
             if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
         logger.info("Stream completed")
+
+    async def write_chapter(self, book: Book, chapter_number: int, core_event: str, prev_ending: str) -> str:
+        """非流式生成下一章正文，返回完整内容"""
+        system_prompt = (
+            _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+            + "\n\n"
+            + _get_config_value(book, self.global_config, "system_template", DEFAULT_SYSTEM_TEMPLATE).format(
+                memory=book.memory_summary, style=book.style or "请根据小说的风格规范进行写作。"
+            )
+        )
+        user_prompt = prompts.WRITE_CHAPTER_PROMPT.format(
+            chapter_number=chapter_number, core_event=core_event, prev_ending=prev_ending
+        )
+        messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": _get_config_value(book, self.global_config, "temperature", DEFAULT_TEMPERATURE),
+            "top_p": _get_config_value(book, self.global_config, "top_p", DEFAULT_TOP_P),
+            "max_tokens": _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS),
+            "stream": False,
+        }
+        self._log_request("write_chapter", params)
+        response = await self.client.chat.completions.create(**params)
+        self._log_response(response)
+        return response.choices[0].message.content or ""
 
     async def update_summary(self, book: Book, new_chapter_text: str) -> str:
         """根据新章节和旧摘要生成新摘要"""
