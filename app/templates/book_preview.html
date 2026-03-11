@@ -578,6 +578,13 @@
       }
 
       function renderWorldView(worldView) {
+        if (typeof worldView === "string" && worldView.trim()) {
+          try {
+            worldView = JSON.parse(worldView);
+          } catch {
+            return;
+          }
+        }
         if (typeof worldView !== "object" || !worldView) return;
         document.getElementById("world_setting").value =
           worldView.setting || "";
@@ -603,10 +610,21 @@
 
       function renderStyle(style) {
         if (typeof style === "string" && style.trim()) {
-          document.getElementById("style_perspective").value = style.trim();
-          document.getElementById("style_language").value = style.trim();
-          document.getElementById("style_pace").value = style.trim();
-          document.getElementById("style_audience").value = style.trim();
+          try {
+            const parsed = JSON.parse(style);
+            document.getElementById("style_perspective").value =
+              parsed.narrative_perspective || "";
+            document.getElementById("style_language").value =
+              parsed.language_style || "";
+            document.getElementById("style_pace").value = parsed.pace || "";
+            document.getElementById("style_audience").value =
+              parsed.target_audience || "";
+          } catch {
+            document.getElementById("style_perspective").value = style.trim();
+            document.getElementById("style_language").value = style.trim();
+            document.getElementById("style_pace").value = style.trim();
+            document.getElementById("style_audience").value = style.trim();
+          }
         } else if (typeof style === "object" && style) {
           document.getElementById("style_perspective").value =
             style.narrative_perspective || "";
@@ -629,6 +647,13 @@
       }
 
       function renderForeshadowing(foreshadowing) {
+        if (typeof foreshadowing === "string" && foreshadowing.trim()) {
+          try {
+            foreshadowing = JSON.parse(foreshadowing);
+          } catch {
+            foreshadowing = foreshadowing.split("\n").filter((t) => t.trim());
+          }
+        }
         const container = document.getElementById("foreshadowing-list");
         container.innerHTML = "";
         const items = Array.isArray(foreshadowing) ? foreshadowing : [];
@@ -675,6 +700,13 @@
       }
 
       function renderOther(other) {
+        if (typeof other === "string" && other.trim()) {
+          try {
+            other = JSON.parse(other);
+          } catch {
+            return;
+          }
+        }
         if (typeof other !== "object" || !other) return;
         const suggestedTitle = other.novel_title || "";
         if (suggestedTitle) {
@@ -702,6 +734,13 @@
       }
 
       function renderOutline(outline) {
+        if (typeof outline === "string" && outline.trim()) {
+          try {
+            outline = JSON.parse(outline);
+          } catch {
+            return;
+          }
+        }
         if (!Array.isArray(outline) || outline.length === 0) return;
         const chapterCards = document.querySelectorAll(".space-y-3 > .border");
         outline.forEach((ch, idx) => {
