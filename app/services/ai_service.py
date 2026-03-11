@@ -507,27 +507,6 @@ class AiService:
                 yield chunk.choices[0].delta.content
         logger.info("Stream summary completed")
 
-    async def global_review(self, book: Book) -> str:
-        """全局回顾，返回格式化检查结果"""
-        user_prompt = prompts.REVIEW_PROMPT.format(memory_summary=book.memory_summary)
-        messages: list[ChatCompletionMessageParam] = [
-            {
-                "role": "system",
-                "content": "你是一个专业的小说编辑，请对以下小说摘要进行全面回顾，检查人设、主线、伏笔、逻辑等问题，并给出建议。",
-            },
-            {"role": "user", "content": user_prompt},
-        ]
-        params = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": _get_config_value(book, self.global_config, "temperature", 0.7),
-            "max_tokens": _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS),
-        }
-        self._log_request("global_review", params)
-        response = await self.client.chat.completions.create(**params)
-        self._log_response(response)
-        return response.choices[0].message.content or ""
-
     async def compress_summary(self, book: Book) -> str:
         """压缩摘要（保留6部分格式）"""
         user_prompt = prompts.COMPRESS_SUMMARY_PROMPT.format(summary=book.memory_summary)

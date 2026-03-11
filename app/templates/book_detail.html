@@ -27,7 +27,7 @@
               写下一章
             </button>
           {% else %}
-            <p>恭喜！小说已完结。你可以导出或进行全局回顾。</p>
+            <p>恭喜！小说已完结。你可以导出小说。</p>
           {% endif %}
         </div>
       </div>
@@ -55,19 +55,6 @@
                 </button>
               </div>
             </div>
-            <button
-              class="btn btn-sm btn-outline w-full"
-              hx-get="/books/{{ book.id }}/ai/global-review"
-              hx-target="#review-result"
-              hx-swap="innerHTML"
-              hx-indicator="#global-review-loading"
-            >
-              <span
-                id="global-review-loading"
-                class="htmx-indicator loading loading-spinner loading-xs"
-              ></span>
-              全局回顾
-            </button>
             <button
               class="btn btn-sm btn-outline w-full"
               id="update-summary-btn"
@@ -103,13 +90,6 @@
                   </button>
                 </form>
               </div>
-            </div>
-            <div class="collapse collapse-arrow bg-base-200 mt-2" id="review-result-container">
-              <input type="checkbox" />
-              <div class="collapse-title text-sm font-medium py-2 min-h-0">
-                全局回顾结果
-              </div>
-              <div class="collapse-content text-sm" id="review-result"></div>
             </div>
             <a
               href="/books/{{ book.id }}/settings"
