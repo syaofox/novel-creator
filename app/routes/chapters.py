@@ -165,6 +165,7 @@ async def generate_chapter(
                     "content": "",
                     "stream": True,
                     "core_event": core_event,
+                    "prev_ending": prev_ending,
                 },
             )
         except TimeoutError:
@@ -210,6 +211,7 @@ async def generate_chapter(
                     "content": content,
                     "stream": False,
                     "core_event": core_event,
+                    "prev_ending": prev_ending,
                 },
             )
         except TimeoutError:
