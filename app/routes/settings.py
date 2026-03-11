@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Book, GlobalConfig
+from app.utils.config_helper import get_global_config_dict
 from fastapi.templating import Jinja2Templates
 from app.constants import (
     DEFAULT_TEMPERATURE,
@@ -14,32 +15,6 @@ from app.constants import (
     TEMPLATE_DIR,
     DEFAULT_MODEL,
 )
-
-
-def get_global_config_dict(db: Session) -> dict:
-    """获取全局配置字典"""
-    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
-    if not config:
-        config = GlobalConfig(
-            id=1,
-            temperature=str(DEFAULT_TEMPERATURE),
-            top_p=str(DEFAULT_TOP_P),
-            max_tokens=DEFAULT_MAX_TOKENS,
-            stream=1 if DEFAULT_STREAM else 0,
-            jailbreak_prefix=DEFAULT_JAILBREAK_PREFIX,
-            system_template=DEFAULT_SYSTEM_TEMPLATE,
-        )
-        db.add(config)
-        db.commit()
-        db.refresh(config)
-    return {
-        "temperature": config.temperature,
-        "top_p": config.top_p,
-        "max_tokens": config.max_tokens,
-        "stream": config.stream,
-        "jailbreak_prefix": config.jailbreak_prefix,
-        "system_template": config.system_template,
-    }
 
 
 # 书籍设置路由

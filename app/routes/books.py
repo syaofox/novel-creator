@@ -1,18 +1,21 @@
-from fastapi import APIRouter, Depends, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, StreamingResponse
-from sqlalchemy.orm import Session
-import os
-import json
-import re
 import asyncio
+import json
+import logging
+import os
+import re
 from pathlib import Path
 from typing import Any
 
+from fastapi import APIRouter, Depends, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, StreamingResponse
+from sqlalchemy.orm import Session
+
+from app.config import settings as app_settings
 from app.database import get_db
 from app.models import Book, Chapter, GlobalConfig
 from app.services.ai_service import AiService
 from app.services.file_service import delete_book_files
-from app.config import settings as app_settings
+from app.utils.config_helper import get_global_config_dict
 from app.utils.helpers import get_book_dir
 from app.constants import (
     DEFAULT_TEMPERATURE,
@@ -26,6 +29,8 @@ from app.constants import (
     STYLE_PRESETS,
     TEMPLATE_DIR,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -75,30 +80,6 @@ def parse_chapter_titles(outline: str, target_chapters: int) -> list[dict]:
         chapters.append({"chapter": len(chapters) + 1, "title": f"第{len(chapters) + 1}章", "core_event": ""})
 
     return chapters[:target_chapters]
-
-
-def get_global_config_dict(db: Session) -> dict:
-    """获取全局配置字典"""
-    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
-    if not config:
-        return {
-            "temperature": str(DEFAULT_TEMPERATURE),
-            "top_p": str(DEFAULT_TOP_P),
-            "max_tokens": DEFAULT_MAX_TOKENS,
-            "stream": 1 if DEFAULT_STREAM else 0,
-            "jailbreak_prefix": DEFAULT_JAILBREAK_PREFIX,
-            "system_template": DEFAULT_SYSTEM_TEMPLATE,
-            "default_model": DEFAULT_MODEL,
-        }
-    return {
-        "temperature": config.temperature,
-        "top_p": config.top_p,
-        "max_tokens": config.max_tokens,
-        "stream": config.stream,
-        "jailbreak_prefix": config.jailbreak_prefix,
-        "system_template": config.system_template,
-        "default_model": config.default_model,
-    }
 
 
 @router.get("/new", response_class=HTMLResponse)
@@ -235,7 +216,14 @@ async def init_book_stream(
                 yield f"data: {data}\n\n"
                 await asyncio.sleep(0.01)
             yield f"data: {json.dumps({'done': True})}\n\n"
+        except TimeoutError:
+            logger.error("Timeout during book initialization")
+            yield f"data: {json.dumps({'error': '请求超时，请稍后重试'})}\n\n"
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during book initialization: {e}")
+            yield f"data: {json.dumps({'error': '网络连接失败，请检查网络'})}\n\n"
         except Exception as e:
+            logger.exception("Unexpected error during book initialization")
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")

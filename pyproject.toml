@@ -68,3 +68,7 @@ line-ending = "auto"
 where = ["."]
 include = ["app*"]
 exclude = ["books*", "alembic*", "tests*"]
+
+
+[tool.pyright]
+typeCheckingMode = "basic"

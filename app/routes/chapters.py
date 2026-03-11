@@ -1,12 +1,15 @@
+import logging
+import re
+
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
-import re
 
+from app.config import settings as app_settings
 from app.database import get_db
 from app.models import Book, Chapter, GlobalConfig
 from app.services.ai_service import AiService
-from app.config import settings as app_settings
+from app.utils.config_helper import get_global_config_dict
 from app.utils.helpers import extract_title
 from app.constants import (
     DEFAULT_TEMPERATURE,
@@ -17,6 +20,8 @@ from app.constants import (
     DEFAULT_SYSTEM_TEMPLATE,
     DEFAULT_MODEL,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/books/{book_id}/chapters", tags=["chapters"])
 
@@ -34,30 +39,6 @@ def get_prev_ending_from_db(db: Session, book_id: int, chapter_number: int, char
     if not content:
         return ""
     return content[-chars:]
-
-
-def get_global_config_dict(db: Session) -> dict:
-    """获取全局配置字典"""
-    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
-    if not config:
-        return {
-            "temperature": str(DEFAULT_TEMPERATURE),
-            "top_p": str(DEFAULT_TOP_P),
-            "max_tokens": DEFAULT_MAX_TOKENS,
-            "stream": 1 if DEFAULT_STREAM else 0,
-            "jailbreak_prefix": DEFAULT_JAILBREAK_PREFIX,
-            "system_template": DEFAULT_SYSTEM_TEMPLATE,
-            "default_model": DEFAULT_MODEL,
-        }
-    return {
-        "temperature": config.temperature,
-        "top_p": config.top_p,
-        "max_tokens": config.max_tokens,
-        "stream": config.stream,
-        "jailbreak_prefix": config.jailbreak_prefix,
-        "system_template": config.system_template,
-        "default_model": config.default_model,
-    }
 
 
 def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
@@ -186,7 +167,14 @@ async def generate_chapter(
                     "core_event": core_event,
                 },
             )
+        except TimeoutError:
+            logger.error("Timeout during template rendering")
+            return HTMLResponse(content="请求超时，请稍后重试", status_code=504)
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during rendering: {e}")
+            return HTMLResponse(content="网络连接失败", status_code=503)
         except Exception as e:
+            logger.exception("Unexpected error during template rendering")
             import traceback
 
             return HTMLResponse(
@@ -203,7 +191,14 @@ async def generate_chapter(
         )
         try:
             content = await ai_service.write_chapter(book, int(chapter_number), core_event, prev_ending)
+        except TimeoutError:
+            logger.error("Timeout during chapter generation")
+            return HTMLResponse(content="生成超时，请稍后重试", status_code=504)
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during chapter generation: {e}")
+            return HTMLResponse(content="网络连接失败", status_code=503)
         except Exception as e:
+            logger.exception("Error during chapter generation")
             return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
         try:
             return templates.TemplateResponse(
@@ -217,7 +212,14 @@ async def generate_chapter(
                     "core_event": core_event,
                 },
             )
+        except TimeoutError:
+            logger.error("Timeout during template rendering")
+            return HTMLResponse(content="请求超时，请稍后重试", status_code=504)
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during rendering: {e}")
+            return HTMLResponse(content="网络连接失败", status_code=503)
         except Exception as e:
+            logger.exception("Unexpected error during template rendering")
             import traceback
 
             return HTMLResponse(
@@ -262,7 +264,14 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: Sessi
                     "regenerate": True,
                 },
             )
+        except TimeoutError:
+            logger.error("Timeout during regenerate template rendering")
+            return HTMLResponse(content="请求超时，请稍后重试", status_code=504)
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during regenerate rendering: {e}")
+            return HTMLResponse(content="网络连接失败", status_code=503)
         except Exception as e:
+            logger.exception("Unexpected error during regenerate template rendering")
             import traceback
 
             return HTMLResponse(
@@ -278,7 +287,14 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: Sessi
         )
         try:
             content = await ai_service.write_chapter(book, int(num), core_event, prev_ending)
+        except TimeoutError:
+            logger.error("Timeout during chapter regeneration")
+            return HTMLResponse(content="生成超时，请稍后重试", status_code=504)
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during chapter regeneration: {e}")
+            return HTMLResponse(content="网络连接失败", status_code=503)
         except Exception as e:
+            logger.exception("Error during chapter regeneration")
             return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
         try:
             return templates.TemplateResponse(
@@ -294,7 +310,14 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: Sessi
                     "regenerate": True,
                 },
             )
+        except TimeoutError:
+            logger.error("Timeout during regenerate template rendering")
+            return HTMLResponse(content="请求超时，请稍后重试", status_code=504)
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during regenerate rendering: {e}")
+            return HTMLResponse(content="网络连接失败", status_code=503)
         except Exception as e:
+            logger.exception("Unexpected error during regenerate template rendering")
             import traceback
 
             return HTMLResponse(
@@ -371,7 +394,14 @@ async def save_chapter_endpoint(
         db.commit()
         db.refresh(chapter)
         chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
+    except TimeoutError:
+        logger.error("Timeout during chapter save")
+        return HTMLResponse(content="保存超时，请稍后重试", status_code=504)
+    except (OSError, ConnectionError) as e:
+        logger.error(f"Network error during chapter save: {e}")
+        return HTMLResponse(content="网络连接失败", status_code=503)
     except Exception as e:
+        logger.exception("Error during chapter save")
         import traceback
 
         return HTMLResponse(content=f"保存失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
@@ -418,7 +448,14 @@ async def stream_chapter(
         try:
             async for chunk in ai_service.stream_write_chapter(book, chapter_number, core_event, prev_ending):
                 yield chunk
+        except TimeoutError:
+            logger.error("Timeout during streaming chapter generation")
+            yield "\n\n--- 生成超时，请稍后重试 ---\n"
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during streaming: {e}")
+            yield "\n\n--- 网络连接失败 ---\n"
         except Exception as e:
+            logger.exception("Error during streaming chapter generation")
             import traceback
 
             error_msg = f"\n\n--- 生成过程中发生错误 ---\n{str(e)}\n{traceback.format_exc()}\n"
