@@ -128,7 +128,7 @@
           class="input input-bordered"
         />
       </div>
-      <div class="form-control">
+      <div class="form-control" style="display: none;">
         <label class="label">
           <span class="label-text">初始创意（剧情梗概+人设）</span>
         </label>
@@ -138,6 +138,47 @@
           class="textarea textarea-bordered"
           placeholder="请输入你的创意..."
         ></textarea>
+      </div>
+
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">初始创意</span>
+        </label>
+        <div class="space-y-3">
+          <div>
+            <label class="label py-1">
+              <span class="label-text text-sm">剧情梗概</span>
+            </label>
+            <textarea
+              name="plot_summary"
+              rows="3"
+              class="textarea textarea-bordered w-full"
+              placeholder="请输入小说的剧情梗概..."
+            ></textarea>
+          </div>
+          <div>
+            <label class="label py-1">
+              <span class="label-text text-sm">人物卡</span>
+            </label>
+            <textarea
+              name="character_card"
+              rows="3"
+              class="textarea textarea-bordered w-full"
+              placeholder="请输入主要人物设定..."
+            ></textarea>
+          </div>
+          <div>
+            <label class="label py-1">
+              <span class="label-text text-sm">注意事项</span>
+            </label>
+            <textarea
+              name="notes"
+              rows="3"
+              class="textarea textarea-bordered w-full"
+              placeholder="请输入需要注意的事项..."
+            ></textarea>
+          </div>
+        </div>
       </div>
       <div class="form-control">
         <label class="label">
@@ -269,9 +310,21 @@
       const form = document.getElementById("bookForm");
       const formData = new FormData(form);
 
+      const plotSummary = formData.get("plot_summary") || "";
+      const characterCard = formData.get("character_card") || "";
+      const notes = formData.get("notes") || "";
+
+      const basicIdea = [
+        plotSummary ? `剧情梗概:${plotSummary}` : "",
+        characterCard ? `人物卡:${characterCard}` : "",
+        notes ? `注意事项:${notes}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
       const params = new URLSearchParams();
       params.append("title", formData.get("title") || "");
-      params.append("basic_idea", formData.get("basic_idea") || "");
+      params.append("basic_idea", basicIdea);
       params.append("target_chapters", formData.get("target_chapters") || "3");
       params.append("jailbreak_prefix", formData.get("jailbreak_prefix") || "");
       params.append("style", formData.get("style") || "");
@@ -301,7 +354,7 @@
           title: formData.get("title") || "",
           genre: genre.join(", "),
           target_chapters: formData.get("target_chapters") || "3",
-          basic_idea: formData.get("basic_idea") || "",
+          basic_idea: basicIdea,
           temperature:
             formData.get("temperature") || "{{ default_temperature }}",
           top_p: formData.get("top_p") || "{{ default_top_p }}",
