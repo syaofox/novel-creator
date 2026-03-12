@@ -15,6 +15,11 @@
         >人物卡</a
       >
       <a
+        class="tab {% if active_tab == 'note' %}tab-active{% endif %}"
+        onclick="switchTab('note', this)"
+        >注意事项</a
+      >
+      <a
         class="tab {% if active_tab == 'style' %}tab-active{% endif %}"
         onclick="switchTab('style', this)"
         >文风</a
@@ -157,6 +162,76 @@
         {% endfor %}
         {% if not character_cards %}
           <p class="text-center text-base-content/50 py-8">暂无人物卡</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 注意事项 -->
+    <div
+      id="note-tab"
+      class="tab-content {% if active_tab == 'note' %}block{% else %}hidden{% endif %}"
+    >
+      <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card-body">
+          <h2 class="card-title">新增注意事项</h2>
+          <form method="post" action="/materials/material-notes">
+            <div class="form-control mb-2">
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="标题"
+                class="input input-bordered"
+              />
+            </div>
+            <div class="form-control mb-2">
+              <textarea
+                name="content"
+                rows="4"
+                placeholder="注意事项内容..."
+                class="textarea textarea-bordered"
+              ></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        {% for note in material_notes %}
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+              <div class="flex justify-between items-start">
+                <h3 class="font-semibold">{{ note.title }}</h3>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-sm btn-outline"
+                    onclick="editNote({{ note.id }}, '{{ note.title }}', `{{ note.content | replace('`', '\\`') }}`)"
+                  >
+                    编辑
+                  </button>
+                  <form
+                    method="post"
+                    action="/materials/material-notes/{{ note.id }}/delete"
+                    onsubmit="return confirm('确定删除？')"
+                  >
+                    <button type="submit" class="btn btn-sm btn-error">
+                      删除
+                    </button>
+                  </form>
+                </div>
+              </div>
+              <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">
+                {{ note.content }}
+              </p>
+              <p class="text-xs text-base-content/50 mt-2">
+                更新于: {{ note.updated_at }}
+              </p>
+            </div>
+          </div>
+        {% endfor %}
+        {% if not material_notes %}
+          <p class="text-center text-base-content/50 py-8">暂无注意事项</p>
         {% endif %}
       </div>
     </div>
@@ -329,9 +404,10 @@
     document.addEventListener("DOMContentLoaded", function () {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
-      if (tab && ["plot", "character", "style"].includes(tab)) {
+      const tabMap = { plot: 1, character: 2, note: 3, style: 4 };
+      if (tab && tabMap[tab]) {
         const tabElement = document.querySelector(
-          `#material-tabs .tab:nth-child(${tab === "plot" ? 1 : tab === "character" ? 2 : 3})`,
+          `#material-tabs .tab:nth-child(${tabMap[tab]})`,
         );
         if (tabElement) {
           switchTab(tab, tabElement);
@@ -353,6 +429,16 @@
       document.getElementById("modalTitle").textContent = "编辑人物卡";
       document.getElementById("modalForm").action =
         "/materials/character-cards/" + id;
+      document.getElementById("editTitle").value = title;
+      document.getElementById("editContent").value = content;
+      document.getElementById("defaultCheck").classList.add("hidden");
+      document.getElementById("editModal").showModal();
+    }
+
+    function editNote(id, title, content) {
+      document.getElementById("modalTitle").textContent = "编辑注意事项";
+      document.getElementById("modalForm").action =
+        "/materials/material-notes/" + id;
       document.getElementById("editTitle").value = title;
       document.getElementById("editContent").value = content;
       document.getElementById("defaultCheck").classList.add("hidden");

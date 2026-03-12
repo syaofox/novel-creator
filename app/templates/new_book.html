@@ -198,8 +198,22 @@
           <div>
             <label class="label py-1">
               <span class="label-text text-sm">注意事项</span>
+              <a href="/materials?tab=note" target="_blank" class="btn btn-xs btn-ghost">管理素材</a>
             </label>
+            {% if material_notes %}
+            <select
+              id="noteSelect"
+              class="select select-bordered w-full mb-2"
+              onchange="loadMaterialNote()"
+            >
+              <option value="">-- 选择已有注意事项 --</option>
+              {% for note in material_notes %}
+              <option value="{{ note.id }}">{{ note.title }}</option>
+              {% endfor %}
+            </select>
+            {% endif %}
             <textarea
+              id="materialNote"
               name="notes"
               rows="3"
               class="textarea textarea-bordered w-full"
@@ -330,6 +344,7 @@
     const plotSummaries = {{ plot_summaries | tojson }};
     const characterCards = {{ character_cards | tojson }};
     const writingStyles = {{ writing_styles | tojson }};
+    const materialNotes = {{ material_notes | tojson }};
 
     function loadPlotSummary() {
       const select = document.getElementById("plotSelect");
@@ -358,6 +373,19 @@
         } else {
           textarea.value = card.content;
         }
+      }
+    }
+
+    function loadMaterialNote() {
+      const select = document.getElementById("noteSelect");
+      const textarea = document.getElementById("materialNote");
+      const selectedId = select.value;
+      
+      if (!selectedId) return;
+      
+      const note = materialNotes.find(n => n.id === parseInt(selectedId));
+      if (note && note.content) {
+        textarea.value = note.content;
       }
     }
 

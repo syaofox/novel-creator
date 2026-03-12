@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import PlotSummary, CharacterCard, WritingStyle, get_china_now
+from app.models import PlotSummary, CharacterCard, WritingStyle, MaterialNote, get_china_now
 from app.constants import DEFAULT_STYLE, TEMPLATE_DIR
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ async def materials_page(request: Request, tab: str = Query(default="plot"), db:
     writing_styles = (
         db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
     )
+    material_notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
 
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
     return templates.TemplateResponse(
@@ -31,6 +32,7 @@ async def materials_page(request: Request, tab: str = Query(default="plot"), db:
             "plot_summaries": plot_summaries,
             "character_cards": character_cards,
             "writing_styles": writing_styles,
+            "material_notes": material_notes,
             "default_style": DEFAULT_STYLE,
             "active_tab": tab,
         },
@@ -153,3 +155,37 @@ async def delete_writing_style(style_id: int, db: Session = Depends(get_db)):
     db.delete(style)
     db.commit()
     return RedirectResponse(url="/materials?tab=style", status_code=303)
+
+
+@router.post("/material-notes", response_class=HTMLResponse)
+async def create_material_note(
+    request: Request, title: str = Form(...), content: str = Form(""), db: Session = Depends(get_db)
+):
+    new_note = MaterialNote(title=title, content=content)
+    db.add(new_note)
+    db.commit()
+    return RedirectResponse(url="/materials?tab=note", status_code=303)
+
+
+@router.post("/material-notes/{note_id}", response_class=HTMLResponse)
+async def update_material_note(
+    request: Request, note_id: int, title: str = Form(...), content: str = Form(""), db: Session = Depends(get_db)
+):
+    note = db.query(MaterialNote).filter(MaterialNote.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="注意事项不存在")
+    note.title = title
+    note.content = content
+    note.updated_at = get_china_now()
+    db.commit()
+    return RedirectResponse(url="/materials?tab=note", status_code=303)
+
+
+@router.post("/material-notes/{note_id}/delete", response_class=HTMLResponse)
+async def delete_material_note(note_id: int, db: Session = Depends(get_db)):
+    note = db.query(MaterialNote).filter(MaterialNote.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="注意事项不存在")
+    db.delete(note)
+    db.commit()
+    return RedirectResponse(url="/materials?tab=note", status_code=303)
