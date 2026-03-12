@@ -270,9 +270,11 @@ async def init_book_stream(
 async def create_book(
     request: Request,
     title: str = Form(...),
-    genre: list[str] = Form(default=[]),
+    genre: str = Form(default=""),
     target_chapters: int = Form(...),
-    basic_idea: str = Form(...),
+    plot_summary: str = Form(""),
+    character_card: str = Form(""),
+    notes: str = Form(""),
     temperature: float = Form(DEFAULT_TEMPERATURE),
     top_p: float = Form(DEFAULT_TOP_P),
     max_tokens: int = Form(DEFAULT_MAX_TOKENS),
@@ -287,7 +289,14 @@ async def create_book(
     other: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    genre_str = ", ".join(genre) if genre else ""
+    genre_str = genre if genre else ""
+
+    basic_idea_parts = [
+        f"剧情梗概: {plot_summary}" if plot_summary else "",
+        f"人物卡: {character_card}" if character_card else "",
+        f"注意事项: {notes}" if notes else "",
+    ]
+    basic_idea = "\n".join(filter(None, basic_idea_parts))
     config = {
         "temperature": temperature,
         "top_p": top_p,
@@ -333,6 +342,14 @@ async def create_book(
         )
         db.add(chapter)
     db.commit()
+
+    is_htmx = request.headers.get("HX-Request") == "true"
+    if is_htmx:
+        chapters = db.query(Chapter).filter(Chapter.book_id == new_book.id).order_by(Chapter.chapter_number).all()
+        from fastapi.templating import Jinja2Templates
+
+        templates = Jinja2Templates(directory=TEMPLATE_DIR)
+        return templates.TemplateResponse(request, "book_detail.html", {"book": new_book, "chapters": chapters})
 
     return RedirectResponse(url=f"/books/{new_book.id}", status_code=303)
 

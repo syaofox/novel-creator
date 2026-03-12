@@ -1,40 +1,3 @@
-{% extends "base.html" %}
-{% block content %}
-  <div class="max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">素材管理</h1>
-
-    <div class="tabs tabs-boxed mb-4" id="material-tabs">
-      <a
-        class="tab {% if active_tab == 'plot' %}tab-active{% endif %}"
-        hx-get="/materials/partial?tab=plot"
-        hx-target="#tab-content"
-        hx-swap="innerHTML"
-        >剧情梗概</a
-      >
-      <a
-        class="tab {% if active_tab == 'character' %}tab-active{% endif %}"
-        hx-get="/materials/partial?tab=character"
-        hx-target="#tab-content"
-        hx-swap="innerHTML"
-        >人物卡</a
-      >
-      <a
-        class="tab {% if active_tab == 'note' %}tab-active{% endif %}"
-        hx-get="/materials/partial?tab=note"
-        hx-target="#tab-content"
-        hx-swap="innerHTML"
-        >注意事项</a
-      >
-      <a
-        class="tab {% if active_tab == 'style' %}tab-active{% endif %}"
-        hx-get="/materials/partial?tab=style"
-        hx-target="#tab-content"
-        hx-swap="innerHTML"
-        >文风</a
-      >
-    </div>
-
-    <div id="tab-content">
     <!-- 剧情梗概 -->
     <div
       id="plot-tab"
@@ -338,7 +301,6 @@
         {% endif %}
       </div>
     </div>
-  </div>
 
   <!-- 编辑弹窗 -->
   <dialog id="editModal" class="modal hidden">
@@ -433,5 +395,3 @@
       document.getElementById("editModal").close();
     }
   </script>
-  </div>
-{% endblock %}

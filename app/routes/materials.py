@@ -189,3 +189,46 @@ async def delete_material_note(note_id: int, db: Session = Depends(get_db)):
     db.delete(note)
     db.commit()
     return RedirectResponse(url="/materials?tab=note", status_code=303)
+
+
+@router.get("/partial", response_class=HTMLResponse)
+async def get_materials_partial(request: Request, tab: str = Query(default="plot"), db: Session = Depends(get_db)):
+    """htmx 片段路由，返回带有指定tab激活状态的内容"""
+    is_htmx = request.headers.get("HX-Request") == "true"
+    from fastapi.templating import Jinja2Templates
+
+    plot_summaries = db.query(PlotSummary).order_by(PlotSummary.updated_at.desc()).all()
+    character_cards = db.query(CharacterCard).order_by(CharacterCard.updated_at.desc()).all()
+    writing_styles = (
+        db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
+    )
+    material_notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
+
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+
+    if is_htmx:
+        return templates.TemplateResponse(
+            request,
+            "partials/materials_tab.html",
+            {
+                "plot_summaries": plot_summaries,
+                "character_cards": character_cards,
+                "writing_styles": writing_styles,
+                "material_notes": material_notes,
+                "default_style": DEFAULT_STYLE,
+                "active_tab": tab,
+            },
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "materials.html",
+        {
+            "plot_summaries": plot_summaries,
+            "character_cards": character_cards,
+            "writing_styles": writing_styles,
+            "material_notes": material_notes,
+            "default_style": DEFAULT_STYLE,
+            "active_tab": tab,
+        },
+    )
