@@ -78,6 +78,9 @@
       formData.append('core_event', coreEvent);
       formData.append('chapter_number', chapterNumber);
       
+      startRequest();
+      statusEl.textContent = '开始生成...';
+      
       try {
         const response = await fetch(`/books/${bookId}/chapters/stream`, {
           method: 'POST',
@@ -98,7 +101,6 @@
           const chunk = decoder.decode(value, { stream: true });
           received += chunk;
           textarea.value = received;
-          // 自动滚动到底部
           textarea.scrollTop = textarea.scrollHeight;
         }
         
@@ -108,6 +110,8 @@
         statusEl.textContent = '流式生成失败: ' + error.message;
         statusEl.className = 'text-sm text-red-600';
         console.error('Streaming error:', error);
+      } finally {
+        endRequest();
       }
     }
     

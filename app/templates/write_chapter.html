@@ -1,4 +1,12 @@
 <div>
+  <script>
+    document.addEventListener("htmx:beforeRequest", function (evt) {
+      startRequest();
+    });
+    document.addEventListener("htmx:afterRequest", function (evt) {
+      endRequest();
+    });
+  </script>
   <h2 class="text-xl font-bold mb-4">
     {% if editing %}
       编辑第 {{ chapter_number }} 章

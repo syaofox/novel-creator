@@ -265,6 +265,7 @@
       const loadingSpinner = document.getElementById('update-summary-loading');
       const btnText = document.getElementById('update-summary-text');
       
+      startRequest();
       btn.disabled = true;
       loadingSpinner.classList.remove('hidden');
       btnText.classList.add('hidden');
@@ -294,6 +295,7 @@
         summaryEl.value = '更新失败: ' + error.message;
         console.error('Streaming error:', error);
       } finally {
+        endRequest();
         btn.disabled = false;
         loadingSpinner.classList.add('hidden');
         btnText.classList.remove('hidden');

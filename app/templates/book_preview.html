@@ -893,6 +893,8 @@
           const rawContentEl = document.getElementById("rawContent");
           document.getElementById("rawOutput").classList.remove("hidden");
 
+          startRequest();
+
           const eventSource = new EventSource(streamUrl);
 
           eventSource.onmessage = function (event) {
@@ -905,6 +907,7 @@
               applyParsedResult(parsed);
 
               eventSource.close();
+              endRequest();
               sessionStorage.removeItem("initStreamUrl");
               sessionStorage.removeItem("initFormData");
               return;
@@ -916,6 +919,7 @@
               document.getElementById("streamStatus").innerHTML =
                 "<span>错误: " + data.error + "</span>";
               eventSource.close();
+              endRequest();
               return;
             }
 
@@ -929,6 +933,7 @@
 
           eventSource.onerror = function () {
             eventSource.close();
+            endRequest();
           };
         }
       })();
