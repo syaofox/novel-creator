@@ -9,6 +9,7 @@
 - **后端**: FastAPI, SQLAlchemy, Pydantic
 - **数据库**: SQLite
 - **AI**: DeepSeek API (OpenAI 兼容)
+- **前端**: htmx + Tailwind CSS + DaisyUI
 - **模板**: Jinja2
 - **测试**: pytest, pytest-asyncio, httpx
 - **代码质量**: ruff, prettier
@@ -38,12 +39,13 @@ uv run ruff check .
 uv run ruff check . --fix
 uv run ruff format .
 
-# HTML/Jinja2 模板
+# HTML/Jinja2 模板 (注意: prettier 对 Jinja2 支持有限，可能报错)
+# 建议将 app/templates 加入 .prettierignore
 npx prettier --check app/templates/**/*.html
 npx prettier --write app/templates/**/*.html
 
 # 完整检查
-uv run ruff check . && uv run ruff format . --check && npx prettier --check app/templates/**/*.html
+uv run ruff check . && uv run ruff format . --check
 ```
 
 ## 测试
@@ -216,6 +218,77 @@ data/                 # 数据库文件
 2. 使用 `AsyncOpenAI` 调用 API
 3. 正确处理 `None` 返回值
 4. 添加超时和错误处理
+
+## 前端开发规范 (htmx 优先)
+
+### 原则
+
+- **优先使用 htmx**，避免原生 JS 或 jQuery
+- 流式响应等 htmx 不支持的场景可使用 fetch + EventSource
+- 表单提交优先使用 htmx 的 `hx-post`
+
+### htmx 请求处理
+
+后端检测 htmx 请求并返回 partial 模板：
+
+```python
+from fastapi.responses import HTMLResponse
+
+@router.get("/items")
+async def get_items(request: Request):
+    is_htmx = request.headers.get("HX-Request") == "true"
+
+    if is_htmx:
+        return templates.TemplateResponse("partials/item_list.html", {...})
+
+    return templates.TemplateResponse("items.html", {...})
+```
+
+### 创建 htmx 兼容的页面
+
+1. **主页面** (`page.html`): 包含完整 HTML 结构
+2. **Partial 模板** (`partials/page_tab.html`): 仅包含内容部分，供 htmx 请求使用
+
+后端路由根据 `HX-Request` header 返回不同模板。
+
+### 表单字段命名
+
+确保前端表单字段名与后端 `Form()` 参数名一致：
+
+```python
+# 后端
+@router.post("/books/")
+async def create_book(
+    title: str = Form(...),
+    plot_summary: str = Form(""),  # 不是 basic_idea
+    ...
+):
+```
+
+```html
+<!-- 前端 -->
+<input name="plot_summary" ... />
+```
+
+### 页面间数据传递
+
+使用 `sessionStorage` 在页面间传递数据（如预览页需要的表单数据）：
+
+```javascript
+// 页面1: 保存数据
+sessionStorage.setItem("initStreamUrl", streamUrl);
+sessionStorage.setItem("initFormData", JSON.stringify(formData));
+
+// 页面2: 读取数据
+const streamUrl = sessionStorage.getItem("initStreamUrl");
+const formData = JSON.parse(sessionStorage.getItem("initFormData"));
+```
+
+### 避免的问题
+
+1. **prettier 对 Jinja2 支持有限**：将 `app/templates` 加入 `.prettierignore`
+2. **模板语法错误**：`{% if %}` 和 `{% endif %}` 必须正确配对，不要在模板中使用复杂的条件嵌套
+3. **表单必填字段**：确保 `Form(...)` 必填字段与前端 `required` 属性一致
 
 ## Git 提交规范
 
