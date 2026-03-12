@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings as app_settings
 from app.database import get_db
-from app.models import Book, Chapter, GlobalConfig
+from app.models import Book, Chapter, GlobalConfig, PlotSummary, CharacterCard, WritingStyle
 from app.services.ai_service import AiService
 from app.services.file_service import delete_book_files
 from app.utils.config_helper import get_global_config_dict
@@ -118,6 +118,19 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
         max_tokens = DEFAULT_MAX_TOKENS
         stream = DEFAULT_STREAM
 
+    plot_summaries = [
+        {"id": p.id, "title": p.title, "content": p.content}
+        for p in db.query(PlotSummary).order_by(PlotSummary.updated_at.desc()).all()
+    ]
+    character_cards = [
+        {"id": c.id, "title": c.title, "content": c.content}
+        for c in db.query(CharacterCard).order_by(CharacterCard.updated_at.desc()).all()
+    ]
+    writing_styles = [
+        {"id": w.id, "title": w.title, "content": w.content, "is_default": w.is_default}
+        for w in db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
+    ]
+
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
     return templates.TemplateResponse(
         request,
@@ -131,6 +144,9 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
             "default_stream": stream,
             "default_style": DEFAULT_STYLE,
             "style_presets": STYLE_PRESETS,
+            "plot_summaries": plot_summaries,
+            "character_cards": character_cards,
+            "writing_styles": writing_styles,
         },
     )
 

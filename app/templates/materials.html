@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">素材管理</h1>
+
+    <div class="tabs tabs-boxed mb-4" id="material-tabs">
+      <a
+        class="tab {% if active_tab == 'plot' %}tab-active{% endif %}"
+        onclick="switchTab('plot', this)"
+        >剧情梗概</a
+      >
+      <a
+        class="tab {% if active_tab == 'character' %}tab-active{% endif %}"
+        onclick="switchTab('character', this)"
+        >人物卡</a
+      >
+      <a
+        class="tab {% if active_tab == 'style' %}tab-active{% endif %}"
+        onclick="switchTab('style', this)"
+        >文风</a
+      >
+    </div>
+
+    <!-- 剧情梗概 -->
+    <div
+      id="plot-tab"
+      class="tab-content {% if active_tab == 'plot' %}block{% else %}hidden{% endif %}"
+    >
+      <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card-body">
+          <h2 class="card-title">新增剧情梗概</h2>
+          <form method="post" action="/materials/plot-summaries">
+            <div class="form-control mb-2">
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="标题"
+                class="input input-bordered"
+              />
+            </div>
+            <div class="form-control mb-2">
+              <textarea
+                name="content"
+                rows="4"
+                placeholder="剧情梗概内容..."
+                class="textarea textarea-bordered"
+              ></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        {% for plot in plot_summaries %}
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+              <div class="flex justify-between items-start">
+                <h3 class="font-semibold">{{ plot.title }}</h3>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-sm btn-outline"
+                    onclick="editPlot({{ plot.id }}, '{{ plot.title }}', `{{ plot.content | replace('`', '\\`') }}`)"
+                  >
+                    编辑
+                  </button>
+                  <form
+                    method="post"
+                    action="/materials/plot-summaries/{{ plot.id }}/delete"
+                    onsubmit="return confirm('确定删除？')"
+                  >
+                    <button type="submit" class="btn btn-sm btn-error">
+                      删除
+                    </button>
+                  </form>
+                </div>
+              </div>
+              <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">
+                {{ plot.content }}
+              </p>
+              <p class="text-xs text-base-content/50 mt-2">
+                更新于: {{ plot.updated_at }}
+              </p>
+            </div>
+          </div>
+        {% endfor %}
+        {% if not plot_summaries %}
+          <p class="text-center text-base-content/50 py-8">暂无剧情梗概</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 人物卡 -->
+    <div
+      id="character-tab"
+      class="tab-content {% if active_tab == 'character' %}block{% else %}hidden{% endif %}"
+    >
+      <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card-body">
+          <h2 class="card-title">新增人物卡</h2>
+          <form method="post" action="/materials/character-cards">
+            <div class="form-control mb-2">
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="人物名称"
+                class="input input-bordered"
+              />
+            </div>
+            <div class="form-control mb-2">
+              <textarea
+                name="content"
+                rows="4"
+                placeholder="人物设定、性格、背景..."
+                class="textarea textarea-bordered"
+              ></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        {% for card in character_cards %}
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+              <div class="flex justify-between items-start">
+                <h3 class="font-semibold">{{ card.title }}</h3>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-sm btn-outline"
+                    onclick="editCharacter({{ card.id }}, '{{ card.title }}', `{{ card.content | replace('`', '\\`') }}`)"
+                  >
+                    编辑
+                  </button>
+                  <form
+                    method="post"
+                    action="/materials/character-cards/{{ card.id }}/delete"
+                    onsubmit="return confirm('确定删除？')"
+                  >
+                    <button type="submit" class="btn btn-sm btn-error">
+                      删除
+                    </button>
+                  </form>
+                </div>
+              </div>
+              <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">
+                {{ card.content }}
+              </p>
+              <p class="text-xs text-base-content/50 mt-2">
+                更新于: {{ card.updated_at }}
+              </p>
+            </div>
+          </div>
+        {% endfor %}
+        {% if not character_cards %}
+          <p class="text-center text-base-content/50 py-8">暂无人物卡</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 文风 -->
+    <div
+      id="style-tab"
+      class="tab-content {% if active_tab == 'style' %}block{% else %}hidden{% endif %}"
+    >
+      <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card-body">
+          <h2 class="card-title">新增文风</h2>
+          <form method="post" action="/materials/writing-styles">
+            <div class="form-control mb-2">
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="文风名称"
+                class="input input-bordered"
+              />
+            </div>
+            <div class="form-control mb-2">
+              <textarea
+                name="content"
+                rows="4"
+                placeholder="写作风格规范..."
+                class="textarea textarea-bordered"
+              >
+{{ default_style }}</textarea
+              >
+            </div>
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-2">
+                <input
+                  type="checkbox"
+                  name="is_default"
+                  value="1"
+                  class="checkbox checkbox-primary"
+                />
+                <span class="label-text">设为默认</span>
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        {% for style in writing_styles %}
+          <div
+            class="card bg-base-100 shadow-sm {% if style.is_default %}
+              border-2 border-primary
+            {% endif %}"
+          >
+            <div class="card-body p-4">
+              <div class="flex justify-between items-start">
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold">{{ style.title }}</h3>
+                  {% if style.is_default %}
+                    <span class="badge badge-primary">默认</span>
+                  {% endif %}
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-sm btn-outline"
+                    onclick="editStyle({{ style.id }}, '{{ style.title }}', `{{ style.content | replace('`', '\\`') }}`, {{ style.is_default }})"
+                  >
+                    编辑
+                  </button>
+                  {% if not style.is_default %}
+                    <form
+                      method="post"
+                      action="/materials/writing-styles/{{ style.id }}/delete"
+                      onsubmit="return confirm('确定删除？')"
+                    >
+                      <button type="submit" class="btn btn-sm btn-error">
+                        删除
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+              <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">
+                {{ style.content }}
+              </p>
+              <p class="text-xs text-base-content/50 mt-2">
+                更新于: {{ style.updated_at }}
+              </p>
+            </div>
+          </div>
+        {% endfor %}
+        {% if not writing_styles %}
+          <p class="text-center text-base-content/50 py-8">暂无自定义文风</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑弹窗 -->
+  <dialog id="editModal" class="modal hidden">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold text-lg" id="modalTitle">编辑</h3>
+      <form method="post" id="modalForm">
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">标题</span></label>
+          <input
+            type="text"
+            name="title"
+            id="editTitle"
+            required
+            class="input input-bordered"
+          />
+        </div>
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">内容</span></label>
+          <textarea
+            name="content"
+            id="editContent"
+            rows="6"
+            class="textarea textarea-bordered"
+          ></textarea>
+        </div>
+        <div id="defaultCheck" class="form-control hidden">
+          <label class="label cursor-pointer justify-start gap-2">
+            <input
+              type="checkbox"
+              name="is_default"
+              value="1"
+              id="editIsDefault"
+              class="checkbox checkbox-primary"
+            />
+            <span class="label-text">设为默认</span>
+          </label>
+        </div>
+        <div class="modal-action">
+          <button type="button" class="btn" onclick="closeModal()">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <script>
+    let currentTab = "plot";
+
+    function switchTab(tab, element) {
+      document
+        .querySelectorAll(".tab-content")
+        .forEach((el) => (el.style.display = "none"));
+      document.getElementById(tab + "-tab").style.display = "block";
+
+      document
+        .querySelectorAll("#material-tabs .tab")
+        .forEach((t) => t.classList.remove("tab-active"));
+      element.classList.add("tab-active");
+
+      currentTab = tab;
+
+      // Update URL without reload
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.replaceState({}, "", url);
+    }
+
+    // Initialize tab from URL on page load
+    document.addEventListener("DOMContentLoaded", function () {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab && ["plot", "character", "style"].includes(tab)) {
+        const tabElement = document.querySelector(
+          `#material-tabs .tab:nth-child(${tab === "plot" ? 1 : tab === "character" ? 2 : 3})`,
+        );
+        if (tabElement) {
+          switchTab(tab, tabElement);
+        }
+      }
+    });
+
+    function editPlot(id, title, content) {
+      document.getElementById("modalTitle").textContent = "编辑剧情梗概";
+      document.getElementById("modalForm").action =
+        "/materials/plot-summaries/" + id;
+      document.getElementById("editTitle").value = title;
+      document.getElementById("editContent").value = content;
+      document.getElementById("defaultCheck").classList.add("hidden");
+      document.getElementById("editModal").showModal();
+    }
+
+    function editCharacter(id, title, content) {
+      document.getElementById("modalTitle").textContent = "编辑人物卡";
+      document.getElementById("modalForm").action =
+        "/materials/character-cards/" + id;
+      document.getElementById("editTitle").value = title;
+      document.getElementById("editContent").value = content;
+      document.getElementById("defaultCheck").classList.add("hidden");
+      document.getElementById("editModal").showModal();
+    }
+
+    function editStyle(id, title, content, isDefault) {
+      document.getElementById("modalTitle").textContent = "编辑文风";
+      document.getElementById("modalForm").action =
+        "/materials/writing-styles/" + id;
+      document.getElementById("editTitle").value = title;
+      document.getElementById("editContent").value = content;
+      document.getElementById("editIsDefault").checked = isDefault === 1;
+      document.getElementById("defaultCheck").classList.remove("hidden");
+      document.getElementById("editModal").showModal();
+    }
+
+    function closeModal() {
+      document.getElementById("editModal").close();
+    }
+  </script>
+{% endblock %}

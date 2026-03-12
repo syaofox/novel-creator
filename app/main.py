@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from app.database import engine, get_db
 from app import models
 from app.routes import books, chapters, ai
+from app.routes import materials
 from app.routes.settings import book_settings_router, global_settings_router  # 修改点
 
 # 加载环境变量
@@ -42,6 +43,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(books.router)
 app.include_router(chapters.router)
 app.include_router(ai.router)
+app.include_router(materials.router)
 app.include_router(book_settings_router)  # 新增
 app.include_router(global_settings_router)  # 新增
 

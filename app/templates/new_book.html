@@ -148,8 +148,22 @@
           <div>
             <label class="label py-1">
               <span class="label-text text-sm">剧情梗概</span>
+              <a href="/materials?tab=plot" target="_blank" class="btn btn-xs btn-ghost">管理素材</a>
             </label>
+            {% if plot_summaries %}
+            <select
+              id="plotSelect"
+              class="select select-bordered w-full mb-2"
+              onchange="loadPlotSummary()"
+            >
+              <option value="">-- 选择已有剧情梗概 --</option>
+              {% for plot in plot_summaries %}
+              <option value="{{ plot.id }}">{{ plot.title }}</option>
+              {% endfor %}
+            </select>
+            {% endif %}
             <textarea
+              id="plotSummary"
               name="plot_summary"
               rows="3"
               class="textarea textarea-bordered w-full"
@@ -159,8 +173,22 @@
           <div>
             <label class="label py-1">
               <span class="label-text text-sm">人物卡</span>
+              <a href="/materials?tab=character" target="_blank" class="btn btn-xs btn-ghost">管理素材</a>
             </label>
+            {% if character_cards %}
+            <select
+              id="characterSelect"
+              class="select select-bordered w-full mb-2"
+              onchange="loadCharacterCard()"
+            >
+              <option value="">-- 选择已有的人物卡 --</option>
+              {% for card in character_cards %}
+              <option value="{{ card.id }}">{{ card.title }}</option>
+              {% endfor %}
+            </select>
+            {% endif %}
             <textarea
+              id="characterCard"
               name="character_card"
               rows="3"
               class="textarea textarea-bordered w-full"
@@ -183,15 +211,20 @@
       <div class="form-control">
         <label class="label">
           <span class="label-text">写作风格规范</span>
+          <a href="/materials?tab=style" target="_blank" class="btn btn-xs btn-ghost">管理素材</a>
         </label>
         <select
-          id="stylePreset"
+          id="styleSelect"
           class="select select-bordered w-full mb-2"
-          onchange="updateStyleFromPreset()"
+          onchange="updateStyleFromSelect()"
         >
-          <option value="">-- 选择预设风格 --</option>
+          <option value="">-- 选择已有文风 --</option>
+          {% for style in writing_styles %}
+          <option value="{{ style.id }}">{{ style.title }}{% if style.is_default %} (默认){% endif %}</option>
+          {% endfor %}
+          <option value="custom">-- 自定义风格 --</option>
           {% for name, content in style_presets.items() %}
-          <option value="{{ name }}">{{ name }}</option>
+          <option value="{{ name }}">{{ name }} (预设)</option>
           {% endfor %}
         </select>
         <textarea
@@ -295,14 +328,57 @@
 
   <script>
     const stylePresets = {{ style_presets | tojson }};
+    const plotSummaries = {{ plot_summaries | tojson }};
+    const characterCards = {{ character_cards | tojson }};
+    const writingStyles = {{ writing_styles | tojson }};
 
-    function updateStyleFromPreset() {
-      const select = document.getElementById("stylePreset");
+    function loadPlotSummary() {
+      const select = document.getElementById("plotSelect");
+      const textarea = document.getElementById("plotSummary");
+      const selectedId = select.value;
+      
+      if (!selectedId) return;
+      
+      const plot = plotSummaries.find(p => p.id === parseInt(selectedId));
+      if (plot && plot.content) {
+        textarea.value = plot.content;
+      }
+    }
+
+    function loadCharacterCard() {
+      const select = document.getElementById("characterSelect");
+      const textarea = document.getElementById("characterCard");
+      const selectedId = select.value;
+      
+      if (!selectedId) return;
+      
+      const card = characterCards.find(c => c.id === parseInt(selectedId));
+      if (card && card.content) {
+        if (textarea.value) {
+          textarea.value += "\n" + card.content;
+        } else {
+          textarea.value = card.content;
+        }
+      }
+    }
+
+    function updateStyleFromSelect() {
+      const select = document.getElementById("styleSelect");
       const textarea = document.getElementById("styleTextarea");
-      const selectedName = select.value;
+      const selectedValue = select.value;
 
-      if (selectedName && stylePresets[selectedName]) {
-        textarea.value = stylePresets[selectedName];
+      if (!selectedValue) return;
+
+      // Check if it's a saved style
+      const savedStyle = writingStyles.find(s => s.id === parseInt(selectedValue));
+      if (savedStyle) {
+        textarea.value = savedStyle.content;
+        return;
+      }
+
+      // Check if it's a preset
+      if (stylePresets[selectedValue]) {
+        textarea.value = stylePresets[selectedValue];
       }
     }
 

@@ -11,6 +11,37 @@ def get_china_now():
     return datetime.now(timezone(timedelta(hours=8)))
 
 
+class PlotSummary(Base):
+    __tablename__ = "plot_summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(Text, default="")
+    created_at = Column(DateTime(timezone=True), default=get_china_now)
+    updated_at = Column(DateTime(timezone=True), default=get_china_now, onupdate=get_china_now)
+
+
+class CharacterCard(Base):
+    __tablename__ = "character_cards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(Text, default="")
+    created_at = Column(DateTime(timezone=True), default=get_china_now)
+    updated_at = Column(DateTime(timezone=True), default=get_china_now, onupdate=get_china_now)
+
+
+class WritingStyle(Base):
+    __tablename__ = "writing_styles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(Text, default="")
+    is_default = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=get_china_now)
+    updated_at = Column(DateTime(timezone=True), default=get_china_now, onupdate=get_china_now)
+
+
 class Book(Base):
     __tablename__ = "books"
 
