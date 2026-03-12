@@ -222,7 +222,6 @@
           {% for style in writing_styles %}
           <option value="{{ style.id }}">{{ style.title }}{% if style.is_default %} (默认){% endif %}</option>
           {% endfor %}
-          <option value="custom">-- 自定义风格 --</option>
           {% for name, content in style_presets.items() %}
           <option value="{{ name }}">{{ name }} (预设)</option>
           {% endfor %}
