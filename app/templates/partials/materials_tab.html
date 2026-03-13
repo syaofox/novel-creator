@@ -236,7 +236,7 @@
 {{ default_style }}</textarea
               >
             </div>
-            <div class="form-control">
+            <div class="form-control mb-4">
               <label class="label cursor-pointer justify-start gap-2">
                 <input
                   type="checkbox"
@@ -357,6 +357,7 @@
       document.getElementById("editTitle").value = title;
       document.getElementById("editContent").value = content;
       document.getElementById("defaultCheck").classList.add("hidden");
+      document.getElementById("editModal").classList.remove("hidden");
       document.getElementById("editModal").showModal();
     }
 
@@ -367,6 +368,7 @@
       document.getElementById("editTitle").value = title;
       document.getElementById("editContent").value = content;
       document.getElementById("defaultCheck").classList.add("hidden");
+      document.getElementById("editModal").classList.remove("hidden");
       document.getElementById("editModal").showModal();
     }
 
@@ -377,6 +379,7 @@
       document.getElementById("editTitle").value = title;
       document.getElementById("editContent").value = content;
       document.getElementById("defaultCheck").classList.add("hidden");
+      document.getElementById("editModal").classList.remove("hidden");
       document.getElementById("editModal").showModal();
     }
 
@@ -388,10 +391,12 @@
       document.getElementById("editContent").value = content;
       document.getElementById("editIsDefault").checked = isDefault === 1;
       document.getElementById("defaultCheck").classList.remove("hidden");
+      document.getElementById("editModal").classList.remove("hidden");
       document.getElementById("editModal").showModal();
     }
 
     function closeModal() {
       document.getElementById("editModal").close();
+      document.getElementById("editModal").classList.add("hidden");
     }
   </script>
