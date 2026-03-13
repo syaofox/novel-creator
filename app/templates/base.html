@@ -29,16 +29,6 @@
           if (!el.id && el.name) {
             el.id = el.name;
           }
-          var label = el.closest("label") || document.querySelector('label[for="' + el.id + '"]');
-          if (!label && el.id) {
-            var parent = el.parentElement;
-            if (parent && parent.tagName !== "LABEL") {
-              var newLabel = document.createElement("label");
-              newLabel.setAttribute("for", el.id);
-              newLabel.className = "label";
-              el.parentNode.insertBefore(newLabel, el);
-            }
-          }
         });
       }
 
