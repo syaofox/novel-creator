@@ -8,29 +8,6 @@
     <link href="/static/css/tailwind.min.css" rel="stylesheet" type="text/css" />
     <script src="/static/js/htmx.min.js"></script>
     <script>
-      function fixLabelAssociations() {
-        var counter = 0;
-        document.querySelectorAll("input, select, textarea").forEach(function (el) {
-          if (!el.id) {
-            el.id = el.name || "field_" + counter++;
-          }
-          var label = el.closest("label") || document.querySelector('label[for="' + el.id + '"]');
-          if (!label && el.id) {
-            var parent = el.parentElement;
-            if (parent && parent.tagName !== "LABEL") {
-              var newLabel = document.createElement("label");
-              newLabel.setAttribute("for", el.id);
-              newLabel.className = "label";
-              el.parentNode.insertBefore(newLabel, el);
-            }
-          }
-        });
-      }
-    </script>
-  </head>
-  <body class="bg-base-200 min-h-screen">
-    <script>fixLabelAssociations();</script>
-    <script>
       window.pendingRequestCount = window.pendingRequestCount || 0;
 
       function startRequest() {
@@ -65,8 +42,10 @@
         });
       }
 
-      document.addEventListener("DOMContentLoaded", fixLabelAssociations);
-      document.body.addEventListener("htmx:afterSwap", fixLabelAssociations);
+      document.addEventListener("DOMContentLoaded", function() {
+        fixLabelAssociations();
+        document.body.addEventListener("htmx:afterSwap", fixLabelAssociations);
+      });
     </script>
     <div class="navbar bg-base-100 shadow-lg mb-4">
       <div class="flex-1">

@@ -104,7 +104,7 @@
             <form
               action="/books/{{ book.id }}/delete"
               method="post"
-              onsubmit="return confirm('确定要删除这本书吗？此操作不可恢复！')"
+            hx-on::before-request="if(!confirm('确定要删除这本书吗？此操作不可恢复！')) { event.preventDefault(); }"
             >
               <button type="submit" class="btn btn-sm btn-error w-full">
                 删除书籍

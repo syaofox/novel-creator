@@ -12,7 +12,7 @@
           <form
             action="/books/{{ book.id }}/delete"
             method="post"
-            onsubmit="return confirm('确定要删除《{{ book.title }}》吗？此操作不可恢复！')"
+            hx-on::before-request="if(!confirm('确定要删除《{{ book.title }}》吗？此操作不可恢复！')) { event.preventDefault(); }"
           >
             <button type="submit" class="btn btn-error btn-outline">
               删除

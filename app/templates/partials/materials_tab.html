@@ -45,7 +45,7 @@
                   <form
                     method="post"
                     action="/materials/plot-summaries/{{ plot.id }}/delete"
-                    onsubmit="return confirm('确定删除？')"
+                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
@@ -115,7 +115,7 @@
                   <form
                     method="post"
                     action="/materials/character-cards/{{ card.id }}/delete"
-                    onsubmit="return confirm('确定删除？')"
+                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
@@ -185,7 +185,7 @@
                   <form
                     method="post"
                     action="/materials/material-notes/{{ note.id }}/delete"
-                    onsubmit="return confirm('确定删除？')"
+                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
@@ -278,7 +278,7 @@
                     <form
                       method="post"
                       action="/materials/writing-styles/{{ style.id }}/delete"
-                      onsubmit="return confirm('确定删除？')"
+                      hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
                     >
                       <button type="submit" class="btn btn-sm btn-error">
                         删除
