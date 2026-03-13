@@ -266,7 +266,7 @@
                  .replace(/'/g, '&#039;');
     }
     
-    async function streamSummary() {
+    function streamSummary() {
       const bookId = {{ book.id }};
       const summaryEl = document.getElementById('memory-summary');
       const btn = document.getElementById('update-summary-btn');
@@ -279,35 +279,42 @@
       btnText.classList.add('hidden');
       summaryEl.value = '更新中...';
       
-      try {
-        const response = await fetch(`/books/${bookId}/ai/stream-summary`, {
-          method: 'POST',
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
+      const eventSource = new EventSource(`/books/${bookId}/ai/stream-summary`);
+
+      eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.done) {
+          eventSource.close();
+          endRequest();
+          btn.disabled = false;
+          loadingSpinner.classList.add('hidden');
+          btnText.classList.remove('hidden');
+          return;
         }
-        
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let received = '';
-        
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          received += chunk;
-          summaryEl.value = received;
+
+        if (data.error) {
+          summaryEl.value = '更新失败: ' + data.error;
+          eventSource.close();
+          endRequest();
+          btn.disabled = false;
+          loadingSpinner.classList.add('hidden');
+          btnText.classList.remove('hidden');
+          return;
         }
-      } catch (error) {
-        summaryEl.value = '更新失败: ' + error.message;
-        console.error('Streaming error:', error);
-      } finally {
+
+        if (data.content) {
+          summaryEl.value += data.content;
+        }
+      };
+
+      eventSource.onerror = function() {
+        eventSource.close();
         endRequest();
         btn.disabled = false;
         loadingSpinner.classList.add('hidden');
         btnText.classList.remove('hidden');
-      }
+      };
     }
     
   </script>

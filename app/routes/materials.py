@@ -232,3 +232,78 @@ async def get_materials_partial(request: Request, tab: str = Query(default="plot
             "active_tab": tab,
         },
     )
+
+
+@router.get("/plot-summaries/{plot_id}/edit", response_class=HTMLResponse)
+async def edit_plot_summary_modal(request: Request, plot_id: int, db: Session = Depends(get_db)):
+    """返回编辑剧情梗概的模态框"""
+    plot = db.query(PlotSummary).filter(PlotSummary.id == plot_id).first()
+    if not plot:
+        raise HTTPException(status_code=404, detail="剧情梗概不存在")
+
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    return templates.TemplateResponse(
+        "partials/edit_modal.html",
+        {"request": request, "item": plot, "item_type": "plot", "action_url": f"/materials/plot-summaries/{plot_id}"},
+    )
+
+
+@router.get("/character-cards/{card_id}/edit", response_class=HTMLResponse)
+async def edit_character_card_modal(request: Request, card_id: int, db: Session = Depends(get_db)):
+    """返回编辑人物卡的模态框"""
+    card = db.query(CharacterCard).filter(CharacterCard.id == card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="人物卡不存在")
+
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    return templates.TemplateResponse(
+        "partials/edit_modal.html",
+        {
+            "request": request,
+            "item": card,
+            "item_type": "character",
+            "action_url": f"/materials/character-cards/{card_id}",
+        },
+    )
+
+
+@router.get("/material-notes/{note_id}/edit", response_class=HTMLResponse)
+async def edit_material_note_modal(request: Request, note_id: int, db: Session = Depends(get_db)):
+    """返回编辑注意事项的模态框"""
+    note = db.query(MaterialNote).filter(MaterialNote.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="注意事项不存在")
+
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    return templates.TemplateResponse(
+        "partials/edit_modal.html",
+        {"request": request, "item": note, "item_type": "note", "action_url": f"/materials/material-notes/{note_id}"},
+    )
+
+
+@router.get("/writing-styles/{style_id}/edit", response_class=HTMLResponse)
+async def edit_writing_style_modal(request: Request, style_id: int, db: Session = Depends(get_db)):
+    """返回编辑文风的模态框"""
+    style = db.query(WritingStyle).filter(WritingStyle.id == style_id).first()
+    if not style:
+        raise HTTPException(status_code=404, detail="文风不存在")
+
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    return templates.TemplateResponse(
+        "partials/edit_modal.html",
+        {
+            "request": request,
+            "item": style,
+            "item_type": "style",
+            "action_url": f"/materials/writing-styles/{style_id}",
+            "show_default": True,
+        },
+    )

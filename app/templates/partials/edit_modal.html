@@ -1,0 +1,39 @@
+<dialog id="editModal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg">
+      {% if item_type == 'plot' %}编辑剧情梗概
+      {% elif item_type == 'character' %}编辑人物卡
+      {% elif item_type == 'note' %}编辑注意事项
+      {% elif item_type == 'style' %}编辑文风
+      {% endif %}
+    </h3>
+    <form method="post" action="{{ action_url }}">
+      <div class="form-control mb-2">
+        <label class="label"><span class="label-text">标题</span></label>
+        <input type="text" name="title" value="{{ item.title }}" required class="input input-bordered" />
+      </div>
+      <div class="form-control mb-2">
+        <label class="label"><span class="label-text">内容</span></label>
+        <textarea name="content" rows="6" class="textarea textarea-bordered">{{ item.content }}</textarea>
+      </div>
+      {% if show_default %}
+      <div class="form-control mb-4">
+        <label class="label cursor-pointer justify-start gap-2">
+          <input type="checkbox" name="is_default" value="1" {% if item.is_default %}checked{% endif %} class="checkbox checkbox-primary" />
+          <span class="label-text">设为默认</span>
+        </label>
+      </div>
+      {% endif %}
+      <div class="modal-action">
+        <button type="button" class="btn" hx-on="click: document.getElementById('editModal').close()">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+<script>
+  document.getElementById('editModal').showModal();
+</script>

@@ -72,50 +72,46 @@
     const bookId = {{ book.id }};
     const chapterNumber = {{ chapter_number }};
     const coreEvent = {{ core_event|tojson }};
-    
-    async function startStreaming() {
-      const formData = new FormData();
-      formData.append('core_event', coreEvent);
-      formData.append('chapter_number', chapterNumber);
+
+    function startStreaming() {
+      const url = `/books/${bookId}/chapters/stream?chapter_number=${chapterNumber}&core_event=${encodeURIComponent(coreEvent)}`;
       
       startRequest();
       statusEl.textContent = '开始生成...';
-      
-      try {
-        const response = await fetch(`/books/${bookId}/chapters/stream`, {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
+
+      const eventSource = new EventSource(url);
+
+      eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.done) {
+          statusEl.textContent = '流式生成完成。';
+          statusEl.className = 'text-sm text-green-600';
+          eventSource.close();
+          endRequest();
+          return;
         }
-        
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let received = '';
-        
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          received += chunk;
-          textarea.value = received;
+
+        if (data.error) {
+          statusEl.textContent = '流式生成失败: ' + data.error;
+          statusEl.className = 'text-sm text-red-600';
+          eventSource.close();
+          endRequest();
+          return;
+        }
+
+        if (data.content) {
+          textarea.value += data.content;
           textarea.scrollTop = textarea.scrollHeight;
         }
-        
-        statusEl.textContent = '流式生成完成。';
-        statusEl.className = 'text-sm text-green-600';
-      } catch (error) {
-        statusEl.textContent = '流式生成失败: ' + error.message;
-        statusEl.className = 'text-sm text-red-600';
-        console.error('Streaming error:', error);
-      } finally {
+      };
+
+      eventSource.onerror = function() {
+        eventSource.close();
         endRequest();
-      }
+      };
     }
-    
-    // 延迟一点开始，确保页面加载完成
+
     setTimeout(startStreaming, 100);
   })();
 </script>

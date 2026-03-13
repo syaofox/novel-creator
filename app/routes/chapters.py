@@ -1,3 +1,5 @@
+import asyncio
+import json
 import logging
 import re
 
@@ -327,6 +329,55 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: Sessi
             )
 
 
+@router.get("/stream")
+async def stream_chapter(
+    request: Request,
+    book_id: int,
+    chapter_number: int | None = None,
+    core_event: str = "",
+    db: Session = Depends(get_db),
+):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    if chapter_number is None:
+        current = int(book.current_chapter) if book.current_chapter is not None else 0
+        chapter_number = current + 1
+
+    prev_ending = get_prev_ending_from_db(db, book_id, chapter_number)
+
+    global_config = get_global_config_dict(db)
+    ai_service = AiService(
+        api_key=app_settings.deepseek_api_key,
+        base_url=app_settings.deepseek_base_url,
+        model=global_config.get("default_model") or app_settings.default_model,
+        global_config=global_config,
+    )
+
+    async def generate():
+        try:
+            async for chunk in ai_service.stream_write_chapter(book, chapter_number, core_event, prev_ending):
+                data = json.dumps({"content": chunk}, ensure_ascii=False)
+                yield f"data: {data}\n\n"
+                await asyncio.sleep(0.01)
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except TimeoutError:
+            logger.error("Timeout during streaming chapter generation")
+            yield f"data: {json.dumps({'error': '请求超时，请稍后重试'})}\n\n"
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during streaming: {e}")
+            yield f"data: {json.dumps({'error': '网络连接失败，请检查网络'})}\n\n"
+        except Exception as e:
+            logger.exception("Error during streaming chapter generation")
+            import traceback
+
+            error_msg = f"\n\n--- 生成过程中发生错误 ---\n{str(e)}\n{traceback.format_exc()}\n"
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
 @router.get("/{chapter_num}", response_class=HTMLResponse)
 async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -418,49 +469,3 @@ async def save_chapter_endpoint(
     )
     oob_html = f'<div id="chapter-list" hx-swap-oob="true">{chapter_list_html}</div>'
     return HTMLResponse(content=oob_html + content_html)
-
-
-@router.post("/stream")
-async def stream_chapter(
-    request: Request,
-    book_id: int,
-    chapter_number: int = Form(None),
-    core_event: str = Form(...),
-    db: Session = Depends(get_db),
-):
-    book = db.query(Book).filter(Book.id == book_id).first()
-    if not book:
-        raise HTTPException(status_code=404, detail="书籍不存在")
-
-    if chapter_number is None:
-        current = int(book.current_chapter) if book.current_chapter is not None else 0
-        chapter_number = current + 1
-
-    prev_ending = get_prev_ending_from_db(db, book_id, chapter_number)
-
-    global_config = get_global_config_dict(db)
-    ai_service = AiService(
-        api_key=app_settings.deepseek_api_key,
-        base_url=app_settings.deepseek_base_url,
-        model=global_config.get("default_model") or app_settings.default_model,
-        global_config=global_config,
-    )
-
-    async def generate():
-        try:
-            async for chunk in ai_service.stream_write_chapter(book, chapter_number, core_event, prev_ending):
-                yield chunk
-        except TimeoutError:
-            logger.error("Timeout during streaming chapter generation")
-            yield "\n\n--- 生成超时，请稍后重试 ---\n"
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during streaming: {e}")
-            yield "\n\n--- 网络连接失败 ---\n"
-        except Exception as e:
-            logger.exception("Error during streaming chapter generation")
-            import traceback
-
-            error_msg = f"\n\n--- 生成过程中发生错误 ---\n{str(e)}\n{traceback.format_exc()}\n"
-            yield error_msg
-
-    return StreamingResponse(generate(), media_type="text/plain")

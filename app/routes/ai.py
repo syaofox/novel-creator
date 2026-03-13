@@ -1,3 +1,5 @@
+import asyncio
+import json
 import logging
 from typing import Any
 
@@ -60,7 +62,7 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
     return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
 
 
-@router.post("/stream-summary", response_class=HTMLResponse)
+@router.get("/stream-summary", response_class=HTMLResponse)
 async def stream_summary(book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
@@ -87,21 +89,24 @@ async def stream_summary(book_id: int, db: Session = Depends(get_db)):
     async def generate():
         try:
             async for chunk in ai_service.stream_update_summary(book, new_chapter_text, chapter_number):
-                yield chunk
+                data = json.dumps({"content": chunk}, ensure_ascii=False)
+                yield f"data: {data}\n\n"
+                await asyncio.sleep(0.01)
+            yield f"data: {json.dumps({'done': True})}\n\n"
         except TimeoutError:
             logger.error("Timeout during streaming summary update")
-            yield "\n\n--- 更新超时，请稍后重试 ---\n"
+            yield f"data: {json.dumps({'error': '更新超时，请稍后重试'})}\n\n"
         except (OSError, ConnectionError) as e:
             logger.error(f"Network error during streaming summary update: {e}")
-            yield "\n\n--- 网络连接失败 ---\n"
+            yield f"data: {json.dumps({'error': '网络连接失败，请检查网络'})}\n\n"
         except Exception as e:
             logger.exception("Error during streaming summary update")
             import traceback
 
             error_msg = f"\n\n--- 更新过程中发生错误 ---\n{str(e)}\n{traceback.format_exc()}\n"
-            yield error_msg
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
-    return StreamingResponse(generate(), media_type="text/plain")
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 @router.post("/save-summary", response_class=HTMLResponse)
