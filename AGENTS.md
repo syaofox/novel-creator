@@ -113,17 +113,102 @@ class BookOut(BookCreate):
 
 ```
 app/
-├── main.py       # FastAPI 入口
-├── config.py     # 配置
-├── database.py   # 数据库连接
-├── models.py     # SQLAlchemy 模型
-├── schemas.py    # Pydantic 模型
-├── routes/       # API 路由
-├── services/     # 业务逻辑
-├── templates/    # Jinja2 模板
-└── static/       # 静态文件
-tests/            # 测试
-alembic/          # 迁移
+├── main.py           # FastAPI 入口
+├── config.py         # 配置
+├── database.py       # 数据库连接
+├── models.py         # SQLAlchemy 模型
+├── core/             # 核心模块
+│   ├── dependencies.py  # 依赖注入 (get_db, get_ai_service, get_novel_service)
+│   └── exceptions.py    # 自定义异常类
+├── repositories/     # 数据访问层
+│   └── novel_repository.py
+├── services/         # 业务逻辑层
+│   ├── ai_service.py       # AI 服务 (DeepSeek API)
+│   ├── base_ai_service.py # 基础 AI 服务 (LLM 调用封装)
+│   ├── novel_service.py    # 小说业务逻辑
+│   ├── file_service.py    # 文件操作
+│   └── agents/            # Agent 实现
+│       ├── base_agent.py  # Agent 基类 + 工厂
+│       └── plot_agent.py  # 示例 Agent
+├── schemas/         # Pydantic 模型 (拆分后的目录)
+│   ├── __init__.py
+│   ├── book.py
+│   ├── chapter.py
+│   ├── materials.py
+│   └── settings.py
+├── routes/          # API 路由 (只调用 service)
+├── templates/       # Jinja2 模板
+└── static/         # 静态文件
+tests/               # 测试
+alembic/            # 迁移
+```
+
+## 分层架构规范
+
+### Repository 层
+
+```python
+from app.repositories.novel_repository import NovelRepository
+
+repo = NovelRepository(db)
+book = repo.get_book_by_id(book_id)
+chapters = repo.get_chapters(book_id)
+```
+
+### Service 层
+
+```python
+from app.core.dependencies import NovelServiceDep
+
+# 路由中使用依赖注入
+@router.get("/books/{book_id}")
+async def get_book(book_id: int, service: NovelServiceDep):
+    book = service.get_book(book_id)
+```
+
+### Agent 层 (新增 Agent)
+
+```python
+from app.services.agents import AgentFactory
+from app.services.base_ai_service import BaseAiService
+
+class MyAgent(BaseAgent):
+    system_prompt = "你的角色描述..."
+
+    def build_prompt(self, **kwargs) -> str:
+        return f"任务描述: {kwargs.get('input')}"
+
+# 注册 Agent
+AgentFactory.register("my_agent", MyAgent)
+
+# 使用 Agent
+agent = AgentFactory.create("my_agent", ai_service)
+result = await agent.run(input="任务输入")
+```
+
+### 依赖注入类型
+
+```python
+from app.core.dependencies import DbSession, AiServiceDep, NovelServiceDep
+
+# 在路由中直接使用
+async def my_endpoint(db: DbSession, service: NovelServiceDep):
+    ...
+```
+
+### 异常处理
+
+```python
+from app.core.exceptions import (
+    NovelCreatorException,
+    BookNotFoundError,
+    ChapterNotFoundError,
+    AIServiceError,
+)
+
+# 路由中抛出
+if not book:
+    raise BookNotFoundError(book_id)
 ```
 
 ## 前端开发 (htmx 优先)

@@ -2413,6 +2413,9 @@
   .h-48 {
     height: calc(var(--spacing) * 48);
   }
+  .max-h-32 {
+    max-height: calc(var(--spacing) * 32);
+  }
   .min-h-0 {
     min-height: calc(var(--spacing) * 0);
   }
@@ -2531,6 +2534,9 @@
       margin-block-start: calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));
       margin-block-end: calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)));
     }
+  }
+  .overflow-y-auto {
+    overflow-y: auto;
   }
   .rounded {
     border-radius: 0.25rem;

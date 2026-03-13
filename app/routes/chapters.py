@@ -2,45 +2,19 @@ import asyncio
 import json
 import logging
 import re
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.config import settings as app_settings
-from app.database import get_db
-from app.models import Book, Chapter, GlobalConfig
-from app.services.ai_service import AiService
-from app.utils.config_helper import get_global_config_dict
-from app.utils.helpers import extract_title
-from app.constants import (
-    DEFAULT_TEMPERATURE,
-    DEFAULT_TOP_P,
-    DEFAULT_MAX_TOKENS,
-    DEFAULT_STREAM,
-    DEFAULT_JAILBREAK_PREFIX,
-    DEFAULT_SYSTEM_TEMPLATE,
-    DEFAULT_MODEL,
-)
+from app.core.dependencies import DbSession, NovelServiceDep, get_ai_service
+from app.constants import TEMPLATE_DIR
+from app.models import Book, Chapter
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/books/{book_id}/chapters", tags=["chapters"])
-
-
-def get_prev_ending_from_db(db: Session, book_id: int, chapter_number: int, chars: int = 600) -> str:
-    """从数据库获取上一章的最后 chars 字符"""
-    if chapter_number <= 1:
-        return ""
-    prev_chapter: Chapter | None = (
-        db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_number - 1).first()
-    )
-    if not prev_chapter:
-        return ""
-    content = str(prev_chapter.content) if prev_chapter.content is not None else ""
-    if not content:
-        return ""
-    return content[-chars:]
 
 
 def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
@@ -71,80 +45,96 @@ def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
 
 @router.get("/write", response_class=HTMLResponse)
 async def write_chapter_form(
-    request: Request, book_id: int, num: int | None = None, edit: bool = False, db: Session = Depends(get_db)
+    request: Request, book_id: int, num: int | None = None, edit: bool = False, db: DbSession = None
 ):
-    book = db.query(Book).filter(Book.id == book_id).first()
-    if not book:
-        raise HTTPException(status_code=404, detail="书籍不存在")
+    if db is None:
+        from app.database import SessionLocal
 
-    if num is not None:
-        chapter_num = num
-        if chapter_num < 1 or chapter_num > book.target_chapters:
-            raise HTTPException(status_code=400, detail="章节号超出范围")
-        current = int(book.current_chapter) if book.current_chapter is not None else 0
-        if chapter_num > current + 1:
-            raise HTTPException(status_code=400, detail="请按顺序完成章节")
+        db = SessionLocal()
+        close_db = True
     else:
-        chapter_num = int(book.current_chapter) + 1
+        close_db = False
 
-    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_num).first()
+    try:
+        from app.repositories.novel_repository import NovelRepository
 
-    core_event = (
-        chapter.core_event
-        if chapter and chapter.core_event
-        else extract_chapter_outline(str(book.memory_summary), chapter_num)
-    )
+        repo = NovelRepository(db)
+        book = repo.get_book_by_id(book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="书籍不存在")
 
-    prev_ending = get_prev_ending_from_db(db, book_id, chapter_num)
+        if num is not None:
+            chapter_num = num
+            if chapter_num < 1 or chapter_num > book.target_chapters:
+                raise HTTPException(status_code=400, detail="章节号超出范围")
+            current = int(book.current_chapter) if book.current_chapter is not None else 0
+            if chapter_num > current + 1:
+                raise HTTPException(status_code=400, detail="请按顺序完成章节")
+        else:
+            chapter_num = int(book.current_chapter) + 1
 
-    is_completed = chapter is not None and chapter.status == "已完成"
-    is_editing = is_completed or edit
-    existing_content = ""
-    if is_editing and chapter:
-        existing_content = chapter.content or ""
+        chapter = repo.get_chapter(book_id, chapter_num)
 
-    from fastapi.templating import Jinja2Templates
+        core_event = (
+            chapter.core_event
+            if chapter and chapter.core_event
+            else extract_chapter_outline(str(book.memory_summary), chapter_num)
+        )
 
-    templates = Jinja2Templates(directory="app/templates")
+        prev_ending = repo.get_prev_ending(book_id, chapter_num)
 
-    if is_completed and not edit:
+        is_completed = chapter is not None and chapter.status == "已完成"
+        is_editing = is_completed or edit
+        existing_content = ""
+        if is_editing and chapter:
+            existing_content = chapter.content or ""
+
+        from fastapi.templating import Jinja2Templates
+
+        templates = Jinja2Templates(directory=TEMPLATE_DIR)
+
+        if is_completed and not edit:
+            return templates.TemplateResponse(
+                request,
+                "chapter_preview.html",
+                {
+                    "book": book,
+                    "chapter_number": chapter_num,
+                    "chapter": chapter,
+                    "prev_ending": prev_ending,
+                    "core_event": core_event,
+                    "content": existing_content,
+                },
+            )
+
         return templates.TemplateResponse(
             request,
-            "chapter_preview.html",
+            "write_chapter.html",
             {
                 "book": book,
                 "chapter_number": chapter_num,
-                "chapter": chapter,
                 "prev_ending": prev_ending,
                 "core_event": core_event,
-                "content": existing_content,
+                "editing": is_editing,
+                "chapter": chapter,
+                "existing_content": existing_content,
             },
         )
-
-    return templates.TemplateResponse(
-        request,
-        "write_chapter.html",
-        {
-            "book": book,
-            "chapter_number": chapter_num,
-            "prev_ending": prev_ending,
-            "core_event": core_event,
-            "editing": is_editing,
-            "chapter": chapter,
-            "existing_content": existing_content,
-        },
-    )
+    finally:
+        if close_db:
+            db.close()
 
 
 @router.post("/", response_class=HTMLResponse)
 async def generate_chapter(
     request: Request,
     book_id: int,
-    chapter_number: int = Form(None),
+    db: DbSession,
+    service: NovelServiceDep,
+    chapter_number: int | None = None,
     core_event: str = Form(...),
-    db: Session = Depends(get_db),
 ):
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
@@ -152,12 +142,12 @@ async def generate_chapter(
         current = int(book.current_chapter) if book.current_chapter is not None else 0
         chapter_number = current + 1
 
-    prev_ending = get_prev_ending_from_db(db, book_id, int(chapter_number))
+    prev_ending = service.get_prev_ending(book_id, int(chapter_number))
 
     stream = book.config.get("stream", True)
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory="app/templates")
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
     if stream:
         try:
@@ -187,14 +177,10 @@ async def generate_chapter(
                 content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
             )
     else:
-        # 非流式模式：生成完整内容
+        from app.utils.config_helper import get_global_config_dict
+
         global_config = get_global_config_dict(db)
-        ai_service = AiService(
-            api_key=app_settings.deepseek_api_key,
-            base_url=app_settings.deepseek_base_url,
-            model=global_config.get("default_model") or app_settings.default_model,
-            global_config=global_config,
-        )
+        ai_service = get_ai_service(db)
         try:
             content = await ai_service.write_chapter(book, int(chapter_number), core_event, prev_ending)
         except TimeoutError:
@@ -235,26 +221,26 @@ async def generate_chapter(
 
 
 @router.get("/regenerate", response_class=HTMLResponse)
-async def regenerate_chapter(request: Request, book_id: int, num: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSession, service: NovelServiceDep):
+    book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
     if num < 1 or num > book.target_chapters:
         raise HTTPException(status_code=400, detail="章节号超出范围")
 
-    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == num).first()
+    chapter = service.get_chapter(book_id, num)
 
     core_event = (
         chapter.core_event if chapter and chapter.core_event else extract_chapter_outline(str(book.memory_summary), num)
     )
 
-    prev_ending = get_prev_ending_from_db(db, book_id, num)
+    prev_ending = service.get_prev_ending(book_id, num)
 
     stream = book.config.get("stream", True)
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory="app/templates")
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
     if stream:
         try:
@@ -285,13 +271,10 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: Sessi
                 content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
             )
     else:
+        from app.utils.config_helper import get_global_config_dict
+
         global_config = get_global_config_dict(db)
-        ai_service = AiService(
-            api_key=app_settings.deepseek_api_key,
-            base_url=app_settings.deepseek_base_url,
-            model=global_config.get("default_model") or app_settings.default_model,
-            global_config=global_config,
-        )
+        ai_service = get_ai_service(db)
         try:
             content = await ai_service.write_chapter(book, int(num), core_event, prev_ending)
         except TimeoutError:
@@ -336,11 +319,12 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: Sessi
 async def stream_chapter(
     request: Request,
     book_id: int,
+    db: DbSession,
+    service: NovelServiceDep,
     chapter_number: int | None = None,
     core_event: str = "",
-    db: Session = Depends(get_db),
 ):
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
@@ -348,15 +332,9 @@ async def stream_chapter(
         current = int(book.current_chapter) if book.current_chapter is not None else 0
         chapter_number = current + 1
 
-    prev_ending = get_prev_ending_from_db(db, book_id, chapter_number)
+    prev_ending = service.get_prev_ending(book_id, chapter_number)
 
-    global_config = get_global_config_dict(db)
-    ai_service = AiService(
-        api_key=app_settings.deepseek_api_key,
-        base_url=app_settings.deepseek_base_url,
-        model=global_config.get("default_model") or app_settings.default_model,
-        global_config=global_config,
-    )
+    ai_service = get_ai_service(db)
 
     async def generate():
         try:
@@ -382,32 +360,31 @@ async def stream_chapter(
 
 
 @router.get("/{chapter_num}", response_class=HTMLResponse)
-async def read_chapter(request: Request, book_id: int, chapter_num: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def read_chapter(request: Request, book_id: int, chapter_num: int, db: DbSession, service: NovelServiceDep):
+    book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_num).first()
+    chapter = service.get_chapter(book_id, chapter_num)
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     content = chapter.content or ""
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory="app/templates")
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
     return templates.TemplateResponse(
         request, "chapter_view.html", {"book": book, "chapter": chapter, "content": content}
     )
 
 
 @router.get("/list", response_class=HTMLResponse)
-async def get_chapter_list(book_id: int, db: Session = Depends(get_db)):
-    """获取章节列表"""
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def get_chapter_list(book_id: int, db: DbSession, service: NovelServiceDep):
+    book = service.get_book(book_id)
     if not book:
-        raise HTTPException(status_code=404, detail="书籍不存在")
-    chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
+        return HTMLResponse(content="书籍不存在", status_code=404)
+    chapters = service.get_chapters(book_id)
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory="app/templates")
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
     return templates.TemplateResponse("partials/chapter_list.html", {"book": book, "chapters": chapters})
 
 
@@ -415,41 +392,28 @@ async def get_chapter_list(book_id: int, db: Session = Depends(get_db)):
 async def save_chapter_endpoint(
     request: Request,
     book_id: int,
+    db: DbSession,
+    service: NovelServiceDep,
     chapter_number: int = Form(...),
     content: str = Form(...),
-    db: Session = Depends(get_db),
 ):
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = service.get_book(book_id)
     if not book:
-        raise HTTPException(status_code=404, detail="书籍不存在")
+        return HTMLResponse(content="书籍不存在", status_code=404)
 
     if chapter_number < 1 or chapter_number > book.target_chapters:
-        raise HTTPException(status_code=400, detail="章节号超出范围")
+        return HTMLResponse(content="章节号超出范围", status_code=400)
 
-    chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_number).first()
+    chapter = service.get_chapter(book_id, chapter_number)
 
     current = int(book.current_chapter) if book.current_chapter is not None else 0
 
     is_new_chapter = chapter is None
     if is_new_chapter and chapter_number != current + 1:
-        raise HTTPException(status_code=400, detail="章节编号不连续")
-
-    title = extract_title(content) or f"第{chapter_number}章"
+        return HTMLResponse(content="章节编号不连续", status_code=400)
 
     try:
-        if is_new_chapter:
-            chapter = Chapter(
-                book_id=book_id, chapter_number=chapter_number, title=title, content=content, status="已完成"
-            )
-            db.add(chapter)
-        else:
-            chapter.title = title
-            chapter.content = content
-            chapter.status = "已完成"
-        book.current_chapter = chapter_number
-        db.commit()
-        db.refresh(chapter)
-        chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
+        chapter, _ = service.save_chapter(book, chapter_number, content)
     except TimeoutError:
         logger.error("Timeout during chapter save")
         return HTMLResponse(content="保存超时，请稍后重试", status_code=504)
@@ -464,8 +428,8 @@ async def save_chapter_endpoint(
 
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory="app/templates")
-    chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    chapters = service.get_chapters(book_id)
     chapter_list_html = templates.get_template("partials/chapter_list.html").render(book=book, chapters=chapters)
     content_html = templates.get_template("partials/chapter_generated.html").render(
         book=book, chapter=chapter, content=content[:500] + "..."
