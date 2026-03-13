@@ -59,7 +59,7 @@
               <input
                 type="text"
                 name="title"
-                id="title"
+                id="titleInput"
                 value="{{ title }}"
                 class="input input-bordered w-full"
                 placeholder="输入书名"
@@ -69,7 +69,6 @@
                 <button
                   type="button"
                   class="btn btn-xs btn-ghost text-primary"
-                  onclick="useSuggestedTitle()"
                 ></button>
               </div>
             </div>
@@ -460,7 +459,11 @@
           }
 
           if (other) {
-            parsed.other = other;
+            try {
+              parsed.other = JSON.parse(other);
+            } catch {
+              parsed.other = other;
+            }
           }
 
           return {
@@ -739,36 +742,59 @@
       }
 
       function renderOther(other) {
+        console.log("renderOther called with:", other);
         if (typeof other === "string" && other.trim()) {
           try {
             other = JSON.parse(other);
+            console.log("Parsed other from string:", other);
           } catch {
+            console.log("Failed to parse other as JSON");
             return;
           }
         }
-        if (typeof other !== "object" || !other) return;
+        if (typeof other !== "object" || !other) {
+          console.log("other is not a valid object:", other);
+          return;
+        }
         const suggestedTitle = other.novel_title || "";
+        console.log("suggestedTitle:", suggestedTitle);
         if (suggestedTitle) {
           const suggestedDiv = document.getElementById("suggestedTitle");
+          if (!suggestedDiv) {
+            console.log("suggestedTitle div not found");
+            return;
+          }
           suggestedDiv.classList.remove("hidden");
           const btn = suggestedDiv.querySelector("button");
+          if (!btn) {
+            console.log("button not found");
+            return;
+          }
           btn.textContent = suggestedTitle;
           btn.onclick = () => {
-            document.getElementById("title").value = suggestedTitle;
+            const titleInput = document.getElementById("titleInput");
+            console.log("titleInput:", titleInput);
+            console.log("titleInput value before:", titleInput?.value);
+            if (titleInput) {
+              titleInput.value = suggestedTitle;
+              titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+              titleInput.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            console.log("titleInput value after:", titleInput?.value);
+            console.log("Button clicked, title set to:", suggestedTitle);
           };
         }
-        document.getElementById("other_key_points").value =
-          other.key_points || "";
-        document.getElementById("other_writing_guidance").value =
-          other.writing_guidance || "";
+        const keyPointsEl = document.getElementById("other_key_points");
+        const writingGuidanceEl = document.getElementById("other_writing_guidance");
+        if (keyPointsEl) keyPointsEl.value = other.key_points || "";
+        if (writingGuidanceEl) writingGuidanceEl.value = other.writing_guidance || "";
       }
 
       function getOtherFromUI() {
         return {
-          novel_title: document.getElementById("title").value,
-          key_points: document.getElementById("other_key_points").value,
-          writing_guidance: document.getElementById("other_writing_guidance")
-            .value,
+          novel_title: document.getElementById("title")?.value || "",
+          key_points: document.getElementById("other_key_points")?.value || "",
+          writing_guidance: document.getElementById("other_writing_guidance")?.value || "",
         };
       }
 
