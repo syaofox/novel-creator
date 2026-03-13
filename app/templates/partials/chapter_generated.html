@@ -17,7 +17,7 @@
     >
       修改本章
     </button>
-    {% if chapter.chapter_number < book.target_chapters %}
+    {% if chapter.chapter_number < book.target_chapters and chapter.chapter_number == book.current_chapter %}
       <button
         class="btn btn-sm btn-success"
         hx-get="/books/{{ book.id }}/chapters/write?num={{ chapter.chapter_number + 1 }}"

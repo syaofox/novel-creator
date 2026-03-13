@@ -81,6 +81,9 @@ async def write_chapter_form(
         chapter_num = num
         if chapter_num < 1 or chapter_num > book.target_chapters:
             raise HTTPException(status_code=400, detail="章节号超出范围")
+        current = int(book.current_chapter) if book.current_chapter is not None else 0
+        if chapter_num > current + 1:
+            raise HTTPException(status_code=400, detail="请按顺序完成章节")
     else:
         chapter_num = int(book.current_chapter) + 1
 

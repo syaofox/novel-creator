@@ -63,18 +63,18 @@ async def update_summary(request: Request, book_id: int, db: Session = Depends(g
 
 
 @router.get("/stream-summary", response_class=HTMLResponse)
-async def stream_summary(book_id: int, db: Session = Depends(get_db)):
+async def stream_summary(book_id: int, chapter: int | None = None, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    chapter_number = book.current_chapter or 1
+    chapter_number = chapter if chapter is not None else (book.current_chapter or 1)
     if chapter_number < 1:
-        return HTMLResponse(content="请先完成至少一章内容", status_code=400)
+        return HTMLResponse(content="请先至少保存一章内容", status_code=400)
 
     chapter = db.query(Chapter).filter(Chapter.book_id == book_id, Chapter.chapter_number == chapter_number).first()
     if not chapter or not chapter.content:
-        return HTMLResponse(content="当前章节不存在或内容为空，请先保存章节", status_code=400)
+        return HTMLResponse(content=f"第{chapter_number}章内容为空，请先保存章节内容", status_code=400)
 
     new_chapter_text = chapter.content
 
@@ -104,6 +104,43 @@ async def stream_summary(book_id: int, db: Session = Depends(get_db)):
             import traceback
 
             error_msg = f"\n\n--- 更新过程中发生错误 ---\n{str(e)}\n{traceback.format_exc()}\n"
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+@router.get("/stream-compress-summary", response_class=HTMLResponse)
+async def stream_compress_summary(book_id: int, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    if not book.memory_summary:
+        raise HTTPException(status_code=400, detail="摘要为空，无法压缩")
+
+    global_config = get_global_config_dict(db)
+    ai_service = AiService(
+        api_key=app_settings.deepseek_api_key,
+        base_url=app_settings.deepseek_base_url,
+        model=app_settings.default_model,
+        global_config=global_config,
+    )
+
+    async def generate():
+        try:
+            async for chunk in ai_service.stream_compress_summary(book):
+                data = json.dumps({"content": chunk}, ensure_ascii=False)
+                yield f"data: {data}\n\n"
+                await asyncio.sleep(0.01)
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except TimeoutError:
+            logger.error("Timeout during streaming compress summary")
+            yield f"data: {json.dumps({'error': '压缩超时，请稍后重试'})}\n\n"
+        except (OSError, ConnectionError) as e:
+            logger.error(f"Network error during streaming compress summary: {e}")
+            yield f"data: {json.dumps({'error': '网络连接失败，请检查网络'})}\n\n"
+        except Exception as e:
+            logger.exception("Error during streaming compress summary")
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")

@@ -43,6 +43,7 @@
               <div class="collapse-title text-lg font-medium">记忆摘要</div>
               <div class="collapse-content">
                 <form
+                  id="summary-form"
                   hx-post="/books/{{ book.id }}/ai/save-summary"
                   hx-target="#save-summary-result"
                   hx-swap="innerHTML"
@@ -53,27 +54,42 @@
                     class="textarea textarea-bordered w-full h-48 text-xs font-mono"
                     placeholder="摘要内容"
                   >{{ book.memory_summary or '' }}</textarea>
-                  <button
-                    type="submit"
-                    class="btn btn-xs btn-outline w-full mt-2"
-                  >
-                    保存摘要
-                  </button>
+                  <div class="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline flex-1"
+                      id="update-summary-btn"
+                      onclick="streamSummary()"
+                    >
+                      <span
+                        id="update-summary-loading"
+                        class="loading loading-spinner loading-xs hidden"
+                      ></span>
+                      <span id="update-summary-text">更新</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline flex-1"
+                      id="compress-summary-btn"
+                      onclick="streamCompressSummary()"
+                    >
+                      <span
+                        id="compress-summary-loading"
+                        class="loading loading-spinner loading-xs hidden"
+                      ></span>
+                      <span id="compress-summary-text">压缩</span>
+                    </button>
+                    <button
+                      type="submit"
+                      class="btn btn-sm btn-outline flex-1"
+                      onclick="window.summaryModified = false;"
+                    >
+                      保存
+                    </button>
+                  </div>
                 </form>
                 <span id="save-summary-result" class="text-xs"></span>
               </div>
-            </div>
-            <button
-              class="btn btn-sm btn-outline w-full"
-              id="update-summary-btn"
-              onclick="streamSummary()"
-            >
-              <span
-                id="update-summary-loading"
-                class="loading loading-spinner loading-xs hidden"
-              ></span>
-              <span id="update-summary-text">更新摘要</span>
-            </button>
             <div class="collapse collapse-arrow bg-base-200 mt-2">
               <input type="checkbox" />
               <div class="collapse-title text-lg font-medium">风格规范</div>
@@ -272,14 +288,17 @@
       const btn = document.getElementById('update-summary-btn');
       const loadingSpinner = document.getElementById('update-summary-loading');
       const btnText = document.getElementById('update-summary-text');
+      const chapterNum = window.selectedChapter || {{ book.current_chapter or 1 }};
+      console.log('更新摘要章节:', chapterNum);
       
       startRequest();
       btn.disabled = true;
       loadingSpinner.classList.remove('hidden');
       btnText.classList.add('hidden');
+      let firstChunk = true;
       summaryEl.value = '更新中...';
       
-      const eventSource = new EventSource(`/books/${bookId}/ai/stream-summary`);
+      const eventSource = new EventSource(`/books/${bookId}/ai/stream-summary?chapter=${chapterNum}`);
 
       eventSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
@@ -304,7 +323,12 @@
         }
 
         if (data.content) {
-          summaryEl.value += data.content;
+          if (firstChunk) {
+            summaryEl.value = data.content;
+            firstChunk = false;
+          } else {
+            summaryEl.value += data.content;
+          }
         }
       };
 
@@ -314,6 +338,69 @@
         btn.disabled = false;
         loadingSpinner.classList.add('hidden');
         btnText.classList.remove('hidden');
+        if (summaryEl.value === '更新中...') {
+          summaryEl.value = '更新失败，章节内容为空';
+        }
+      };
+    }
+    
+    function streamCompressSummary() {
+      const bookId = {{ book.id }};
+      const summaryEl = document.getElementById('memory-summary');
+      const btn = document.getElementById('compress-summary-btn');
+      const loadingSpinner = document.getElementById('compress-summary-loading');
+      const btnText = document.getElementById('compress-summary-text');
+      
+      startRequest();
+      btn.disabled = true;
+      loadingSpinner.classList.remove('hidden');
+      btnText.classList.add('hidden');
+      let firstChunk = true;
+      summaryEl.value = '压缩中...';
+      
+      const eventSource = new EventSource(`/books/${bookId}/ai/stream-compress-summary`);
+
+      eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.done) {
+          eventSource.close();
+          endRequest();
+          btn.disabled = false;
+          loadingSpinner.classList.add('hidden');
+          btnText.classList.remove('hidden');
+          return;
+        }
+
+        if (data.error) {
+          summaryEl.value = '压缩失败: ' + data.error;
+          eventSource.close();
+          endRequest();
+          btn.disabled = false;
+          loadingSpinner.classList.add('hidden');
+          btnText.classList.remove('hidden');
+          return;
+        }
+
+        if (data.content) {
+          if (firstChunk) {
+            summaryEl.value = data.content;
+            firstChunk = false;
+          } else {
+            summaryEl.value += data.content;
+          }
+        }
+      };
+
+      eventSource.onerror = function() {
+        eventSource.close();
+        endRequest();
+        btn.disabled = false;
+        loadingSpinner.classList.add('hidden');
+        btnText.classList.remove('hidden');
+        if (summaryEl.value === '压缩中...') {
+          summaryEl.value = '压缩失败，请重试';
+        }
       };
     }
     

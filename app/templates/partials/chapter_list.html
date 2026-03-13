@@ -1,11 +1,22 @@
 <ul class="menu bg-base-200 rounded-box">
+  {% set current = book.current_chapter or 0 %}
   {% for ch in chapters %}
+    {% set is_future = ch.chapter_number > current + 1 %}
+    {% set is_next = ch.chapter_number == current + 1 %}
     <li>
-      <a
-        hx-get="/books/{{ book.id }}/chapters/write?num={{ ch.chapter_number }}"
-        hx-target="#main-workspace"
-        hx-swap="innerHTML"
-      >
+      {% if is_future %}
+        <span class="opacity-50 cursor-not-allowed">
+      {% else %}
+        <a
+          hx-get="/books/{{ book.id }}/chapters/write?num={{ ch.chapter_number }}"
+          hx-target="#main-workspace"
+          hx-swap="innerHTML"
+          onclick="window.selectedChapter = {{ ch.chapter_number }}; console.log('选择章节:', window.selectedChapter);"
+        {% if is_next %}
+          class="text-primary font-bold"
+        {% endif %}
+        >
+      {% endif %}
         {% if ch.status == "已完成" %}
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -38,7 +49,11 @@
           </svg>
         {% endif %}
         第{{ ch.chapter_number }}章 {{ ch.title }}
-      </a>
+      {% if is_future %}
+        </span>
+      {% else %}
+        </a>
+      {% endif %}
     </li>
   {% else %}
     <li>暂无章节</li>
