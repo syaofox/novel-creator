@@ -52,6 +52,17 @@ class MaterialNote(Base):
     updated_at = Column(DateTime(timezone=True), default=get_china_now, onupdate=get_china_now)
 
 
+class BookInitData(Base):
+    __tablename__ = "book_init_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(Text, default="")
+    book_title = Column(String, default="")
+    created_at = Column(DateTime(timezone=True), default=get_china_now)
+    updated_at = Column(DateTime(timezone=True), default=get_china_now, onupdate=get_china_now)
+
+
 class Book(Base):
     __tablename__ = "books"
 

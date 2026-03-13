@@ -5,6 +5,7 @@
       {% elif item_type == 'character' %}编辑人物卡
       {% elif item_type == 'note' %}编辑注意事项
       {% elif item_type == 'style' %}编辑文风
+      {% elif item_type == 'init' %}编辑初始化数据
       {% endif %}
     </h3>
     <form method="post" action="{{ action_url }}">
@@ -12,6 +13,12 @@
         <label class="label"><span class="label-text">标题</span></label>
         <input type="text" name="title" value="{{ item.title }}" required class="input input-bordered" />
       </div>
+      {% if item_type == 'init' %}
+      <div class="form-control mb-2">
+        <label class="label"><span class="label-text">关联书名</span></label>
+        <input type="text" name="book_title" value="{{ item.book_title }}" class="input input-bordered" />
+      </div>
+      {% endif %}
       <div class="form-control mb-2">
         <label class="label"><span class="label-text">内容</span></label>
         <textarea name="content" rows="6" class="textarea textarea-bordered">{{ item.content }}</textarea>

@@ -15,13 +15,22 @@
           class="textarea textarea-bordered text-xs font-mono"
           rows="6"
         ></textarea>
-        <button
-          type="button"
-          class="btn btn-sm btn-outline mt-2"
-          onclick="manualParse()"
-        >
-          手动解析
-        </button>
+        <div class="flex gap-2 mt-2">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline"
+            onclick="manualParse()"
+          >
+            手动解析
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-primary"
+            onclick="saveInitData()"
+          >
+            保存为素材
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1037,6 +1046,42 @@
         outlineInput.value = buildOutlineFromForm();
         buildFormData();
         form.submit();
+      }
+
+      function saveInitData() {
+        const rawContent = document.getElementById("rawContent").value;
+        if (!rawContent || !rawContent.trim()) {
+          alert("没有可保存的内容");
+          return;
+        }
+
+        const title = prompt("请输入标题:", document.getElementById("titleInput")?.value || "");
+        if (!title || !title.trim()) {
+          return;
+        }
+
+        const bookTitle = document.getElementById("titleInput")?.value || "";
+
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("content", rawContent);
+        formData.append("book_title", bookTitle);
+
+        fetch("/materials/book-init-data", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => {
+            if (response.ok) {
+              alert("保存成功！");
+            } else {
+              alert("保存失败，请重试");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("保存失败，请重试");
+          });
       }
     </script>
   </div>

@@ -36,6 +36,14 @@
         hx-ext="tab-switch"
         >文风</a
       >
+      <a
+        class="tab {% if active_tab == 'init' %}tab-active{% endif %}"
+        hx-get="/materials/partial?tab=init"
+        hx-target="#tab-content"
+        hx-swap="innerHTML"
+        hx-ext="tab-switch"
+        >初始化数据</a
+      >
     </div>
 
     <div id="tab-content">
@@ -347,6 +355,91 @@
         {% endfor %}
         {% if not writing_styles %}
           <p class="text-center text-base-content/50 py-8">暂无自定义文风</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 初始化数据 -->
+    <div
+      id="init-tab"
+      class="tab-content {% if active_tab == 'init' %}block{% else %}hidden{% endif %}"
+    >
+      <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card-body">
+          <h2 class="card-title">新增初始化数据</h2>
+          <form method="post" action="/materials/book-init-data">
+            <div class="form-control mb-2">
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="标题"
+                class="input input-bordered"
+              />
+            </div>
+            <div class="form-control mb-2">
+              <input
+                type="text"
+                name="book_title"
+                placeholder="关联书名（可选）"
+                class="input input-bordered"
+              />
+            </div>
+            <div class="form-control mb-2">
+              <textarea
+                name="content"
+                rows="6"
+                placeholder="AI 原始输出内容..."
+                class="textarea textarea-bordered"
+              ></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        {% for data in book_init_data %}
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="font-semibold">{{ data.title }}</h3>
+                  {% if data.book_title %}
+                    <span class="text-xs text-base-content/60">关联: {{ data.book_title }}</span>
+                  {% endif %}
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-sm btn-outline"
+                    hx-get="/materials/book-init-data/{{ data.id }}/edit"
+                    hx-target="#modal-container"
+                    hx-swap="innerHTML"
+                  >
+                    编辑
+                  </button>
+                  <form
+                    method="post"
+                    action="/materials/book-init-data/{{ data.id }}/delete"
+                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
+                  >
+                    <button type="submit" class="btn btn-sm btn-error">
+                      删除
+                    </button>
+                  </form>
+                </div>
+              </div>
+              <p class="text-sm text-base-content/70 mt-2 whitespace-pre-wrap font-mono text-xs max-h-32 overflow-y-auto">
+                {{ data.content[:500] }}{% if data.content|length > 500 %}...{% endif %}
+              </p>
+              <p class="text-xs text-base-content/50 mt-2">
+                更新于: {{ data.updated_at }}
+              </p>
+            </div>
+          </div>
+        {% endfor %}
+        {% if not book_init_data %}
+          <p class="text-center text-base-content/50 py-8">暂无初始化数据</p>
         {% endif %}
       </div>
     </div>

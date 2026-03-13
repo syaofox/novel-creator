@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings as app_settings
 from app.database import get_db
-from app.models import Book, Chapter, GlobalConfig, PlotSummary, CharacterCard, WritingStyle, MaterialNote
+from app.models import Book, Chapter, GlobalConfig, PlotSummary, CharacterCard, WritingStyle, MaterialNote, BookInitData
 from app.services.ai_service import AiService
 from app.services.file_service import delete_book_files
 from app.utils.config_helper import get_global_config_dict
@@ -135,6 +135,10 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
         {"id": n.id, "title": n.title, "content": n.content}
         for n in db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
     ]
+    book_init_data = [
+        {"id": d.id, "title": d.title, "content": d.content, "book_title": d.book_title}
+        for d in db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
+    ]
 
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
     return templates.TemplateResponse(
@@ -153,6 +157,7 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
             "character_cards": character_cards,
             "writing_styles": writing_styles,
             "material_notes": material_notes,
+            "book_init_data": book_init_data,
             "genre_options": GENRE_OPTIONS,
         },
     )

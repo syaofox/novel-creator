@@ -278,6 +278,23 @@
 
   <div id="tab-content-direct" class="hidden">
     <form id="directForm" class="space-y-4">
+      {% if book_init_data %}
+      <div class="form-control">
+        <label class="label" for="initDataSelect">
+          <span class="label-text">选择已有初始化数据</span>
+        </label>
+        <select
+          id="initDataSelect"
+          class="select select-bordered w-full mb-2"
+          onchange="loadInitData()"
+        >
+          <option value="">-- 选择已有初始化数据 --</option>
+          {% for data in book_init_data %}
+          <option value="{{ data.id }}">{{ data.title }}{% if data.book_title %} ({{ data.book_title }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
       <div class="form-control">
         <label class="label" for="initData">
           <span class="label-text">初始化数据（请严格按照以下格式输入）</span>
@@ -355,6 +372,20 @@
       var characterCards = {{ character_cards | tojson }};
       var writingStyles = {{ writing_styles | tojson }};
       var materialNotes = {{ material_notes | tojson }};
+      var bookInitData = {{ book_init_data | tojson }};
+    }
+
+    function loadInitData() {
+      const select = document.getElementById("initDataSelect");
+      const textarea = document.getElementById("initData");
+      const selectedId = select.value;
+      
+      if (!selectedId) return;
+      
+      const data = bookInitData.find(d => d.id === parseInt(selectedId));
+      if (data && data.content) {
+        textarea.value = data.content;
+      }
     }
 
     function loadPlotSummary() {

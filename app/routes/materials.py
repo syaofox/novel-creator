@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import PlotSummary, CharacterCard, WritingStyle, MaterialNote, get_china_now
+from app.models import PlotSummary, CharacterCard, WritingStyle, MaterialNote, BookInitData, get_china_now
 from app.constants import DEFAULT_STYLE, TEMPLATE_DIR
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ async def materials_page(request: Request, tab: str = Query(default="plot"), db:
         db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
     )
     material_notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
+    book_init_data = db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
 
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
     return templates.TemplateResponse(
@@ -33,6 +34,7 @@ async def materials_page(request: Request, tab: str = Query(default="plot"), db:
             "character_cards": character_cards,
             "writing_styles": writing_styles,
             "material_notes": material_notes,
+            "book_init_data": book_init_data,
             "default_style": DEFAULT_STYLE,
             "active_tab": tab,
         },
@@ -203,6 +205,7 @@ async def get_materials_partial(request: Request, tab: str = Query(default="plot
         db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
     )
     material_notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
+    book_init_data = db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
 
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
@@ -215,6 +218,7 @@ async def get_materials_partial(request: Request, tab: str = Query(default="plot
                 "character_cards": character_cards,
                 "writing_styles": writing_styles,
                 "material_notes": material_notes,
+                "book_init_data": book_init_data,
                 "default_style": DEFAULT_STYLE,
                 "active_tab": tab,
             },
@@ -228,6 +232,7 @@ async def get_materials_partial(request: Request, tab: str = Query(default="plot
             "character_cards": character_cards,
             "writing_styles": writing_styles,
             "material_notes": material_notes,
+            "book_init_data": book_init_data,
             "default_style": DEFAULT_STYLE,
             "active_tab": tab,
         },
@@ -306,4 +311,64 @@ async def edit_writing_style_modal(request: Request, style_id: int, db: Session 
             "action_url": f"/materials/writing-styles/{style_id}",
             "show_default": True,
         },
+    )
+
+
+@router.post("/book-init-data", response_class=HTMLResponse)
+async def create_book_init_data(
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(""),
+    book_title: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    new_data = BookInitData(title=title, content=content, book_title=book_title)
+    db.add(new_data)
+    db.commit()
+    return RedirectResponse(url="/materials?tab=init", status_code=303)
+
+
+@router.post("/book-init-data/{data_id}", response_class=HTMLResponse)
+async def update_book_init_data(
+    request: Request,
+    data_id: int,
+    title: str = Form(...),
+    content: str = Form(""),
+    book_title: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    data = db.query(BookInitData).filter(BookInitData.id == data_id).first()
+    if not data:
+        raise HTTPException(status_code=404, detail="初始化数据不存在")
+    data.title = title
+    data.content = content
+    data.book_title = book_title
+    data.updated_at = get_china_now()
+    db.commit()
+    return RedirectResponse(url="/materials?tab=init", status_code=303)
+
+
+@router.post("/book-init-data/{data_id}/delete", response_class=HTMLResponse)
+async def delete_book_init_data(data_id: int, db: Session = Depends(get_db)):
+    data = db.query(BookInitData).filter(BookInitData.id == data_id).first()
+    if not data:
+        raise HTTPException(status_code=404, detail="初始化数据不存在")
+    db.delete(data)
+    db.commit()
+    return RedirectResponse(url="/materials?tab=init", status_code=303)
+
+
+@router.get("/book-init-data/{data_id}/edit", response_class=HTMLResponse)
+async def edit_book_init_data_modal(request: Request, data_id: int, db: Session = Depends(get_db)):
+    """返回编辑初始化数据的模态框"""
+    data = db.query(BookInitData).filter(BookInitData.id == data_id).first()
+    if not data:
+        raise HTTPException(status_code=404, detail="初始化数据不存在")
+
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    return templates.TemplateResponse(
+        "partials/edit_modal.html",
+        {"request": request, "item": data, "item_type": "init", "action_url": f"/materials/book-init-data/{data_id}"},
     )
