@@ -1,34 +1,72 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📖</text></svg>" />
     <title>DeepSeek 长篇小说创作平台</title>
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.css"
-      rel="stylesheet"
-      type="text/css"
-    />
+    <link href="/static/css/tailwind.min.css" rel="stylesheet" type="text/css" />
+    <script src="/static/js/htmx.min.js"></script>
+    <script>
+      function fixLabelAssociations() {
+        var counter = 0;
+        document.querySelectorAll("input, select, textarea").forEach(function (el) {
+          if (!el.id) {
+            el.id = el.name || "field_" + counter++;
+          }
+          var label = el.closest("label") || document.querySelector('label[for="' + el.id + '"]');
+          if (!label && el.id) {
+            var parent = el.parentElement;
+            if (parent && parent.tagName !== "LABEL") {
+              var newLabel = document.createElement("label");
+              newLabel.setAttribute("for", el.id);
+              newLabel.className = "label";
+              el.parentNode.insertBefore(newLabel, el);
+            }
+          }
+        });
+      }
+    </script>
   </head>
   <body class="bg-base-200 min-h-screen">
+    <script>fixLabelAssociations();</script>
     <script>
-      let pendingRequestCount = 0;
+      window.pendingRequestCount = window.pendingRequestCount || 0;
 
       function startRequest() {
-        pendingRequestCount++;
+        window.pendingRequestCount++;
       }
 
       function endRequest() {
-        pendingRequestCount = Math.max(0, pendingRequestCount - 1);
+        window.pendingRequestCount = Math.max(0, window.pendingRequestCount - 1);
       }
 
       window.onbeforeunload = function () {
-        if (pendingRequestCount > 0) {
+        if (window.pendingRequestCount > 0) {
           return "有请求正在进行中，确定要离开吗？";
         }
       };
+
+      function fixLabelAssociations() {
+        document.querySelectorAll("input, select, textarea").forEach(function (el) {
+          if (!el.id && el.name) {
+            el.id = el.name;
+          }
+          var label = el.closest("label") || document.querySelector('label[for="' + el.id + '"]');
+          if (!label && el.id) {
+            var parent = el.parentElement;
+            if (parent && parent.tagName !== "LABEL") {
+              var newLabel = document.createElement("label");
+              newLabel.setAttribute("for", el.id);
+              newLabel.className = "label";
+              el.parentNode.insertBefore(newLabel, el);
+            }
+          }
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", fixLabelAssociations);
+      document.body.addEventListener("htmx:afterSwap", fixLabelAssociations);
     </script>
     <div class="navbar bg-base-100 shadow-lg mb-4">
       <div class="flex-1">

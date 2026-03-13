@@ -13,101 +13,111 @@
     </div>
     <form id="bookForm" class="space-y-4">
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="title">
           <span class="label-text">书名</span>
         </label>
-        <input type="text" name="title" required class="input input-bordered" />
+        <input type="text" name="title" id="title" required class="input input-bordered" />
       </div>
       <div class="form-control">
         <label class="label">
           <span class="label-text">类型（可多选）</span>
         </label>
         <div class="grid grid-cols-2 gap-2">
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_xianxia">
             <input
               type="checkbox"
               name="genre"
+              id="genre_xianxia"
               value="仙侠"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">仙侠</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_dushi">
             <input
               type="checkbox"
               name="genre"
+              id="genre_dushi"
               value="都市"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">都市</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_xuanhuan">
             <input
               type="checkbox"
               name="genre"
+              id="genre_xuanhuan"
               value="玄幻"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">玄幻</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_xuanyi">
             <input
               type="checkbox"
               name="genre"
+              id="genre_xuanyi"
               value="悬疑"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">悬疑</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_yanqing">
             <input
               type="checkbox"
               name="genre"
+              id="genre_yanqing"
               value="言情"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">言情</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_r18">
             <input
               type="checkbox"
               name="genre"
+              id="genre_r18"
               value="R18"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">R18</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_tongren">
             <input
               type="checkbox"
               name="genre"
+              id="genre_tongren"
               value="同人"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">同人</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_erciyuan">
             <input
               type="checkbox"
               name="genre"
+              id="genre_erciyuan"
               value="二次元"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">二次元</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genrejinji">
             <input
               type="checkbox"
               name="genre"
+              id="genrejinji"
               value="禁忌"
               class="checkbox checkbox-primary"
             />
             <span class="label-text">禁忌</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2">
+          <label class="label cursor-pointer justify-start gap-2" for="genre_qita">
             <input
               type="checkbox"
               name="genre"
+              id="genre_qita"
               value="其他"
               class="checkbox checkbox-primary"
             />
@@ -116,12 +126,13 @@
         </div>
       </div>
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="target_chapters">
           <span class="label-text">目标章节数</span>
         </label>
         <input
           type="number"
           name="target_chapters"
+          id="target_chapters"
           min="1"
           value="3"
           required
@@ -129,11 +140,12 @@
         />
       </div>
       <div class="form-control" style="display: none;">
-        <label class="label">
+        <label class="label" for="basic_idea">
           <span class="label-text">初始创意（剧情梗概+人设）</span>
         </label>
         <textarea
           name="basic_idea"
+          id="basic_idea"
           rows="6"
           class="textarea textarea-bordered"
           placeholder="请输入你的创意..."
@@ -146,9 +158,8 @@
         </label>
         <div class="space-y-3">
           <div>
-            <label class="label py-1">
+            <label class="label py-1" for="plotSummary">
               <span class="label-text text-sm">剧情梗概</span>
-              <a href="/materials?tab=plot" target="_blank" class="btn btn-xs btn-ghost">管理素材</a>
             </label>
             {% if plot_summaries %}
             <select
@@ -171,9 +182,8 @@
             ></textarea>
           </div>
           <div>
-            <label class="label py-1">
+            <label class="label py-1" for="characterCard">
               <span class="label-text text-sm">人物卡</span>
-              <a href="/materials?tab=character" target="_blank" class="btn btn-xs btn-ghost">管理素材</a>
             </label>
             {% if character_cards %}
             <select
@@ -196,9 +206,8 @@
             ></textarea>
           </div>
           <div>
-            <label class="label py-1">
+            <label class="label py-1" for="materialNote">
               <span class="label-text text-sm">注意事项</span>
-              <a href="/materials?tab=note" target="_blank" class="btn btn-xs btn-ghost">管理素材</a>
             </label>
             {% if material_notes %}
             <select
@@ -223,9 +232,8 @@
         </div>
       </div>
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="styleSelect">
           <span class="label-text">写作风格规范</span>
-          <a href="/materials?tab=style" target="_blank" class="btn btn-xs btn-ghost">管理素材</a>
         </label>
         <select
           id="styleSelect"
@@ -252,12 +260,13 @@
       <div class="divider">参数设置（可选）</div>
 
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="temperature">
           <span class="label-text">Temperature</span>
         </label>
         <input
           type="range"
           name="temperature"
+          id="temperature"
           min="0"
           max="2"
           step="0.01"
@@ -271,12 +280,13 @@
         </div>
       </div>
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="top_p">
           <span class="label-text">Top P</span>
         </label>
         <input
           type="number"
           name="top_p"
+          id="top_p"
           min="0"
           max="1"
           step="0.01"
@@ -285,12 +295,13 @@
         />
       </div>
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="max_tokens">
           <span class="label-text">Max Tokens</span>
         </label>
         <input
           type="number"
           name="max_tokens"
+          id="max_tokens"
           min="1"
           max="32768"
           value="{{ default_max_tokens }}"
@@ -298,34 +309,37 @@
         />
       </div>
       <div class="form-control">
-        <label class="label cursor-pointer">
+        <label class="label cursor-pointer" for="stream">
           <span class="label-text">流式输出</span>
           <input
             type="checkbox"
             name="stream"
+            id="stream"
             checked
             class="toggle toggle-primary"
           />
         </label>
       </div>
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="jailbreak_prefix">
           <span class="label-text">破限前缀</span>
         </label>
         <textarea
           name="jailbreak_prefix"
+          id="jailbreak_prefix"
           rows="3"
           class="textarea textarea-bordered"
         >{{ jailbreak_prefix }}</textarea>
       </div>
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="system_template">
           <span class="label-text"
             >系统模板（可使用 {memory} {style} 占位符）</span
           >
         </label>
         <textarea
           name="system_template"
+          id="system_template"
           rows="4"
           class="textarea textarea-bordered"
         >{{ system_template }}</textarea>
@@ -344,11 +358,13 @@
   </div>
 
   <script>
-    const stylePresets = {{ style_presets | tojson }};
-    const plotSummaries = {{ plot_summaries | tojson }};
-    const characterCards = {{ character_cards | tojson }};
-    const writingStyles = {{ writing_styles | tojson }};
-    const materialNotes = {{ material_notes | tojson }};
+    if (typeof stylePresets === "undefined") {
+      var stylePresets = {{ style_presets | tojson }};
+      var plotSummaries = {{ plot_summaries | tojson }};
+      var characterCards = {{ character_cards | tojson }};
+      var writingStyles = {{ writing_styles | tojson }};
+      var materialNotes = {{ material_notes | tojson }};
+    }
 
     function loadPlotSummary() {
       const select = document.getElementById("plotSelect");

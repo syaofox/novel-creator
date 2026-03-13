@@ -20,11 +20,15 @@
 # 安装依赖(开发)
 uv sync --all-extras
 
-# 安装依赖(生产)
-uv sync
+# 安装前端依赖
+npm install
 
-# 开发服务器
-uvicorn app.main:app --reload
+# 开发服务器 (自动构建 CSS 并启动)
+./run.sh
+
+# 或手动运行
+npm run build:css
+uv run uvicorn app.main:app --reload
 
 # 数据库迁移
 alembic revision --autogenerate -m "description"

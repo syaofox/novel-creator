@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+.form-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+}
+
+fieldset.form-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+fieldset.form-control .label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}

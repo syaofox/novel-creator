@@ -1,6 +1,33 @@
 {
   "devDependencies": {
+    "@tailwindcss/cli": "^4.2.1",
+    "daisyui": "^5.5.19",
     "prettier": "^3.8.1",
-    "prettier-plugin-jinja-template": "^2.1.0"
-  }
+    "prettier-plugin-jinja-template": "^2.1.0",
+    "tailwindcss": "^4.2.1"
+  },
+  "name": "novel-creator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "build:css": "npx @tailwindcss/cli -i app/static/css/styles.css -o app/static/css/tailwind.min.css",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syaofox/novel-creator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/syaofox/novel-creator/issues"
+  },
+  "homepage": "https://github.com/syaofox/novel-creator#readme"
 }

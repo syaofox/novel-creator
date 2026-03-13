@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-  <div class="tabs tabs-boxed mb-4" id="tabs">
+  <div class="tabs tabs-box mb-4" id="tabs">
     <a
       class="tab {% if status != '已完结' %}tab-active{% endif %}"
       hx-get="/?status=进行中"
