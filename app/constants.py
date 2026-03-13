@@ -200,6 +200,8 @@ STYLE_PRESETS = {
 
 DEFAULT_STYLE = STYLE_PRESETS["默认"]
 
+GENRE_OPTIONS = ["仙侠", "都市", "玄幻", "悬疑", "言情", "R18", "同人", "二次元", "禁忌", "搞笑", "荒诞"]
+
 
 def get_default_ai_config() -> dict:
     return {

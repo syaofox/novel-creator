@@ -29,6 +29,7 @@ from app.constants import (
     DEFAULT_MODEL,
     STYLE_PRESETS,
     TEMPLATE_DIR,
+    GENRE_OPTIONS,
 )
 
 logger = logging.getLogger(__name__)
@@ -152,6 +153,7 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
             "character_cards": character_cards,
             "writing_styles": writing_styles,
             "material_notes": material_notes,
+            "genre_options": GENRE_OPTIONS,
         },
     )
 

@@ -29,107 +29,19 @@
         <label class="label">
           <span class="label-text">类型（可多选）</span>
         </label>
-        <div class="grid grid-cols-2 gap-2">
-          <label class="label cursor-pointer justify-start gap-2" for="genre_xianxia">
+        <div class="grid grid-cols-4 gap-2">
+          {% for genre in genre_options %}
+          <label class="label cursor-pointer justify-start gap-2" for="genre_{{ loop.index0 }}">
             <input
               type="checkbox"
               name="genre"
-              id="genre_xianxia"
-              value="仙侠"
+              id="genre_{{ loop.index0 }}"
+              value="{{ genre }}"
               class="checkbox checkbox-primary"
             />
-            <span class="label-text">仙侠</span>
+            <span class="label-text">{{ genre }}</span>
           </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genre_dushi">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genre_dushi"
-              value="都市"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">都市</span>
-          </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genre_xuanhuan">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genre_xuanhuan"
-              value="玄幻"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">玄幻</span>
-          </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genre_xuanyi">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genre_xuanyi"
-              value="悬疑"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">悬疑</span>
-          </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genre_yanqing">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genre_yanqing"
-              value="言情"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">言情</span>
-          </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genre_r18">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genre_r18"
-              value="R18"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">R18</span>
-          </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genre_tongren">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genre_tongren"
-              value="同人"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">同人</span>
-          </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genre_erciyuan">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genre_erciyuan"
-              value="二次元"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">二次元</span>
-          </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genrejinji">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genrejinji"
-              value="禁忌"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">禁忌</span>
-          </label>
-          <label class="label cursor-pointer justify-start gap-2" for="genre_qita">
-            <input
-              type="checkbox"
-              name="genre"
-              id="genre_qita"
-              value="其他"
-              class="checkbox checkbox-primary"
-            />
-            <span class="label-text">其他</span>
-          </label>
+          {% endfor %}
         </div>
       </div>
       <div class="form-control">
