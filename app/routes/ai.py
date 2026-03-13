@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -104,19 +104,15 @@ async def stream_summary(book_id: int, db: Session = Depends(get_db)):
     return StreamingResponse(generate(), media_type="text/plain")
 
 
-class SummarySaveRequest(BaseModel):
-    summary: str
-
-
-@router.post("/save-summary")
-async def save_summary(book_id: int, request: SummarySaveRequest, db: Session = Depends(get_db)):
+@router.post("/save-summary", response_class=HTMLResponse)
+async def save_summary(book_id: int, summary: str = Form(...), db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    book.memory_summary = request.summary
+    book.memory_summary = summary
     book.updated_at = get_china_now()
     db.commit()
-    return {"status": "ok"}
+    return "<span class='text-success'>保存成功</span>"
 
 
 @router.post("/compress-summary", response_class=HTMLResponse)

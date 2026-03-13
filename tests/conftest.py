@@ -8,7 +8,7 @@ from app.models import Book, Chapter, GlobalConfig  # 导入模型以确保 Base
 from app.config import settings
 
 # 使用内存数据库进行测试
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./data/test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

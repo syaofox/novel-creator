@@ -2549,9 +2549,6 @@
   .border-primary {
     border-color: var(--color-primary);
   }
-  .border-success {
-    border-color: var(--color-success);
-  }
   .bg-base-100 {
     background-color: var(--color-base-100);
   }

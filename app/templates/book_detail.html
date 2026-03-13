@@ -42,17 +42,25 @@
               <input type="checkbox" checked />
               <div class="collapse-title text-lg font-medium">记忆摘要</div>
               <div class="collapse-content">
-                <textarea
-                  id="memory-summary"
-                  class="textarea textarea-bordered w-full h-48 text-xs font-mono"
-                  placeholder="摘要内容"
-                >{{ book.memory_summary or '' }}</textarea>
-                <button
-                  class="btn btn-xs btn-outline w-full mt-2"
-                  onclick="saveSummary()"
+                <form
+                  hx-post="/books/{{ book.id }}/ai/save-summary"
+                  hx-target="#save-summary-result"
+                  hx-swap="innerHTML"
                 >
-                  保存摘要
-                </button>
+                  <textarea
+                    name="summary"
+                    id="memory-summary"
+                    class="textarea textarea-bordered w-full h-48 text-xs font-mono"
+                    placeholder="摘要内容"
+                  >{{ book.memory_summary or '' }}</textarea>
+                  <button
+                    type="submit"
+                    class="btn btn-xs btn-outline w-full mt-2"
+                  >
+                    保存摘要
+                  </button>
+                </form>
+                <span id="save-summary-result" class="text-xs"></span>
               </div>
             </div>
             <button
@@ -302,27 +310,5 @@
       }
     }
     
-    async function saveSummary() {
-      const bookId = {{ book.id }};
-      const summaryEl = document.getElementById('memory-summary');
-      const summary = summaryEl.value;
-      
-      try {
-        const response = await fetch(`/books/${bookId}/ai/save-summary`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ summary: summary }),
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-        
-        summaryEl.classList.add('border-success');
-        setTimeout(() => summaryEl.classList.remove('border-success'), 1000);
-      } catch (error) {
-        alert('保存失败: ' + error.message);
-      }
-    }
   </script>
 {% endblock %}
