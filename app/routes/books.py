@@ -156,11 +156,71 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/preview", response_class=HTMLResponse)
-async def preview_book(
+def parse_init_data_markers(text: str) -> dict[str, Any]:
+    """解析【】标记格式的初始化数据"""
+    result: dict[str, Any] = {}
+
+    def extract_section(key: str) -> str:
+        pattern = rf"【{key}】([\s\S]*?)【{key}】"
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1).strip()
+        return ""
+
+    chars_text = extract_section("characters")
+    if chars_text:
+        try:
+            result["characters"] = json.loads(chars_text)
+        except json.JSONDecodeError:
+            result["characters"] = []
+
+    wv_text = extract_section("world_view")
+    if wv_text:
+        try:
+            result["world_view"] = json.loads(wv_text)
+        except json.JSONDecodeError:
+            result["world_view"] = {"setting": wv_text, "special_rules": "", "themes": ""}
+
+    style_text = extract_section("style")
+    if style_text:
+        try:
+            result["style"] = json.loads(style_text)
+        except json.JSONDecodeError:
+            result["style"] = {
+                "narrative_perspective": style_text,
+                "language_style": "",
+                "pace": "",
+                "target_audience": "",
+            }
+
+    outline_text = extract_section("outline")
+    if outline_text:
+        try:
+            result["outline"] = json.loads(outline_text)
+        except json.JSONDecodeError:
+            result["outline"] = []
+
+    foreshadow_text = extract_section("foreshadowing")
+    if foreshadow_text:
+        try:
+            result["foreshadowing"] = json.loads(foreshadow_text)
+        except json.JSONDecodeError:
+            result["foreshadowing"] = [foreshadow_text]
+
+    other_text = extract_section("other")
+    if other_text:
+        try:
+            result["other"] = json.loads(other_text)
+        except json.JSONDecodeError:
+            result["other"] = {"novel_title": "", "key_points": other_text, "writing_guidance": ""}
+
+    return result
+
+
+def get_preview_params(
     request: Request,
     title: str = "",
-    genre: list[str] = Query(default=[]),
+    genre: list[str] | str = Query(default=[]),
     target_chapters: int = 3,
     basic_idea: str = "",
     temperature: float = DEFAULT_TEMPERATURE,
@@ -170,12 +230,11 @@ async def preview_book(
     jailbreak_prefix: str = "",
     system_template: str = DEFAULT_SYSTEM_TEMPLATE,
     style: str = "",
+    init_data: str = "",
     db: Session = Depends(get_db),
 ):
-    # 获取全局配置默认值
     config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
     if config:
-        # 如果参数等于常量默认值或为空，使用全局配置值
         if temperature == DEFAULT_TEMPERATURE:
             temperature = float(str(config.temperature))
         if top_p == DEFAULT_TOP_P:
@@ -193,35 +252,153 @@ async def preview_book(
 
     default_style = style or DEFAULT_STYLE
 
+    parsed_data: dict[str, Any] = {}
+    raw_init_data = ""
+    is_direct_input = bool(init_data and init_data.strip() and "【" in init_data)
+
+    if init_data and init_data.strip():
+        if is_direct_input:
+            raw_init_data = init_data
+            parsed_data = parse_init_data_markers(init_data)
+        else:
+            try:
+                parsed_data = json.loads(init_data)
+            except json.JSONDecodeError:
+                if "【" in init_data and "】" in init_data:
+                    parsed_data = parse_init_data_markers(init_data)
+
+    characters = ""
+    world_view = ""
+    outline = ""
+    foreshadowing = ""
+    other = ""
     chapter_list = [{"chapter": i + 1, "title": f"第{i + 1}章", "core_event": ""} for i in range(target_chapters)]
+
+    if parsed_data:
+        if "characters" in parsed_data:
+            characters = json.dumps(parsed_data["characters"], ensure_ascii=False)
+        if "world_view" in parsed_data:
+            world_view = json.dumps(parsed_data["world_view"], ensure_ascii=False)
+        if "outline" in parsed_data:
+            outline = json.dumps(parsed_data["outline"], ensure_ascii=False)
+            if parsed_data["outline"]:
+                chapter_list = [
+                    {
+                        "chapter": ch.get("chapter", i + 1),
+                        "title": ch.get("title", f"第{i + 1}章"),
+                        "core_event": ch.get("core_event", ""),
+                    }
+                    for i, ch in enumerate(parsed_data["outline"])
+                ]
+                target_chapters = len(chapter_list)
+        if "foreshadowing" in parsed_data:
+            foreshadowing = json.dumps(parsed_data["foreshadowing"], ensure_ascii=False)
+        if "other" in parsed_data:
+            other = json.dumps(parsed_data["other"], ensure_ascii=False)
+            if isinstance(parsed_data["other"], dict) and parsed_data["other"].get("novel_title"):
+                title = parsed_data["other"]["novel_title"]
+
+    return {
+        "title": title,
+        "genre": genre_str,
+        "target_chapters": target_chapters,
+        "basic_idea": basic_idea,
+        "temperature": temperature,
+        "top_p": top_p,
+        "max_tokens": max_tokens,
+        "stream": stream,
+        "jailbreak_prefix": jailbreak_prefix,
+        "system_template": system_template,
+        "style": default_style,
+        "style_presets": STYLE_PRESETS,
+        "characters": characters,
+        "world_view": world_view,
+        "outline": outline,
+        "foreshadowing": foreshadowing,
+        "other": other,
+        "chapter_list": chapter_list,
+        "raw_init_data": raw_init_data,
+    }
+
+
+@router.get("/preview", response_class=HTMLResponse)
+async def preview_book_get(
+    request: Request,
+    title: str = "",
+    genre: list[str] = Query(default=[]),
+    target_chapters: int = 3,
+    basic_idea: str = "",
+    temperature: float = DEFAULT_TEMPERATURE,
+    top_p: float = DEFAULT_TOP_P,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+    stream: bool = DEFAULT_STREAM,
+    jailbreak_prefix: str = "",
+    system_template: str = DEFAULT_SYSTEM_TEMPLATE,
+    style: str = "",
+    db: Session = Depends(get_db),
+):
+    params = get_preview_params(
+        request,
+        title,
+        genre,
+        target_chapters,
+        basic_idea,
+        temperature,
+        top_p,
+        max_tokens,
+        stream,
+        jailbreak_prefix,
+        system_template,
+        style,
+        "",
+        db,
+    )
 
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
-    return templates.TemplateResponse(
+    return templates.TemplateResponse(request, "book_preview.html", params)
+
+
+@router.post("/preview", response_class=HTMLResponse)
+async def preview_book_post(
+    request: Request,
+    title: str = Form(""),
+    genre: str = Form(""),
+    target_chapters: int = Form(3),
+    basic_idea: str = Form(""),
+    temperature: float = Form(DEFAULT_TEMPERATURE),
+    top_p: float = Form(DEFAULT_TOP_P),
+    max_tokens: int = Form(DEFAULT_MAX_TOKENS),
+    stream: bool = Form(DEFAULT_STREAM),
+    jailbreak_prefix: str = Form(""),
+    system_template: str = Form(DEFAULT_SYSTEM_TEMPLATE),
+    style: str = Form(""),
+    init_data: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    genre_list = genre.split(",") if genre else []
+    params = get_preview_params(
         request,
-        "book_preview.html",
-        {
-            "title": title,
-            "genre": genre_str,
-            "target_chapters": target_chapters,
-            "basic_idea": basic_idea,
-            "temperature": temperature,
-            "top_p": top_p,
-            "max_tokens": max_tokens,
-            "stream": stream,
-            "jailbreak_prefix": jailbreak_prefix,
-            "system_template": system_template,
-            "style": default_style,
-            "style_presets": STYLE_PRESETS,
-            "characters": "",
-            "world_view": "",
-            "outline": "",
-            "foreshadowing": "",
-            "other": "",
-            "chapter_list": chapter_list,
-        },
+        title,
+        genre_list,
+        target_chapters,
+        basic_idea,
+        temperature,
+        top_p,
+        max_tokens,
+        stream,
+        jailbreak_prefix,
+        system_template,
+        style,
+        init_data,
+        db,
     )
+
+    from fastapi.templating import Jinja2Templates
+
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    return templates.TemplateResponse(request, "book_preview.html", params)
 
 
 @router.get("/init-stream")

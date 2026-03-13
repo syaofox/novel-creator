@@ -2,16 +2,23 @@
 {% block content %}
   <div class="max-w-2xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">新建小说</h1>
-    <div
-      id="loading"
-      class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-    >
-      <div class="text-center">
-        <span class="loading loading-spinner loading-lg text-primary"></span>
-        <p class="mt-2 text-white">正在初始化AI创作...</p>
-      </div>
+    
+    <div class="tabs tabs-boxed mb-4">
+      <a class="tab tab-active" id="tab-ai" onclick="switchTab('ai'); return false;">AI 初始化</a>
+      <a class="tab" id="tab-direct" onclick="switchTab('direct'); return false;">直接输入</a>
     </div>
+
+    <div id="tab-content-ai">
     <form id="bookForm" class="space-y-4">
+      <div
+        id="loading"
+        class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      >
+        <div class="text-center">
+          <span class="loading loading-spinner loading-lg text-primary"></span>
+          <p class="mt-2 text-white">正在初始化AI创作...</p>
+        </div>
+      </div>
       <div class="form-control">
         <label class="label" for="title">
           <span class="label-text">书名</span>
@@ -357,6 +364,78 @@
     </form>
   </div>
 
+  <div id="tab-content-direct" class="hidden">
+    <form id="directForm" class="space-y-4">
+      <div class="form-control">
+        <label class="label" for="initData">
+          <span class="label-text">初始化数据（请严格按照以下格式输入）</span>
+        </label>
+        <textarea
+          name="init_data"
+          id="initData"
+          rows="20"
+          class="textarea textarea-bordered font-mono text-sm"
+          placeholder="【characters】
+[
+  {
+    &quot;name&quot;: &quot;角色姓名&quot;,
+    &quot;nickname&quot;: &quot;昵称&quot;,
+    &quot;age&quot;: 20,
+    &quot;appearance&quot;: &quot;外貌描述&quot;,
+    &quot;personality&quot;: &quot;性格特点&quot;,
+    &quot;background&quot;: &quot;背景故事&quot;,
+    &quot;goal&quot;: &quot;角色目标&quot;,
+    &quot;relationships&quot;: &quot;人物关系&quot;
+  }
+]
+【characters】
+
+【world_view】
+{
+  &quot;setting&quot;: &quot;世界观设定&quot;,
+  &quot;special_rules&quot;: &quot;特殊规则&quot;,
+  &quot;themes&quot;: &quot;主题&quot;
+}
+【world_view】
+
+【style】
+{
+  &quot;narrative_perspective&quot;: &quot;叙事视角&quot;,
+  &quot;language_style&quot;: &quot;语言风格&quot;,
+  &quot;pace&quot;: &quot;节奏特点&quot;,
+  &quot;target_audience&quot;: &quot;目标读者&quot;
+}
+【style】
+
+【outline】
+[
+  {&quot;chapter&quot;: 1, &quot;title&quot;: &quot;章节标题&quot;, &quot;core_event&quot;: &quot;本章核心事件&quot;}
+]
+【outline】
+
+【foreshadowing】
+[&quot;伏笔1&quot;, &quot;伏笔2&quot;]
+【foreshadowing】
+
+【other】
+{
+  &quot;novel_title&quot;: &quot;小说标题&quot;,
+  &quot;key_points&quot;: &quot;关键要点&quot;,
+  &quot;writing_guidance&quot;: &quot;写作指导&quot;
+}
+【other】"
+        ></textarea>
+      </div>
+
+      <div class="form-control mt-6">
+        <button type="button" class="btn btn-primary" onclick="submitDirectInput()">
+          解析并预览
+        </button>
+      </div>
+    </form>
+  </div>
+
+
   <script>
     if (typeof stylePresets === "undefined") {
       var stylePresets = {{ style_presets | tojson }};
@@ -480,5 +559,41 @@
 
       window.location.href = "/books/preview?" + params.toString();
     }
+
+    function switchTab(tab) {
+      document.getElementById("tab-ai").classList.remove("tab-active");
+      document.getElementById("tab-direct").classList.remove("tab-active");
+      document.getElementById("tab-" + tab).classList.add("tab-active");
+      
+      document.getElementById("tab-content-ai").classList.add("hidden");
+      document.getElementById("tab-content-direct").classList.add("hidden");
+      document.getElementById("tab-content-" + tab).classList.remove("hidden");
+    }
+
+    function submitDirectInput() {
+      const form = document.getElementById("directForm");
+      const formData = new FormData(form);
+      
+      const initData = formData.get("init_data");
+      if (!initData || !initData.trim()) {
+        alert("请输入初始化数据");
+        return;
+      }
+      
+      const formEl = document.createElement("form");
+      formEl.method = "POST";
+      formEl.action = "/books/preview";
+      
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "init_data";
+      input.value = initData;
+      formEl.appendChild(input);
+      
+      document.body.appendChild(formEl);
+      formEl.submit();
+    }
+
+    switchTab("ai");
   </script>
 {% endblock %}

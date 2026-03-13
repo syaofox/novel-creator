@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
   <div class="max-w-4xl mx-auto">
+    <input type="hidden" id="rawInitData" value="{{ raw_init_data | default('') }}" />
     <h1 class="text-2xl font-bold mb-4">预览并确认小说设定</h1>
     <div id="streamStatus" class="hidden alert alert-info mb-4">
       <span class="loading loading-spinner"></span>
@@ -888,6 +889,18 @@
       }
 
       (function () {
+        const rawInitData = document.getElementById("rawInitData").value;
+        if (rawInitData && rawInitData.trim()) {
+          console.log("Processing raw init data from direct input...");
+          const parsed = parseInitResult(rawInitData);
+          applyParsedResult(parsed);
+          
+          if (parsed.other && parsed.other.novel_title) {
+            document.getElementById("titleInput").value = parsed.other.novel_title;
+          }
+          return;
+        }
+
         const streamUrl = sessionStorage.getItem("initStreamUrl");
         const formDataStr = sessionStorage.getItem("initFormData");
 
