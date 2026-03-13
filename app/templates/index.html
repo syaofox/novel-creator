@@ -7,7 +7,7 @@
       hx-target="#book-list"
       hx-swap="innerHTML"
       hx-push-url="true"
-      hx-on::before-request="document.getElementById('tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active')); this.classList.add('tab-active')"
+      hx-ext="tab-switch"
       >进行中</a
     >
     <a
@@ -16,7 +16,7 @@
       hx-target="#book-list"
       hx-swap="innerHTML"
       hx-push-url="true"
-      hx-on::before-request="document.getElementById('tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active')); this.classList.add('tab-active')"
+      hx-ext="tab-switch"
       >已完结</a
     >
   </div>
