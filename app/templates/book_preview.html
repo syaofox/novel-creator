@@ -910,10 +910,11 @@
           return;
         }
 
-        const streamUrl = sessionStorage.getItem("initStreamUrl");
+        const streamFormDataStr = sessionStorage.getItem("initStreamFormData");
         const formDataStr = sessionStorage.getItem("initFormData");
 
-        if (streamUrl && formDataStr) {
+        if (streamFormDataStr && formDataStr) {
+          const streamFormData = JSON.parse(streamFormDataStr);
           const formData = JSON.parse(formDataStr);
 
           document.getElementById("streamStatus").classList.remove("hidden");
@@ -943,46 +944,77 @@
 
           startRequest();
 
-          const eventSource = new EventSource(streamUrl);
+          fetch("/books/init-stream", {
+            method: "POST",
+            body: new URLSearchParams(streamFormData),
+          })
+            .then((response) => {
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder();
 
-          eventSource.onmessage = function (event) {
-            const data = JSON.parse(event.data);
+              function read() {
+                reader.read().then(({ done, value }) => {
+                  if (done) {
+                    document.getElementById("streamStatus").classList.add("hidden");
+                    const parsed = parseInitResult(fullContent);
+                    applyParsedResult(parsed);
+                    endRequest();
+                    sessionStorage.removeItem("initStreamFormData");
+                    sessionStorage.removeItem("initFormData");
+                    return;
+                  }
 
-            if (data.done) {
-              document.getElementById("streamStatus").classList.add("hidden");
+                  const chunk = decoder.decode(value, { stream: true });
+                  const lines = chunk.split("\n").filter((line) => line.trim());
 
-              const parsed = parseInitResult(fullContent);
-              applyParsedResult(parsed);
+                  lines.forEach((line) => {
+                    try {
+                      const data = JSON.parse(line);
 
-              eventSource.close();
-              endRequest();
-              sessionStorage.removeItem("initStreamUrl");
-              sessionStorage.removeItem("initFormData");
-              return;
-            }
+                      if (data.done) {
+                        document.getElementById("streamStatus").classList.add("hidden");
+                        const parsed = parseInitResult(fullContent);
+                        applyParsedResult(parsed);
+                        endRequest();
+                        sessionStorage.removeItem("initStreamFormData");
+                        sessionStorage.removeItem("initFormData");
+                        return;
+                      }
 
-            if (data.error) {
+                      if (data.error) {
+                        document.getElementById("streamStatus").className =
+                          "alert alert-error mb-4";
+                        document.getElementById("streamStatus").innerHTML =
+                          "<span>错误: " + data.error + "</span>";
+                        endRequest();
+                        return;
+                      }
+
+                      console.log("Received data:", data);
+                      if (data.content) {
+                        fullContent += data.content;
+                        rawContentEl.value = fullContent;
+                        rawContentEl.scrollTop = rawContentEl.scrollHeight;
+                      }
+                    } catch (e) {
+                      console.warn("Failed to parse line:", line);
+                    }
+                  });
+
+                  read();
+                });
+              }
+
+              read();
+            })
+            .catch((error) => {
+              console.error("Stream error:", error);
               document.getElementById("streamStatus").className =
                 "alert alert-error mb-4";
               document.getElementById("streamStatus").innerHTML =
-                "<span>错误: " + data.error + "</span>";
-              eventSource.close();
+                "<span>错误: " + error.message + "</span>";
               endRequest();
-              return;
-            }
-
-            console.log("Received data:", data);
-            if (data.content) {
-              fullContent += data.content;
-              rawContentEl.value = fullContent;
-              rawContentEl.scrollTop = rawContentEl.scrollHeight;
-            }
-          };
-
-          eventSource.onerror = function () {
-            eventSource.close();
-            endRequest();
-          };
+            });
         }
       })();
 

@@ -47,8 +47,8 @@ async def update_summary(request: Request, book_id: int, db: DbSession, service:
     return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
 
 
-@router.get("/stream-summary", response_class=HTMLResponse)
-async def stream_summary(book_id: int, db: DbSession, service: NovelServiceDep, chapter: int | None = None):
+@router.post("/stream-summary", response_class=HTMLResponse)
+async def stream_summary(book_id: int, db: DbSession, service: NovelServiceDep, chapter: int | None = Form(None)):
     book = service.get_book(book_id)
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
@@ -65,23 +65,23 @@ async def stream_summary(book_id: int, db: DbSession, service: NovelServiceDep, 
         try:
             async for chunk in service.stream_update_summary(book, chapter_number):
                 data = json.dumps({"content": chunk}, ensure_ascii=False)
-                yield f"data: {data}\n\n"
+                yield f"{data}\n"
                 await asyncio.sleep(0.01)
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            yield json.dumps({"done": True}) + "\n"
         except TimeoutError:
             logger.error("Timeout during streaming summary update")
-            yield f"data: {json.dumps({'error': '更新超时，请稍后重试'})}\n\n"
+            yield json.dumps({"error": "更新超时，请稍后重试"}) + "\n"
         except (OSError, ConnectionError) as e:
             logger.error(f"Network error during streaming summary update: {e}")
-            yield f"data: {json.dumps({'error': '网络连接失败，请检查网络'})}\n\n"
+            yield json.dumps({"error": "网络连接失败，请检查网络"}) + "\n"
         except Exception as e:
             logger.exception("Error during streaming summary update")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield json.dumps({"error": str(e)}) + "\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
-@router.get("/stream-compress-summary", response_class=HTMLResponse)
+@router.post("/stream-compress-summary", response_class=HTMLResponse)
 async def stream_compress_summary(book_id: int, db: DbSession, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
@@ -94,20 +94,20 @@ async def stream_compress_summary(book_id: int, db: DbSession, service: NovelSer
         try:
             async for chunk in service.stream_compress_summary(book):
                 data = json.dumps({"content": chunk}, ensure_ascii=False)
-                yield f"data: {data}\n\n"
+                yield f"{data}\n"
                 await asyncio.sleep(0.01)
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            yield json.dumps({"done": True}) + "\n"
         except TimeoutError:
             logger.error("Timeout during streaming compress summary")
-            yield f"data: {json.dumps({'error': '压缩超时，请稍后重试'})}\n\n"
+            yield json.dumps({"error": "压缩超时，请稍后重试"}) + "\n"
         except (OSError, ConnectionError) as e:
             logger.error(f"Network error during streaming compress summary: {e}")
-            yield f"data: {json.dumps({'error': '网络连接失败，请检查网络'})}\n\n"
+            yield json.dumps({"error": "网络连接失败，请检查网络"}) + "\n"
         except Exception as e:
             logger.exception("Error during streaming compress summary")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield json.dumps({"error": str(e)}) + "\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.post("/save-summary", response_class=HTMLResponse)

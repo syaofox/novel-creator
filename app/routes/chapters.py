@@ -315,14 +315,14 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSes
             )
 
 
-@router.get("/stream")
+@router.post("/stream")
 async def stream_chapter(
     request: Request,
     book_id: int,
-    db: DbSession,
-    service: NovelServiceDep,
-    chapter_number: int | None = None,
-    core_event: str = "",
+    chapter_number: int | None = Form(None),
+    core_event: str = Form(""),
+    db: DbSession = None,
+    service: NovelServiceDep = None,
 ):
     book = service.get_book(book_id)
     if not book:
@@ -340,23 +340,23 @@ async def stream_chapter(
         try:
             async for chunk in ai_service.stream_write_chapter(book, chapter_number, core_event, prev_ending):
                 data = json.dumps({"content": chunk}, ensure_ascii=False)
-                yield f"data: {data}\n\n"
+                yield f"{data}\n"
                 await asyncio.sleep(0.01)
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            yield json.dumps({"done": True}) + "\n"
         except TimeoutError:
             logger.error("Timeout during streaming chapter generation")
-            yield f"data: {json.dumps({'error': '请求超时，请稍后重试'})}\n\n"
+            yield json.dumps({"error": "请求超时，请稍后重试"}) + "\n"
         except (OSError, ConnectionError) as e:
             logger.error(f"Network error during streaming: {e}")
-            yield f"data: {json.dumps({'error': '网络连接失败，请检查网络'})}\n\n"
+            yield json.dumps({"error": "网络连接失败，请检查网络"}) + "\n"
         except Exception as e:
             logger.exception("Error during streaming chapter generation")
             import traceback
 
             error_msg = f"\n\n--- 生成过程中发生错误 ---\n{str(e)}\n{traceback.format_exc()}\n"
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield json.dumps({"error": str(e)}) + "\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.get("/{chapter_num}", response_class=HTMLResponse)

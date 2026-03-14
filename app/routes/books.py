@@ -328,47 +328,8 @@ def get_preview_params(
     }
 
 
-@router.get("/preview", response_class=HTMLResponse)
-async def preview_book_get(
-    request: Request,
-    title: str = "",
-    genre: list[str] = Query(default=[]),
-    target_chapters: int = 3,
-    basic_idea: str = "",
-    temperature: float = DEFAULT_TEMPERATURE,
-    top_p: float = DEFAULT_TOP_P,
-    max_tokens: int = DEFAULT_MAX_TOKENS,
-    stream: bool = DEFAULT_STREAM,
-    jailbreak_prefix: str = "",
-    system_template: str = DEFAULT_SYSTEM_TEMPLATE,
-    style: str = "",
-    db: Session = Depends(get_db),
-):
-    params = get_preview_params(
-        request,
-        title,
-        genre,
-        target_chapters,
-        basic_idea,
-        temperature,
-        top_p,
-        max_tokens,
-        stream,
-        jailbreak_prefix,
-        system_template,
-        style,
-        "",
-        db,
-    )
-
-    from fastapi.templating import Jinja2Templates
-
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
-    return templates.TemplateResponse(request, "book_preview.html", params)
-
-
 @router.post("/preview", response_class=HTMLResponse)
-async def preview_book_post(
+async def preview_book(
     request: Request,
     title: str = Form(""),
     genre: str = Form(""),
@@ -408,17 +369,16 @@ async def preview_book_post(
     return templates.TemplateResponse(request, "book_preview.html", params)
 
 
-@router.get("/init-stream")
+@router.post("/init-stream")
 async def init_book_stream(
-    basic_idea: str = "",
-    genre: list[str] = Query(default=[]),
-    target_chapters: int = 3,
-    jailbreak_prefix: str = "",
-    style: str = "",
+    basic_idea: str = Form(""),
+    genre: str = Form(""),
+    target_chapters: int = Form(3),
+    jailbreak_prefix: str = Form(""),
+    style: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    """流式初始化小说,返回 SSE 格式的数据"""
-    genre_str = genre if isinstance(genre, str) else ", ".join(genre) if genre else ""
+    """流式初始化小说,返回 ndjson 格式的流式响应"""
 
     global_config = get_global_config_dict(db)
 
@@ -431,23 +391,23 @@ async def init_book_stream(
         )
         try:
             async for chunk in ai_service.stream_initialize_book(
-                basic_idea, genre_str, target_chapters, jailbreak_prefix, style
+                basic_idea, genre, target_chapters, jailbreak_prefix, style
             ):
                 data = json.dumps(chunk, ensure_ascii=False)
-                yield f"data: {data}\n\n"
+                yield f"{data}\n"
                 await asyncio.sleep(0.01)
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            yield json.dumps({"done": True}) + "\n"
         except TimeoutError:
             logger.error("Timeout during book initialization")
-            yield f"data: {json.dumps({'error': '请求超时，请稍后重试'})}\n\n"
+            yield json.dumps({"error": "请求超时，请稍后重试"}) + "\n"
         except (OSError, ConnectionError) as e:
             logger.error(f"Network error during book initialization: {e}")
-            yield f"data: {json.dumps({'error': '网络连接失败，请检查网络'})}\n\n"
+            yield json.dumps({"error": "网络连接失败，请检查网络"}) + "\n"
         except Exception as e:
             logger.exception("Unexpected error during book initialization")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield json.dumps({"error": str(e)}) + "\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.post("/", response_class=HTMLResponse)

@@ -470,37 +470,44 @@
       const genre = formData.getAll("genre");
       const genreStr = genre.join(", ");
 
-      const params = new URLSearchParams();
-      params.append("title", formData.get("title") || "");
-      params.append("basic_idea", basicIdea);
-      params.append("target_chapters", formData.get("target_chapters") || "3");
-      params.append("jailbreak_prefix", formData.get("jailbreak_prefix") || "");
-      params.append("style", formData.get("style") || "");
-      params.append("temperature", formData.get("temperature") || "{{ default_temperature }}");
-      params.append("top_p", formData.get("top_p") || "{{ default_top_p }}");
-      params.append("max_tokens", formData.get("max_tokens") || "{{ default_max_tokens }}");
-      params.append("stream", formData.get("stream") ? "true" : "false");
-      params.append("system_template", formData.get("system_template") || "");
-      genre.forEach((g) => params.append("genre", g));
-
-      const streamUrl = "/books/init-stream?" + params.toString();
-
-      sessionStorage.setItem("initStreamUrl", streamUrl);
-      sessionStorage.setItem("initFormData", JSON.stringify({
+      const postData = {
         title: formData.get("title") || "",
-        genre: genreStr,
-        target_chapters: parseInt(formData.get("target_chapters") || "3"),
         basic_idea: basicIdea,
+        target_chapters: parseInt(formData.get("target_chapters") || "3"),
+        jailbreak_prefix: formData.get("jailbreak_prefix") || "",
+        style: formData.get("style") || "",
         temperature: parseFloat(formData.get("temperature") || "{{ default_temperature }}"),
         top_p: parseFloat(formData.get("top_p") || "{{ default_top_p }}"),
         max_tokens: parseInt(formData.get("max_tokens") || "{{ default_max_tokens }}"),
         stream: formData.get("stream") ? true : false,
-        jailbreak_prefix: formData.get("jailbreak_prefix") || "",
         system_template: formData.get("system_template") || "",
-        style: formData.get("style") || "",
-      }));
+        genre: genreStr,
+      };
 
-      window.location.href = "/books/preview?" + params.toString();
+      const streamFormData = new FormData();
+      streamFormData.append("basic_idea", basicIdea);
+      streamFormData.append("genre", genreStr);
+      streamFormData.append("target_chapters", String(parseInt(formData.get("target_chapters") || "3")));
+      streamFormData.append("jailbreak_prefix", formData.get("jailbreak_prefix") || "");
+      streamFormData.append("style", formData.get("style") || "");
+
+      sessionStorage.setItem("initStreamFormData", JSON.stringify(Object.fromEntries(streamFormData)));
+      sessionStorage.setItem("initFormData", JSON.stringify(postData));
+
+      const formEl = document.createElement("form");
+      formEl.method = "POST";
+      formEl.action = "/books/preview";
+
+      Object.entries(postData).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = String(value);
+        formEl.appendChild(input);
+      });
+
+      document.body.appendChild(formEl);
+      formEl.submit();
     }
 
     function switchTab(tab) {

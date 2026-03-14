@@ -298,50 +298,81 @@
       let firstChunk = true;
       summaryEl.value = '更新中...';
       
-      const eventSource = new EventSource(`/books/${bookId}/ai/stream-summary?chapter=${chapterNum}`);
+      fetch(`/books/${bookId}/ai/stream-summary`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          book_id: String(bookId),
+          chapter: String(chapterNum),
+        }),
+      })
+        .then((response) => {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
 
-      eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
+          function read() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                endRequest();
+                btn.disabled = false;
+                loadingSpinner.classList.add('hidden');
+                btnText.classList.remove('hidden');
+                return;
+              }
 
-        if (data.done) {
-          eventSource.close();
-          endRequest();
-          btn.disabled = false;
-          loadingSpinner.classList.add('hidden');
-          btnText.classList.remove('hidden');
-          return;
-        }
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split("\n").filter((line) => line.trim());
 
-        if (data.error) {
-          summaryEl.value = '更新失败: ' + data.error;
-          eventSource.close();
-          endRequest();
-          btn.disabled = false;
-          loadingSpinner.classList.add('hidden');
-          btnText.classList.remove('hidden');
-          return;
-        }
+              lines.forEach((line) => {
+                try {
+                  const data = JSON.parse(line);
 
-        if (data.content) {
-          if (firstChunk) {
-            summaryEl.value = data.content;
-            firstChunk = false;
-          } else {
-            summaryEl.value += data.content;
+                  if (data.done) {
+                    endRequest();
+                    btn.disabled = false;
+                    loadingSpinner.classList.add('hidden');
+                    btnText.classList.remove('hidden');
+                    return;
+                  }
+
+                  if (data.error) {
+                    summaryEl.value = '更新失败: ' + data.error;
+                    endRequest();
+                    btn.disabled = false;
+                    loadingSpinner.classList.add('hidden');
+                    btnText.classList.remove('hidden');
+                    return;
+                  }
+
+                  if (data.content) {
+                    if (firstChunk) {
+                      summaryEl.value = data.content;
+                      firstChunk = false;
+                    } else {
+                      summaryEl.value += data.content;
+                    }
+                  }
+                } catch (e) {
+                  console.warn("Failed to parse line:", line);
+                }
+              });
+
+              read();
+            });
           }
-        }
-      };
 
-      eventSource.onerror = function() {
-        eventSource.close();
-        endRequest();
-        btn.disabled = false;
-        loadingSpinner.classList.add('hidden');
-        btnText.classList.remove('hidden');
-        if (summaryEl.value === '更新中...') {
-          summaryEl.value = '更新失败，章节内容为空';
-        }
-      };
+          read();
+        })
+        .catch((error) => {
+          console.error("Stream error:", error);
+          summaryEl.value = '更新失败: ' + error.message;
+          endRequest();
+          btn.disabled = false;
+          loadingSpinner.classList.add('hidden');
+          btnText.classList.remove('hidden');
+        });
     }
     
     function streamCompressSummary() {
@@ -358,50 +389,80 @@
       let firstChunk = true;
       summaryEl.value = '压缩中...';
       
-      const eventSource = new EventSource(`/books/${bookId}/ai/stream-compress-summary`);
+      fetch(`/books/${bookId}/ai/stream-compress-summary`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          book_id: String(bookId),
+        }),
+      })
+        .then((response) => {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
 
-      eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
+          function read() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                endRequest();
+                btn.disabled = false;
+                loadingSpinner.classList.add('hidden');
+                btnText.classList.remove('hidden');
+                return;
+              }
 
-        if (data.done) {
-          eventSource.close();
-          endRequest();
-          btn.disabled = false;
-          loadingSpinner.classList.add('hidden');
-          btnText.classList.remove('hidden');
-          return;
-        }
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split("\n").filter((line) => line.trim());
 
-        if (data.error) {
-          summaryEl.value = '压缩失败: ' + data.error;
-          eventSource.close();
-          endRequest();
-          btn.disabled = false;
-          loadingSpinner.classList.add('hidden');
-          btnText.classList.remove('hidden');
-          return;
-        }
+              lines.forEach((line) => {
+                try {
+                  const data = JSON.parse(line);
 
-        if (data.content) {
-          if (firstChunk) {
-            summaryEl.value = data.content;
-            firstChunk = false;
-          } else {
-            summaryEl.value += data.content;
+                  if (data.done) {
+                    endRequest();
+                    btn.disabled = false;
+                    loadingSpinner.classList.add('hidden');
+                    btnText.classList.remove('hidden');
+                    return;
+                  }
+
+                  if (data.error) {
+                    summaryEl.value = '压缩失败: ' + data.error;
+                    endRequest();
+                    btn.disabled = false;
+                    loadingSpinner.classList.add('hidden');
+                    btnText.classList.remove('hidden');
+                    return;
+                  }
+
+                  if (data.content) {
+                    if (firstChunk) {
+                      summaryEl.value = data.content;
+                      firstChunk = false;
+                    } else {
+                      summaryEl.value += data.content;
+                    }
+                  }
+                } catch (e) {
+                  console.warn("Failed to parse line:", line);
+                }
+              });
+
+              read();
+            });
           }
-        }
-      };
 
-      eventSource.onerror = function() {
-        eventSource.close();
-        endRequest();
-        btn.disabled = false;
-        loadingSpinner.classList.add('hidden');
-        btnText.classList.remove('hidden');
-        if (summaryEl.value === '压缩中...') {
-          summaryEl.value = '压缩失败，请重试';
-        }
-      };
+          read();
+        })
+        .catch((error) => {
+          console.error("Stream error:", error);
+          summaryEl.value = '压缩失败: ' + error.message;
+          endRequest();
+          btn.disabled = false;
+          loadingSpinner.classList.add('hidden');
+          btnText.classList.remove('hidden');
+        });
     }
     
   </script>
