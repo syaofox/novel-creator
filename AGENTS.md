@@ -109,6 +109,31 @@ class BookOut(BookCreate):
 - 使用 `Column` 显式定义列
 - 使用 `Field` 定义带验证的字段
 
+### AI API 调用规范
+
+- **所有 AI API 调用都必须使用 `jailbreak_prefix`**，确保 LLM 充分发挥能力
+- 使用 `_get_config_value()` 获取配置，优先级：书籍配置 > 全局配置 > 默认值
+- 参考 `app/services/ai_service.py` 中的实现模式：
+
+```python
+# 正确示例
+system_content = (
+    _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+    + "\n\n"
+    + "你的角色描述..."
+)
+messages = [
+    {"role": "system", "content": system_content},
+    {"role": "user", "content": user_prompt},
+]
+
+# 错误示例 - 缺少 jailbreak_prefix
+messages = [
+    {"role": "system", "content": "你的角色描述..."},
+    {"role": "user", "content": user_prompt},
+]
+```
+
 ## 目录结构
 
 ```

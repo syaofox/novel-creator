@@ -455,7 +455,9 @@ class AiService:
         messages: list[ChatCompletionMessageParam] = [
             {
                 "role": "system",
-                "content": "你是一个小说摘要更新专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。重点关注伏笔回收和主线进度更新。",
+                "content": _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+                + "\n\n"
+                + "你是一个小说摘要更新专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。重点关注伏笔回收和主线进度更新。",
             },
             {"role": "user", "content": user_prompt},
         ]
@@ -484,7 +486,9 @@ class AiService:
         messages: list[ChatCompletionMessageParam] = [
             {
                 "role": "system",
-                "content": "你是一个小说摘要更新专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。重点关注伏笔回收和主线进度更新。",
+                "content": _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+                + "\n\n"
+                + "你是一个小说摘要更新专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。重点关注伏笔回收和主线进度更新。",
             },
             {"role": "user", "content": user_prompt},
         ]
@@ -511,7 +515,12 @@ class AiService:
         """流式压缩摘要"""
         user_prompt = prompts.COMPRESS_SUMMARY_PROMPT.format(summary=book.memory_summary)
         messages: list[ChatCompletionMessageParam] = [
-            {"role": "system", "content": "你是一个摘要压缩专家，请将以下小说摘要压缩至2500字以内，保留6部分格式。"},
+            {
+                "role": "system",
+                "content": _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+                + "\n\n"
+                + "你是一个摘要压缩专家，请将以下小说摘要压缩至2500字以内，保留6部分格式。",
+            },
             {"role": "user", "content": user_prompt},
         ]
         params = {
@@ -537,7 +546,12 @@ class AiService:
         """压缩摘要（保留6部分格式）"""
         user_prompt = prompts.COMPRESS_SUMMARY_PROMPT.format(summary=book.memory_summary)
         messages: list[ChatCompletionMessageParam] = [
-            {"role": "system", "content": "你是一个摘要压缩专家，请将以下小说摘要压缩至2500字以内，保留6部分格式。"},
+            {
+                "role": "system",
+                "content": _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+                + "\n\n"
+                + "你是一个摘要压缩专家，请将以下小说摘要压缩至2500字以内，保留6部分格式。",
+            },
             {"role": "user", "content": user_prompt},
         ]
         params = {
