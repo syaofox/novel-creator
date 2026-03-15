@@ -163,6 +163,68 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
     )
 
 
+def _repair_unpaired_quotes(text: str) -> str:
+    """修复 JSON 字符串内部未配对的引号"""
+    result = ""
+    in_string = False
+    string_char = ""
+    i = 0
+
+    while i < len(text):
+        char = text[i]
+        next_char = text[i + 1] if i + 1 < len(text) else ""
+
+        if not in_string:
+            if char in ('"', "'"):
+                in_string = True
+                string_char = char
+                result += char
+            else:
+                result += char
+        else:
+            if char == "\\" and next_char in ('"', "'"):
+                result += char + next_char
+                i += 2
+                continue
+            if char == string_char:
+                rest = text[i + 1 :].strip()
+                if (
+                    rest == ""
+                    or rest.startswith(",")
+                    or rest.startswith("}")
+                    or rest.startswith("]")
+                    or rest.startswith(":")
+                ):
+                    in_string = False
+                    result += char
+                else:
+                    result += "\\" + char
+            else:
+                result += char
+        i += 1
+    return result
+
+
+def _parse_json_with_repair(text: str) -> Any | None:
+    """尝试解析 JSON，失败则尝试修复后重试"""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        repaired = text
+        # 修复中文引号
+        repaired = repaired.replace("\u201c", '"').replace("\u201d", '"')
+        repaired = repaired.replace("\u2018", "'").replace("\u2019", "'")
+        try:
+            return json.loads(repaired)
+        except json.JSONDecodeError:
+            # 修复未配对的引号
+            repaired = _repair_unpaired_quotes(repaired)
+            try:
+                return json.loads(repaired)
+            except json.JSONDecodeError:
+                return None
+
+
 def parse_init_data_markers(text: str) -> dict[str, Any]:
     """解析【】标记格式的初始化数据"""
     result: dict[str, Any] = {}
@@ -176,23 +238,23 @@ def parse_init_data_markers(text: str) -> dict[str, Any]:
 
     chars_text = extract_section("characters")
     if chars_text:
-        try:
-            result["characters"] = json.loads(chars_text)
-        except json.JSONDecodeError:
-            result["characters"] = []
+        parsed = _parse_json_with_repair(chars_text)
+        result["characters"] = parsed if parsed is not None else []
 
     wv_text = extract_section("world_view")
     if wv_text:
-        try:
-            result["world_view"] = json.loads(wv_text)
-        except json.JSONDecodeError:
+        parsed = _parse_json_with_repair(wv_text)
+        if parsed:
+            result["world_view"] = parsed
+        else:
             result["world_view"] = {"setting": wv_text, "special_rules": "", "themes": ""}
 
     style_text = extract_section("style")
     if style_text:
-        try:
-            result["style"] = json.loads(style_text)
-        except json.JSONDecodeError:
+        parsed = _parse_json_with_repair(style_text)
+        if parsed:
+            result["style"] = parsed
+        else:
             result["style"] = {
                 "narrative_perspective": style_text,
                 "language_style": "",
@@ -202,23 +264,23 @@ def parse_init_data_markers(text: str) -> dict[str, Any]:
 
     outline_text = extract_section("outline")
     if outline_text:
-        try:
-            result["outline"] = json.loads(outline_text)
-        except json.JSONDecodeError:
-            result["outline"] = []
+        parsed = _parse_json_with_repair(outline_text)
+        result["outline"] = parsed if parsed is not None else []
 
     foreshadow_text = extract_section("foreshadowing")
     if foreshadow_text:
-        try:
-            result["foreshadowing"] = json.loads(foreshadow_text)
-        except json.JSONDecodeError:
+        parsed = _parse_json_with_repair(foreshadow_text)
+        if parsed:
+            result["foreshadowing"] = parsed
+        else:
             result["foreshadowing"] = [foreshadow_text]
 
     other_text = extract_section("other")
     if other_text:
-        try:
-            result["other"] = json.loads(other_text)
-        except json.JSONDecodeError:
+        parsed = _parse_json_with_repair(other_text)
+        if parsed:
+            result["other"] = parsed
+        else:
             result["other"] = {"novel_title": "", "key_points": other_text, "writing_guidance": ""}
 
     return result
