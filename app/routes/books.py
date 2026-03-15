@@ -16,7 +16,8 @@ from app.models import Book, Chapter, GlobalConfig, PlotSummary, CharacterCard, 
 from app.services.ai_service import AiService
 from app.services.file_service import delete_book_files
 from app.utils.config_helper import get_global_config_dict
-from app.utils.helpers import get_book_dir
+from app.utils.helpers import get_book_dir, get_templates
+from app.utils.json_helper import parse_chapter_titles, parse_init_data_markers
 from app.models import get_china_now
 from app.constants import (
     DEFAULT_TEMPERATURE,
@@ -37,72 +38,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/books", tags=["books"])
 
 
-def parse_chapter_titles(outline: str, target_chapters: int) -> list[dict]:
-    """从大纲中解析章节信息,返回 [{chapter, title, core_event}, ...]"""
-
-    def truncate_title(title: str, max_length: int = 50) -> str:
-        if len(title) > max_length:
-            return title[:max_length].strip() + "..."
-        return title
-
-    def repair_json(json_str: str) -> str:
-        import re
-
-        repaired = json_str
-        repaired = re.sub(r'[""]', '"', repaired)
-        repaired = re.sub(r"[\u201C\u201D]", '"', repaired)
-        return repaired
-
-    chapters = []
-
-    try:
-        data = json.loads(outline)
-    except json.JSONDecodeError:
-        try:
-            data = json.loads(repair_json(outline))
-        except json.JSONDecodeError:
-            lines = outline.split("\n")
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                match = re.match(r"^(?:第\s*(\d+)\s*章|(\d+)[:、.]\s*)(.+)$", line)
-                if match:
-                    num = int(match.group(1) or match.group(2))
-                    title = truncate_title(match.group(3).strip())
-                    chapters.append({"chapter": num, "title": title, "core_event": ""})
-                elif chapters or line:
-                    chapters.append({"chapter": len(chapters) + 1, "title": truncate_title(line), "core_event": ""})
-            while len(chapters) < target_chapters:
-                chapters.append({"chapter": len(chapters) + 1, "title": f"第{len(chapters) + 1}章", "core_event": ""})
-            return chapters[:target_chapters]
-
-    if isinstance(data, dict) and "outline" in data:
-        data = data["outline"]
-    if isinstance(data, list):
-        for item in data:
-            if isinstance(item, dict):
-                title = item.get("title", "")
-                if not title:
-                    title = f"第{len(chapters) + 1}章"
-                title = truncate_title(title)
-                core_event = item.get("core_event", "")
-                if not isinstance(core_event, str):
-                    core_event = str(core_event) if core_event else ""
-                chapters.append(
-                    {"chapter": item.get("chapter", len(chapters) + 1), "title": title, "core_event": core_event}
-                )
-
-    while len(chapters) < target_chapters:
-        chapters.append({"chapter": len(chapters) + 1, "title": f"第{len(chapters) + 1}章", "core_event": ""})
-
-    return chapters[:target_chapters]
-
-
 @router.get("/new", response_class=HTMLResponse)
 async def new_book_form(request: Request, db: Session = Depends(get_db)):
-    from fastapi.templating import Jinja2Templates
-
     config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
     if config:
         jailbreak_prefix = config.jailbreak_prefix
@@ -140,7 +77,7 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
         for d in db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
     ]
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(
         request,
         "new_book.html",
@@ -161,129 +98,6 @@ async def new_book_form(request: Request, db: Session = Depends(get_db)):
             "genre_options": GENRE_OPTIONS,
         },
     )
-
-
-def _repair_unpaired_quotes(text: str) -> str:
-    """修复 JSON 字符串内部未配对的引号"""
-    result = ""
-    in_string = False
-    string_char = ""
-    i = 0
-
-    while i < len(text):
-        char = text[i]
-        next_char = text[i + 1] if i + 1 < len(text) else ""
-
-        if not in_string:
-            if char in ('"', "'"):
-                in_string = True
-                string_char = char
-                result += char
-            else:
-                result += char
-        else:
-            if char == "\\" and next_char in ('"', "'"):
-                result += char + next_char
-                i += 2
-                continue
-            if char == string_char:
-                rest = text[i + 1 :].strip()
-                if (
-                    rest == ""
-                    or rest.startswith(",")
-                    or rest.startswith("}")
-                    or rest.startswith("]")
-                    or rest.startswith(":")
-                ):
-                    in_string = False
-                    result += char
-                else:
-                    result += "\\" + char
-            else:
-                result += char
-        i += 1
-    return result
-
-
-def _parse_json_with_repair(text: str) -> Any | None:
-    """尝试解析 JSON，失败则尝试修复后重试"""
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        repaired = text
-        # 修复中文引号
-        repaired = repaired.replace("\u201c", '"').replace("\u201d", '"')
-        repaired = repaired.replace("\u2018", "'").replace("\u2019", "'")
-        try:
-            return json.loads(repaired)
-        except json.JSONDecodeError:
-            # 修复未配对的引号
-            repaired = _repair_unpaired_quotes(repaired)
-            try:
-                return json.loads(repaired)
-            except json.JSONDecodeError:
-                return None
-
-
-def parse_init_data_markers(text: str) -> dict[str, Any]:
-    """解析【】标记格式的初始化数据"""
-    result: dict[str, Any] = {}
-
-    def extract_section(key: str) -> str:
-        pattern = rf"【{key}】([\s\S]*?)【{key}】"
-        match = re.search(pattern, text)
-        if match:
-            return match.group(1).strip()
-        return ""
-
-    chars_text = extract_section("characters")
-    if chars_text:
-        parsed = _parse_json_with_repair(chars_text)
-        result["characters"] = parsed if parsed is not None else []
-
-    wv_text = extract_section("world_view")
-    if wv_text:
-        parsed = _parse_json_with_repair(wv_text)
-        if parsed:
-            result["world_view"] = parsed
-        else:
-            result["world_view"] = {"setting": wv_text, "special_rules": "", "themes": ""}
-
-    style_text = extract_section("style")
-    if style_text:
-        parsed = _parse_json_with_repair(style_text)
-        if parsed:
-            result["style"] = parsed
-        else:
-            result["style"] = {
-                "narrative_perspective": style_text,
-                "language_style": "",
-                "pace": "",
-                "target_audience": "",
-            }
-
-    outline_text = extract_section("outline")
-    if outline_text:
-        parsed = _parse_json_with_repair(outline_text)
-        result["outline"] = parsed if parsed is not None else []
-
-    foreshadow_text = extract_section("foreshadowing")
-    if foreshadow_text:
-        parsed = _parse_json_with_repair(foreshadow_text)
-        if parsed:
-            result["foreshadowing"] = parsed
-        else:
-            result["foreshadowing"] = [foreshadow_text]
-
-    other_text = extract_section("other")
-    if other_text:
-        parsed = _parse_json_with_repair(other_text)
-        if parsed:
-            result["other"] = parsed
-        else:
-            result["other"] = {"novel_title": "", "key_points": other_text, "writing_guidance": ""}
-
-    return result
 
 
 def get_preview_params(
@@ -425,9 +239,7 @@ async def preview_book(
         db,
     )
 
-    from fastapi.templating import Jinja2Templates
-
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(request, "book_preview.html", params)
 
 
@@ -552,9 +364,7 @@ async def create_book(
     is_htmx = request.headers.get("HX-Request") == "true"
     if is_htmx:
         chapters = db.query(Chapter).filter(Chapter.book_id == new_book.id).order_by(Chapter.chapter_number).all()
-        from fastapi.templating import Jinja2Templates
-
-        templates = Jinja2Templates(directory=TEMPLATE_DIR)
+        templates = get_templates()
         return templates.TemplateResponse(request, "book_detail.html", {"book": new_book, "chapters": chapters})
 
     return RedirectResponse(url=f"/books/{new_book.id}", status_code=303)
@@ -566,9 +376,7 @@ async def book_detail(request: Request, book_id: int, db: Session = Depends(get_
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
     chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
-    from fastapi.templating import Jinja2Templates
-
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(request, "book_detail.html", {"book": book, "chapters": chapters})
 
 

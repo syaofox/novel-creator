@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import DbSession, NovelServiceDep, get_ai_service
 from app.constants import TEMPLATE_DIR
 from app.models import Book, Chapter
+from app.utils.helpers import get_templates
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +90,7 @@ async def write_chapter_form(
         if is_editing and chapter:
             existing_content = chapter.content or ""
 
-        from fastapi.templating import Jinja2Templates
-
-        templates = Jinja2Templates(directory=TEMPLATE_DIR)
+        templates = get_templates()
 
         if is_completed and not edit:
             return templates.TemplateResponse(
@@ -145,9 +144,8 @@ async def generate_chapter(
     prev_ending = service.get_prev_ending(book_id, int(chapter_number))
 
     stream = book.config.get("stream", True)
-    from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
 
     if stream:
         try:
@@ -238,9 +236,8 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSes
     prev_ending = service.get_prev_ending(book_id, num)
 
     stream = book.config.get("stream", True)
-    from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
 
     if stream:
         try:
@@ -368,9 +365,8 @@ async def read_chapter(request: Request, book_id: int, chapter_num: int, db: DbS
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     content = chapter.content or ""
-    from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(
         request, "chapter_view.html", {"book": book, "chapter": chapter, "content": content}
     )
@@ -382,9 +378,8 @@ async def get_chapter_list(book_id: int, db: DbSession, service: NovelServiceDep
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
     chapters = service.get_chapters(book_id)
-    from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse("partials/chapter_list.html", {"book": book, "chapters": chapters})
 
 
@@ -426,9 +421,7 @@ async def save_chapter_endpoint(
 
         return HTMLResponse(content=f"保存失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
 
-    from fastapi.templating import Jinja2Templates
-
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     chapters = service.get_chapters(book_id)
     chapter_list_html = templates.get_template("partials/chapter_list.html").render(book=book, chapters=chapters)
     content_html = templates.get_template("partials/chapter_generated.html").render(

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import PlotSummary, CharacterCard, WritingStyle, MaterialNote, BookInitData, get_china_now
 from app.constants import DEFAULT_STYLE, TEMPLATE_DIR
+from app.utils.helpers import get_templates
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ async def materials_page(request: Request, tab: str = Query(default="plot"), db:
     material_notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
     book_init_data = db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(
         request,
         "materials.html",
@@ -207,7 +208,7 @@ async def get_materials_partial(request: Request, tab: str = Query(default="plot
     material_notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
     book_init_data = db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
 
     if is_htmx:
         return templates.TemplateResponse(
@@ -248,7 +249,7 @@ async def edit_plot_summary_modal(request: Request, plot_id: int, db: Session = 
 
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
         {"request": request, "item": plot, "item_type": "plot", "action_url": f"/materials/plot-summaries/{plot_id}"},
@@ -264,7 +265,7 @@ async def edit_character_card_modal(request: Request, card_id: int, db: Session 
 
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
         {
@@ -285,7 +286,7 @@ async def edit_material_note_modal(request: Request, note_id: int, db: Session =
 
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
         {"request": request, "item": note, "item_type": "note", "action_url": f"/materials/material-notes/{note_id}"},
@@ -301,7 +302,7 @@ async def edit_writing_style_modal(request: Request, style_id: int, db: Session 
 
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
         {
@@ -367,7 +368,7 @@ async def edit_book_init_data_modal(request: Request, data_id: int, db: Session 
 
     from fastapi.templating import Jinja2Templates
 
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
         {"request": request, "item": data, "item_type": "init", "action_url": f"/materials/book-init-data/{data_id}"},

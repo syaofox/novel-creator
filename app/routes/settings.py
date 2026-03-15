@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Book, GlobalConfig
 from app.utils.config_helper import get_global_config_dict
-from fastapi.templating import Jinja2Templates
+from app.utils.helpers import get_templates
 from app.constants import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
@@ -27,7 +27,7 @@ async def settings_form(request: Request, book_id: int, db: Session = Depends(ge
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(request, "settings.html", {"book": book})
 
 
@@ -70,7 +70,7 @@ async def global_settings_form(request: Request, db: Session = Depends(get_db)):
         db.add(config)
         db.commit()
         db.refresh(config)
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(request, "global_settings.html", {"config": config})
 
 

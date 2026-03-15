@@ -4,12 +4,12 @@ import logging
 
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import DbSession, NovelServiceDep, NovelService
 from app.constants import TEMPLATE_DIR
 from app.models import get_china_now
+from app.utils.helpers import get_templates
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ async def update_summary(request: Request, book_id: int, db: DbSession, service:
         return HTMLResponse(content=f"更新摘要失败: {str(e)}", status_code=500)
 
     service.save_summary(book, new_summary)
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
 
 
@@ -138,7 +138,7 @@ async def compress_summary(request: Request, book_id: int, db: DbSession, servic
         return HTMLResponse(content=f"压缩摘要失败: {str(e)}", status_code=500)
 
     service.save_summary(book, compressed)
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
 
 
@@ -150,5 +150,5 @@ async def update_style(request: Request, book_id: int, db: DbSession, service: N
     form = await request.form()
     style = form.get("style", "")
     service.update_style(book, style)
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = get_templates()
     return templates.TemplateResponse(request, "partials/style_summary.html", {"book": book})

@@ -177,6 +177,16 @@ class AiService:
         max_tokens = _get_config_value(book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
         return temperature, top_p, max_tokens
 
+    def _build_write_system_prompt(self, book: Book) -> str:
+        """构建写作用的 system prompt"""
+        jailbreak = _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+        system_template = _get_config_value(book, self.global_config, "system_template", DEFAULT_SYSTEM_TEMPLATE)
+        return (
+            jailbreak
+            + "\n\n"
+            + system_template.format(memory=book.memory_summary, style=book.style or "请根据小说的风格规范进行写作。")
+        )
+
     async def initialize_book(
         self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = "", book: Book | None = None
     ) -> dict[str, str]:
@@ -287,13 +297,7 @@ class AiService:
 
     async def stream_write_chapter(self, book: Book, chapter_number: int, core_event: str, prev_ending: str):
         """流式生成下一章正文，异步生成内容块"""
-        system_prompt = (
-            _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
-            + "\n\n"
-            + _get_config_value(book, self.global_config, "system_template", DEFAULT_SYSTEM_TEMPLATE).format(
-                memory=book.memory_summary, style=book.style or "请根据小说的风格规范进行写作。"
-            )
-        )
+        system_prompt = self._build_write_system_prompt(book)
         user_prompt = prompts.WRITE_CHAPTER_PROMPT.format(
             chapter_number=chapter_number, core_event=core_event, prev_ending=prev_ending
         )
@@ -324,13 +328,7 @@ class AiService:
 
     async def write_chapter(self, book: Book, chapter_number: int, core_event: str, prev_ending: str) -> str:
         """非流式生成下一章正文，返回完整内容"""
-        system_prompt = (
-            _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
-            + "\n\n"
-            + _get_config_value(book, self.global_config, "system_template", DEFAULT_SYSTEM_TEMPLATE).format(
-                memory=book.memory_summary, style=book.style or "请根据小说的风格规范进行写作。"
-            )
-        )
+        system_prompt = self._build_write_system_prompt(book)
         user_prompt = prompts.WRITE_CHAPTER_PROMPT.format(
             chapter_number=chapter_number, core_event=core_event, prev_ending=prev_ending
         )
