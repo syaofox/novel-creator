@@ -181,16 +181,12 @@ class AiService:
         self, basic_idea: str, genre: str, target_chapters: int, jailbreak_prefix: str = "", book: Book | None = None
     ) -> dict[str, str]:
         """调用初始化 Prompt，返回解析后的数据"""
-        user_prompt = prompts.INIT_PROMPT.format(basic_idea=basic_idea, genre=genre, target_chapters=target_chapters)
+        user_prompt = f"""用户创意：{basic_idea}
+小说类型：{genre}
+目标章节数：{target_chapters}"""
         system_content = (
-            ((jailbreak_prefix + "\n\n") if jailbreak_prefix else "")
-            + """你是一个专业的小说创作辅助AI，请严格按照要求输出JSON格式。
-重要：JSON 必须是有效的 JSON 语法。确保：
-1. 所有字符串值必须用双引号括起来（例如："value"），不要使用单引号或省略引号
-2. 对象键必须用双引号括起来
-3. 不要有尾随逗号
-4. 确保所有中文字符在引号内"""
-        )
+            (jailbreak_prefix + "\n\n") if jailbreak_prefix else ""
+        ) + prompts.INIT_BOOK_SYSTEM_PROMPT.format(target_chapters=target_chapters, style_section="")
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_prompt},
@@ -256,96 +252,11 @@ class AiService:
     ):
         """流式初始化小说，直接返回原始内容块"""
         style_section = (
-            f"\n\n【用户指定的风格规范】\n{style}\n\n请在生成人物卡和大纲时充分考虑用户的风格偏好。" if style else ""
+            f"\n\n【用户指定的风格规范】\n{style}\n\n请在生成人物卡和大纲时充分考虑用户的风格偏好。" if style else "\n"
         )
         system_content = (
-            ((jailbreak_prefix + "\n\n") if jailbreak_prefix else "")
-            + """你是一个专业的小说创作辅助AI。请严格按照以下格式输出，每个字段用【】标记包裹，中间是有效的JSON。
-
-重要规则：
-1. 只输出以下6个字段，顺序必须为：characters、world_view、style、outline、foreshadowing、other
-2. 每个字段格式为：【字段名】<JSON内容>【字段名】，标记必须成对出现
-3. JSON内容必须是有效的JSON，符合下方给出的结构
-4. 不要添加任何额外文本、说明、解释或注释
-5. 不要修改字段名，不要省略任何字段
-6. outline数组必须包含恰好{target_chapters}个章节对象，chapter从1开始连续编号
-
-字段格式示例：
-【characters】
-[
-  {
-    "name": "角色姓名",
-    "nickname": "昵称",
-    "age": 20,
-    "appearance": "外貌描述",
-    "personality": "性格特点",
-    "background": "背景故事",
-    "goal": "角色目标",
-    "relationships": "人物关系"
-  }
-]
-【characters】
-
-请严格按照以下结构输出：
-
-【characters】
-[
-  {
-    "name": "角色姓名",
-    "nickname": "昵称",
-    "age": 20,
-    "appearance": "外貌描述",
-    "personality": "性格特点",
-    "background": "背景故事",
-    "goal": "角色目标",
-    "relationships": "人物关系"
-  }
-]
-【characters】
-
-【world_view】
-{
-  "setting": "世界观设定",
-  "special_rules": "特殊规则",
-  "themes": "主题"
-}
-【world_view】
-
-【style】
-{
-  "narrative_perspective": "叙事视角",
-  "language_style": "语言风格",
-  "pace": "节奏特点",
-  "target_audience": "目标读者"
-}
-【style】
-
-【outline】
-[
-  {"chapter": 1, "title": "章节标题", "core_event": "本章核心事件"}
-]
-【outline】
-
-【foreshadowing】
-["伏笔1", "伏笔2"]
-【foreshadowing】
-
-【other】
-{
-  "novel_title": "小说标题",
-  "key_points": "关键要点",
-   "writing_guidance": "写作指导"
-}
-【other】
-
-重要：JSON 必须是有效的 JSON 语法。确保：
-1. 所有字符串值必须用双引号括起来（例如："value"），不要使用单引号或省略引号
-2. 对象键必须用双引号括起来
-3. 不要有尾随逗号
-4. 确保所有中文字符在引号内
-"""
-            + style_section
-        )
+            (jailbreak_prefix + "\n\n") if jailbreak_prefix else ""
+        ) + prompts.INIT_BOOK_SYSTEM_PROMPT.format(target_chapters=target_chapters, style_section=style_section)
         user_prompt = f"""用户创意：{basic_idea}
 小说类型：{genre}
 目标章节数：{target_chapters}"""
@@ -372,7 +283,7 @@ class AiService:
                 yield {"content": content}
 
         logger.info(f"Stream completed, total content length: {len(full_content)}")
-        logger.info(f"Full content: {full_content}")
+        logger.debug(f"Full content: {full_content}")
 
     async def stream_write_chapter(self, book: Book, chapter_number: int, core_event: str, prev_ending: str):
         """流式生成下一章正文，异步生成内容块"""
@@ -457,7 +368,7 @@ class AiService:
                 "role": "system",
                 "content": _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
                 + "\n\n"
-                + "你是一个小说摘要更新专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。重点关注伏笔回收和主线进度更新。",
+                + prompts.UPDATE_SUMMARY_SYSTEM_PROMPT,
             },
             {"role": "user", "content": user_prompt},
         ]
@@ -488,7 +399,7 @@ class AiService:
                 "role": "system",
                 "content": _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
                 + "\n\n"
-                + "你是一个小说摘要更新专家，请根据旧摘要和新章节生成更新后的摘要，保持6部分格式。重点关注伏笔回收和主线进度更新。",
+                + prompts.UPDATE_SUMMARY_SYSTEM_PROMPT,
             },
             {"role": "user", "content": user_prompt},
         ]
@@ -519,7 +430,7 @@ class AiService:
                 "role": "system",
                 "content": _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
                 + "\n\n"
-                + "你是一个摘要压缩专家，请将以下小说摘要压缩至2500字以内，保留6部分格式。",
+                + prompts.COMPRESS_SUMMARY_SYSTEM_PROMPT,
             },
             {"role": "user", "content": user_prompt},
         ]
@@ -550,7 +461,7 @@ class AiService:
                 "role": "system",
                 "content": _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
                 + "\n\n"
-                + "你是一个摘要压缩专家，请将以下小说摘要压缩至2500字以内，保留6部分格式。",
+                + prompts.COMPRESS_SUMMARY_SYSTEM_PROMPT,
             },
             {"role": "user", "content": user_prompt},
         ]
