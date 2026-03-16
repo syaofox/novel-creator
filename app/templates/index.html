@@ -2,23 +2,24 @@
 {% block content %}
   <div class="tabs tabs-box mb-4" id="tabs">
     <a
-      class="tab {% if status != '已完结' %}tab-active{% endif %}"
+      class="tab toggle htmx-indicator {% if status != '已完结' %}tab-active{% endif %}"
       hx-get="/?status=进行中"
       hx-target="#book-list"
       hx-swap="innerHTML"
       hx-push-url="true"
-      hx-ext="tab-switch"
       >进行中</a
     >
     <a
-      class="tab {% if status == '已完结' %}tab-active{% endif %}"
+      class="tab toggle htmx-indicator {% if status == '已完结' %}tab-active{% endif %}"
       hx-get="/?status=已完结"
       hx-target="#book-list"
       hx-swap="innerHTML"
       hx-push-url="true"
-      hx-ext="tab-switch"
       >已完结</a
     >
   </div>
   <div id="book-list">{% include "partials/book_list.html" %}</div>
+  <div id="indicator" class="htmx-indicator">
+    加载中...
+  </div>
 {% endblock %}

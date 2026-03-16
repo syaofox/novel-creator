@@ -125,11 +125,11 @@
               class="btn btn-sm btn-outline w-full"
               >导出全书</a
             >
-            <form
-              action="/books/{{ book.id }}/delete"
-              method="post"
-            hx-on::before-request="if(!confirm('确定要删除这本书吗？此操作不可恢复！')) { event.preventDefault(); }"
-            >
+             <form
+               action="/books/{{ book.id }}/delete"
+               method="post"
+               hx-confirm="确定要删除这本书吗？此操作不可恢复！"
+             >
               <button type="submit" class="btn btn-sm btn-error w-full">
                 删除书籍
               </button>

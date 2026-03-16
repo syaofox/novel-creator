@@ -5,43 +5,43 @@
 
     <div class="tabs tabs-box mb-4" id="material-tabs">
       <a
-        class="tab {% if active_tab == 'plot' %}tab-active{% endif %}"
+        class="tab toggle htmx-indicator {% if active_tab == 'plot' %}tab-active{% endif %}"
         hx-get="/materials/partial?tab=plot"
         hx-target="#tab-content"
         hx-swap="innerHTML"
-        hx-ext="tab-switch"
+        hx-push-url="true"
         >剧情梗概</a
       >
       <a
-        class="tab {% if active_tab == 'character' %}tab-active{% endif %}"
+        class="tab toggle htmx-indicator {% if active_tab == 'character' %}tab-active{% endif %}"
         hx-get="/materials/partial?tab=character"
         hx-target="#tab-content"
         hx-swap="innerHTML"
-        hx-ext="tab-switch"
+        hx-push-url="true"
         >人物卡</a
       >
       <a
-        class="tab {% if active_tab == 'note' %}tab-active{% endif %}"
+        class="tab toggle htmx-indicator {% if active_tab == 'note' %}tab-active{% endif %}"
         hx-get="/materials/partial?tab=note"
         hx-target="#tab-content"
         hx-swap="innerHTML"
-        hx-ext="tab-switch"
+        hx-push-url="true"
         >注意事项</a
       >
       <a
-        class="tab {% if active_tab == 'style' %}tab-active{% endif %}"
+        class="tab toggle htmx-indicator {% if active_tab == 'style' %}tab-active{% endif %}"
         hx-get="/materials/partial?tab=style"
         hx-target="#tab-content"
         hx-swap="innerHTML"
-        hx-ext="tab-switch"
+        hx-push-url="true"
         >文风</a
       >
       <a
-        class="tab {% if active_tab == 'init' %}tab-active{% endif %}"
+        class="tab toggle htmx-indicator {% if active_tab == 'init' %}tab-active{% endif %}"
         hx-get="/materials/partial?tab=init"
         hx-target="#tab-content"
         hx-swap="innerHTML"
-        hx-ext="tab-switch"
+        hx-push-url="true"
         >初始化数据</a
       >
     </div>
@@ -93,11 +93,11 @@
                   >
                     编辑
                   </button>
-                  <form
-                    method="post"
-                    action="/materials/plot-summaries/{{ plot.id }}/delete"
-                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                  >
+                   <form
+                     method="post"
+                     action="/materials/plot-summaries/{{ plot.id }}/delete"
+                     hx-confirm="确定删除？"
+                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
                     </button>
@@ -165,11 +165,11 @@
                   >
                     编辑
                   </button>
-                  <form
-                    method="post"
-                    action="/materials/character-cards/{{ card.id }}/delete"
-                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                  >
+                   <form
+                     method="post"
+                     action="/materials/character-cards/{{ card.id }}/delete"
+                     hx-confirm="确定删除？"
+                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
                     </button>
@@ -237,11 +237,11 @@
                   >
                     编辑
                   </button>
-                  <form
-                    method="post"
-                    action="/materials/material-notes/{{ note.id }}/delete"
-                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                  >
+                   <form
+                     method="post"
+                     action="/materials/material-notes/{{ note.id }}/delete"
+                     hx-confirm="确定删除？"
+                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
                     </button>
@@ -332,11 +332,11 @@
                     编辑
                   </button>
                   {% if not style.is_default %}
-                    <form
-                      method="post"
-                      action="/materials/writing-styles/{{ style.id }}/delete"
-                      hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                    >
+                     <form
+                       method="post"
+                       action="/materials/writing-styles/{{ style.id }}/delete"
+                       hx-confirm="确定删除？"
+                     >
                       <button type="submit" class="btn btn-sm btn-error">
                         删除
                       </button>
@@ -418,11 +418,11 @@
                   >
                     编辑
                   </button>
-                  <form
-                    method="post"
-                    action="/materials/book-init-data/{{ data.id }}/delete"
-                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                  >
+                   <form
+                     method="post"
+                     action="/materials/book-init-data/{{ data.id }}/delete"
+                     hx-confirm="确定删除？"
+                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
                     </button>

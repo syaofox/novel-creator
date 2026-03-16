@@ -1,0 +1,31 @@
+{# 通用的HTMX属性宏 #}
+
+{# 列表更新属性 #}
+{% macro list_update_attrs() %}
+  hx-target="#book-list"
+  hx-swap="innerHTML"
+  hx-push-url="true"
+{% endmacro %}
+
+{# 表单提交属性 #}
+{% macro form_submit_attrs(url) %}
+  hx-post="{{ url }}"
+  hx-target="#result"
+  hx-swap="innerHTML"
+{% endmacro %}
+
+{# 通用的确认属性 #}
+{% macro confirm_attrs(message) %}
+  hx-confirm="{{ message }}"
+{% endmacro %}
+
+{# 加载指示器属性 #}
+{% macro indicator_attrs(indicator_id) %}
+  hx-indicator="#{{ indicator_id }}"
+{% endmacro %}
+
+{# 带指示器的确认按钮 #}
+{% macro confirm_button(message, indicator_id="loading-indicator") %}
+  {{ confirm_attrs(message) }}
+  {{ indicator_attrs(indicator_id) }}
+{% endmacro %}

@@ -42,11 +42,11 @@
                   >
                     编辑
                   </button>
-                  <form
-                    method="post"
-                    action="/materials/plot-summaries/{{ plot.id }}/delete"
-                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                  >
+                   <form
+                     method="post"
+                     action="/materials/plot-summaries/{{ plot.id }}/delete"
+                     hx-confirm="确定删除？"
+                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
                     </button>
@@ -112,11 +112,11 @@
                   >
                     编辑
                   </button>
-                  <form
-                    method="post"
-                    action="/materials/character-cards/{{ card.id }}/delete"
-                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                  >
+                   <form
+                     method="post"
+                     action="/materials/character-cards/{{ card.id }}/delete"
+                     hx-confirm="确定删除？"
+                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
                     </button>
@@ -182,11 +182,11 @@
                   >
                     编辑
                   </button>
-                  <form
-                    method="post"
-                    action="/materials/material-notes/{{ note.id }}/delete"
-                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                  >
+                   <form
+                     method="post"
+                     action="/materials/material-notes/{{ note.id }}/delete"
+                     hx-confirm="确定删除？"
+                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
                     </button>
@@ -275,11 +275,11 @@
                     编辑
                   </button>
                   {% if not style.is_default %}
-                    <form
-                      method="post"
-                      action="/materials/writing-styles/{{ style.id }}/delete"
-                      hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                    >
+                     <form
+                       method="post"
+                       action="/materials/writing-styles/{{ style.id }}/delete"
+                       hx-confirm="确定删除？"
+                     >
                       <button type="submit" class="btn btn-sm btn-error">
                         删除
                       </button>
@@ -361,11 +361,11 @@
                   >
                     编辑
                   </button>
-                  <form
-                    method="post"
-                    action="/materials/book-init-data/{{ data.id }}/delete"
-                    hx-on::before-request="if(!confirm('确定删除？')) { event.preventDefault(); }"
-                  >
+                   <form
+                     method="post"
+                     action="/materials/book-init-data/{{ data.id }}/delete"
+                     hx-confirm="确定删除？"
+                   >
                     <button type="submit" class="btn btn-sm btn-error">
                       删除
                     </button>

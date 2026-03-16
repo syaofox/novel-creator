@@ -24,22 +24,6 @@
         }
       };
 
-      htmx.defineExtension("tab-switch", {
-        onEvent: function (name, evt) {
-          if (name === "htmx:beforeRequest") {
-            const target = evt.target;
-            const tab = target.closest(".tab");
-            if (tab) {
-              const tabs = target.closest(".tabs");
-              tabs.querySelectorAll(".tab").forEach(function (t) {
-                t.classList.remove("tab-active");
-              });
-              tab.classList.add("tab-active");
-            }
-          }
-        }
-      });
-
       htmx.on("htmx:afterSwap", function (evt) {
         evt.target.querySelectorAll("input, select, textarea").forEach(function (el) {
           if (!el.id && el.name) {
