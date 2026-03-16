@@ -49,32 +49,11 @@ uv run pytest --cov=app --cov-report=html  # 覆盖率
 
 - Python 3.13+, 行长度 120, 双引号 ", 4 空格缩进
 
-### 导入规范 (按顺序，空行分隔)
+### 导入规范
 
-```python
-# 标准库
-import json
-from typing import Any
+按顺序分组（标准库 -> 第三方库 -> 本地模块），用空行分隔
 
-# 第三方库
-from fastapi import APIRouter, Depends
-
-# 本地模块
-from app.models import Book
-```
-
-- 使用绝对导入，避免 `from ..models import`
-
-### 类型注解
-
-```python
-# 正确
-def func(x: str, y: int | None = None) -> dict[str, Any]:
-
-# 错误
-def func(x: str, y: Optional[int] = None) -> Dict[str, Any]:
-```
-
+- 使用绝对导入，避免相对导入
 - 使用 `str | None` 而非 `Optional[str]`
 - 使用 `dict`, `list` 而非 `Dict`, `List`
 
@@ -84,55 +63,30 @@ def func(x: str, y: Optional[int] = None) -> Dict[str, Any]:
 - 类: PascalCase (`BookService`)
 - 常量: UPPER_SNAKE_CASE (`MAX_TOKENS`)
 
+### 类型注解
+
+- 使用 `x: str | None = None` 而非 `x: Optional[str] = None`
+- 使用 `dict[str, Any]` 而非 `Dict[str, Any]`
+
 ### 异步代码
 
-```python
-response = await client.chat.completions.create(...)
-return response.choices[0].message.content or ""
-```
-
 - 使用 `AsyncOpenAI` 而非 `OpenAI`
+- `response = await client.chat.completions.create(...)`
 
 ### 错误处理
 
-- 使用具体异常类型，避免 `except:`
+- 使用具体异常类型，避免裸 `except:`
 
 ### Pydantic/SQLAlchemy
 
-```python
-class BookOut(BookCreate):
-    id: int
-    class Config:
-        from_attributes = True
-```
-
 - 使用 `Column` 显式定义列
 - 使用 `Field` 定义带验证的字段
+- `class Config: from_attributes = True`
 
 ### AI API 调用规范
 
-- **所有 AI API 调用都必须使用 `jailbreak_prefix`**，确保 LLM 充分发挥能力
-- 使用 `_get_config_value()` 获取配置，优先级：书籍配置 > 全局配置 > 默认值
-- 参考 `app/services/ai_service.py` 中的实现模式：
-
-```python
-# 正确示例
-system_content = (
-    _get_config_value(book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
-    + "\n\n"
-    + "你的角色描述..."
-)
-messages = [
-    {"role": "system", "content": system_content},
-    {"role": "user", "content": user_prompt},
-]
-
-# 错误示例 - 缺少 jailbreak_prefix
-messages = [
-    {"role": "system", "content": "你的角色描述..."},
-    {"role": "user", "content": user_prompt},
-]
-```
+- **所有 AI API 调用都必须使用 `jailbreak_prefix`**
+- 使用 `_get_config_value()` 获取配置（优先级：书籍配置 > 全局配置 > 默认值）
 
 ## 目录结构
 
@@ -143,25 +97,25 @@ app/
 ├── database.py       # 数据库连接
 ├── models.py         # SQLAlchemy 模型
 ├── core/             # 核心模块
-│   ├── dependencies.py  # 依赖注入 (get_db, get_ai_service, get_novel_service)
-│   └── exceptions.py    # 自定义异常类
+│   ├── dependencies.py  # 依赖注入
+│   └── exceptions.py    # 自定义异常
 ├── repositories/     # 数据访问层
 │   └── novel_repository.py
 ├── services/         # 业务逻辑层
-│   ├── ai_service.py       # AI 服务 (DeepSeek API)
-│   ├── base_ai_service.py # 基础 AI 服务 (LLM 调用封装)
+│   ├── ai_service.py       # AI 服务
+│   ├── base_ai_service.py # 基础 AI 服务
 │   ├── novel_service.py    # 小说业务逻辑
 │   ├── file_service.py    # 文件操作
 │   └── agents/            # Agent 实现
 │       ├── base_agent.py  # Agent 基类 + 工厂
 │       └── plot_agent.py  # 示例 Agent
-├── schemas/         # Pydantic 模型 (拆分后的目录)
+├── schemas/         # Pydantic 模型
 │   ├── __init__.py
 │   ├── book.py
 │   ├── chapter.py
 │   ├── materials.py
 │   └── settings.py
-├── routes/          # API 路由 (只调用 service)
+├── routes/          # API 路由
 ├── templates/       # Jinja2 模板
 └── static/         # 静态文件
 tests/               # 测试
@@ -174,24 +128,20 @@ alembic/            # 迁移
 
 ```python
 from app.repositories.novel_repository import NovelRepository
-
 repo = NovelRepository(db)
 book = repo.get_book_by_id(book_id)
-chapters = repo.get_chapters(book_id)
 ```
 
 ### Service 层
 
 ```python
 from app.core.dependencies import NovelServiceDep
-
-# 路由中使用依赖注入
 @router.get("/books/{book_id}")
 async def get_book(book_id: int, service: NovelServiceDep):
-    book = service.get_book(book_id)
+    return service.get_book(book_id)
 ```
 
-### Agent 层 (新增 Agent)
+### Agent 层
 
 ```python
 from app.services.agents import AgentFactory
@@ -199,14 +149,10 @@ from app.services.base_ai_service import BaseAiService
 
 class MyAgent(BaseAgent):
     system_prompt = "你的角色描述..."
-
     def build_prompt(self, **kwargs) -> str:
         return f"任务描述: {kwargs.get('input')}"
 
-# 注册 Agent
 AgentFactory.register("my_agent", MyAgent)
-
-# 使用 Agent
 agent = AgentFactory.create("my_agent", ai_service)
 result = await agent.run(input="任务输入")
 ```
@@ -215,8 +161,6 @@ result = await agent.run(input="任务输入")
 
 ```python
 from app.core.dependencies import DbSession, AiServiceDep, NovelServiceDep
-
-# 在路由中直接使用
 async def my_endpoint(db: DbSession, service: NovelServiceDep):
     ...
 ```
@@ -230,8 +174,6 @@ from app.core.exceptions import (
     ChapterNotFoundError,
     AIServiceError,
 )
-
-# 路由中抛出
 if not book:
     raise BookNotFoundError(book_id)
 ```
@@ -248,6 +190,14 @@ if not book:
 - htmx 页面切换会重新执行 script，注意变量重复声明
 - 使用 `window.xxx = window.xxx || value` 或 `if (typeof xxx === "undefined")`
 - 表单字段名必须与后端 `Form()` 参数名一致
+
+### HTMX 最佳实践（基于项目优化）
+
+- 使用 `hx-confirm` 替代内联 JavaScript 确认框
+- 利用 `htmx-indicator` 类自动处理加载状态
+- 移除自定义 HTMX 扩展，使用原生属性实现功能
+- 创建通用 HTMX 属性宏以减少重复代码
+- 使用 `hx-push-url` 更新浏览器URL而不刷新页面
 
 ## Git 提交
 
