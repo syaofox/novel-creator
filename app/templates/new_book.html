@@ -410,10 +410,13 @@
       
       const card = characterCards.find(c => c.id === parseInt(selectedId));
       if (card && card.content) {
-        if (textarea.value) {
-          textarea.value += "\n" + card.content;
-        } else {
-          textarea.value = card.content;
+        const newPart = `**${card.title}**: ${card.content}`;
+        if (!textarea.value.includes(newPart)) {
+          if (textarea.value) {
+            textarea.value += "\n" + newPart;
+          } else {
+            textarea.value = newPart;
+          }
         }
       }
     }
