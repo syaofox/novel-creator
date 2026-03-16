@@ -105,16 +105,9 @@
               <span class="label-text text-sm">人物卡</span>
             </label>
             {% if character_cards %}
-            <select
-              id="characterSelect"
-              class="select select-bordered w-full mb-2"
-              onchange="loadCharacterCard()"
-            >
-              <option value="">-- 选择已有的人物卡 --</option>
-              {% for card in character_cards %}
-              <option value="{{ card.id }}">{{ card.title }}</option>
-              {% endfor %}
-            </select>
+            <button type="button" class="btn btn-outline btn-sm mb-2" onclick="openCharacterModal()">
+              + 选择人物卡
+            </button>
             {% endif %}
             <textarea
               id="characterCard"
@@ -401,24 +394,44 @@
       }
     }
 
-    function loadCharacterCard() {
-      const select = document.getElementById("characterSelect");
+    function openCharacterModal() {
+      const modal = document.getElementById("characterModal");
+      const checkboxes = modal.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach(cb => cb.checked = false);
+      modal.showModal();
+    }
+
+    function appendCharacterCards() {
+      const modal = document.getElementById("characterModal");
+      const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');
       const textarea = document.getElementById("characterCard");
-      const selectedId = select.value;
       
-      if (!selectedId) return;
+      if (checkboxes.length === 0) {
+        modal.close();
+        return;
+      }
       
-      const card = characterCards.find(c => c.id === parseInt(selectedId));
-      if (card && card.content) {
-        const newPart = `**${card.title}**: ${card.content}`;
-        if (!textarea.value.includes(newPart)) {
-          if (textarea.value) {
-            textarea.value += "\n" + newPart;
-          } else {
-            textarea.value = newPart;
+      let newParts = [];
+      checkboxes.forEach(cb => {
+        const card = characterCards.find(c => c.id === parseInt(cb.value));
+        if (card && card.content) {
+          const newPart = `**${card.title}**: ${card.content}`;
+          if (!textarea.value.includes(newPart)) {
+            newParts.push(newPart);
           }
         }
+      });
+      
+      if (newParts.length > 0) {
+        const newContent = newParts.join("\n\n");
+        if (textarea.value) {
+          textarea.value += "\n\n" + newContent;
+        } else {
+          textarea.value = newContent;
+        }
       }
+      
+      modal.close();
     }
 
     function loadMaterialNote() {
@@ -547,6 +560,29 @@
       formEl.submit();
     }
 
-    switchTab("ai");
+      switchTab("ai");
   </script>
+
+  {% if character_cards %}
+  <dialog id="characterModal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">选择人物卡</h3>
+      <div class="py-4 grid grid-cols-2 gap-2">
+        {% for card in character_cards %}
+        <label class="cursor-pointer flex items-center gap-2">
+          <input type="checkbox" class="checkbox" value="{{ card.id }}">
+          <span class="truncate">{{ card.title }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="modal-action">
+        <button type="button" class="btn btn-primary" onclick="appendCharacterCards()">追加</button>
+        <button type="button" class="btn" onclick="document.getElementById('characterModal').close()">取消</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+  {% endif %}
 {% endblock %}
