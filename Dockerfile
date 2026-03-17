@@ -26,9 +26,6 @@ RUN mkdir -p data books && \
     groupadd --gid 1000 nonroot && \
     useradd --uid 1000 --gid nonroot --shell /bin/bash --create-home nonroot
 
-COPY app/ ./app/
-COPY alembic/ ./alembic/
-COPY alembic.ini ./
 COPY --chown=nonroot:nonroot . .
 
 USER nonroot
