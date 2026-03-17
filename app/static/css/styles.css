@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "../templates";
+
 @plugin "daisyui";
 
 .form-control {
