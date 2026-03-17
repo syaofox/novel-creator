@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import HTMLResponse
@@ -12,7 +13,9 @@ from app.database import engine, get_db
 from app import models
 from app.routes import books, chapters, ai
 from app.routes import materials
-from app.routes.settings import book_settings_router, global_settings_router  # 修改点
+from app.routes.settings import book_settings_router, global_settings_router
+
+BASE_DIR = Path(__file__).resolve().parent
 
 # 加载环境变量
 load_dotenv()
@@ -37,7 +40,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="DeepSeek Novel Studio", lifespan=lifespan)
 
 # 挂载静态文件
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # 注册路由
 app.include_router(books.router)
@@ -48,7 +51,7 @@ app.include_router(book_settings_router)  # 新增
 app.include_router(global_settings_router)  # 新增
 
 # 模板
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
 @app.get("/", response_class=HTMLResponse)

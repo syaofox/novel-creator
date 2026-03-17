@@ -1,4 +1,6 @@
-TEMPLATE_DIR = "app/templates"
+from pathlib import Path
+
+TEMPLATE_DIR = str(Path(__file__).resolve().parent / "templates")
 
 DEFAULT_TEMPERATURE = 0.78
 DEFAULT_TOP_P = 0.92
