@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@source "../templates";
+@source "../templates/**/*.html";
 
 @plugin "daisyui";
 
