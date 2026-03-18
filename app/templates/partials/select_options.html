@@ -1,0 +1,10 @@
+<select
+  id="{{ select_id }}"
+  class="select select-bordered w-full mb-2"
+  onchange="{% if select_id == 'plotSelect' %}loadPlotSummary(){% elif select_id == 'noteSelect' %}loadMaterialNote(){% elif select_id == 'styleSelect' %}updateStyleFromSelect(){% endif %}"
+>
+  <option value="">{{ placeholder }}</option>
+  {% for item in items %}
+  <option value="{{ item.id }}">{{ item.title }}{% if show_default and item.is_default %} (默认){% endif %}</option>
+  {% endfor %}
+</select>

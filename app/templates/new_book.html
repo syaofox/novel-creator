@@ -77,9 +77,14 @@
         </label>
         <div class="space-y-3">
           <div>
-            <label class="label py-1" for="plotSummary">
-              <span class="label-text text-sm">剧情梗概</span>
-            </label>
+            <div class="flex justify-between items-center">
+              <label class="label py-1" for="plotSummary">
+                <span class="label-text text-sm">剧情梗概</span>
+              </label>
+              <button type="button" class="btn btn-outline btn-xs" onclick="openCreateModal('plot')">
+                + 保存到素材库
+              </button>
+            </div>
             {% if plot_summaries %}
             <select
               id="plotSelect"
@@ -91,6 +96,10 @@
               <option value="{{ plot.id }}">{{ plot.title }}</option>
               {% endfor %}
             </select>
+            {% else %}
+            <select id="plotSelect" class="select select-bordered w-full mb-2 hidden">
+              <option value="">-- 选择已有剧情梗概 --</option>
+            </select>
             {% endif %}
             <textarea
               id="plotSummary"
@@ -101,14 +110,21 @@
             ></textarea>
           </div>
           <div>
-            <label class="label py-1" for="characterCard">
-              <span class="label-text text-sm">人物卡</span>
-            </label>
-            {% if character_cards %}
-            <button type="button" class="btn btn-outline btn-sm mb-2" onclick="openCharacterModal()">
-              + 选择人物卡
-            </button>
-            {% endif %}
+            <div class="flex justify-between items-center">
+              <label class="label py-1" for="characterCard">
+                <span class="label-text text-sm">人物卡</span>
+              </label>
+              <div class="flex gap-1">
+                {% if character_cards %}
+                <button type="button" class="btn btn-outline btn-xs" onclick="openCharacterModal()">
+                  + 选择
+                </button>
+                {% endif %}
+                <button type="button" class="btn btn-outline btn-xs" onclick="openCreateModal('character')">
+                  + 保存
+                </button>
+              </div>
+            </div>
             <textarea
               id="characterCard"
               name="character_card"
@@ -118,9 +134,14 @@
             ></textarea>
           </div>
           <div>
-            <label class="label py-1" for="materialNote">
-              <span class="label-text text-sm">注意事项</span>
-            </label>
+            <div class="flex justify-between items-center">
+              <label class="label py-1" for="materialNote">
+                <span class="label-text text-sm">注意事项</span>
+              </label>
+              <button type="button" class="btn btn-outline btn-xs" onclick="openCreateModal('note')">
+                + 保存到素材库
+              </button>
+            </div>
             {% if material_notes %}
             <select
               id="noteSelect"
@@ -131,6 +152,10 @@
               {% for note in material_notes %}
               <option value="{{ note.id }}">{{ note.title }}</option>
               {% endfor %}
+            </select>
+            {% else %}
+            <select id="noteSelect" class="select select-bordered w-full mb-2 hidden">
+              <option value="">-- 选择已有注意事项 --</option>
             </select>
             {% endif %}
             <textarea
@@ -144,9 +169,14 @@
         </div>
       </div>
       <div class="form-control">
-        <label class="label" for="styleSelect">
-          <span class="label-text">写作风格规范</span>
-        </label>
+        <div class="flex justify-between items-center">
+          <label class="label" for="styleSelect">
+            <span class="label-text">写作风格规范</span>
+          </label>
+          <button type="button" class="btn btn-outline btn-xs" onclick="openCreateModal('style')">
+            + 保存到素材库
+          </button>
+        </div>
         <select
           id="styleSelect"
           class="select select-bordered w-full mb-2"
@@ -467,6 +497,47 @@
       }
     }
 
+    function openCreateModal(type) {
+      const modalConfig = {
+        plot: { modalId: 'createPlotModal', contentId: 'plotContentForSave', textareaId: 'plotSummary' },
+        character: { modalId: 'createCharacterModal', contentId: 'characterContentForSave', textareaId: 'characterCard' },
+        note: { modalId: 'createNoteModal', contentId: 'noteContentForSave', textareaId: 'materialNote' },
+        style: { modalId: 'createStyleModal', contentId: 'styleContentForSave', textareaId: 'styleTextarea' }
+      };
+      
+      const config = modalConfig[type];
+      if (!config) return;
+      
+      const modal = document.getElementById(config.modalId);
+      const contentField = document.getElementById(config.contentId);
+      const textarea = document.getElementById(config.textareaId);
+      
+      if (contentField && textarea) {
+        contentField.value = textarea.value;
+      }
+      
+      modal.showModal();
+    }
+
+    function handleMaterialCreate(selectId, modalId, newId) {
+      document.getElementById(modalId).close();
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-top toast-center';
+      toast.innerHTML = '<div class="alert alert-success"><span>素材保存成功，已自动选中</span></div>';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+      
+      if (selectId === 'characterCard') {
+        return;
+      }
+      
+      const selectEl = document.getElementById(selectId);
+      if (selectEl && newId) {
+        selectEl.value = newId;
+      }
+    }
+
     function goToPreview() {
       const form = document.getElementById("bookForm");
       const formData = new FormData(form);
@@ -585,4 +656,106 @@
     </form>
   </dialog>
   {% endif %}
+
+  <dialog id="createPlotModal" class="modal">
+    <div class="modal-box max-w-lg">
+      <h3 class="font-bold text-lg">保存剧情梗概</h3>
+      <form hx-post="/materials/plot-summaries" hx-target="#plotSelect" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) { handleMaterialCreate('plotSelect', 'createPlotModal', event.detail.xhr.getResponseHeader('X-New-Id')); this.reset(); }">
+        <input type="hidden" name="source" value="new_book">
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">标题</span></label>
+          <input type="text" name="title" required class="input input-bordered" />
+        </div>
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">内容</span></label>
+          <textarea id="plotContentForSave" name="content" rows="6" class="textarea textarea-bordered"></textarea>
+        </div>
+        <div class="modal-action">
+          <button type="button" class="btn" onclick="document.getElementById('createPlotModal').close()">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <dialog id="createCharacterModal" class="modal">
+    <div class="modal-box max-w-lg">
+      <h3 class="font-bold text-lg">保存人物卡</h3>
+      <form hx-post="/materials/character-cards" hx-target="#characterModal" hx-swap="beforebegin" hx-on::after-request="if(event.detail.successful) { handleMaterialCreate('characterCard', 'createCharacterModal', event.detail.xhr.getResponseHeader('X-New-Id')); this.reset(); }">
+        <input type="hidden" name="source" value="new_book">
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">标题</span></label>
+          <input type="text" name="title" required class="input input-bordered" />
+        </div>
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">内容</span></label>
+          <textarea id="characterContentForSave" name="content" rows="6" class="textarea textarea-bordered"></textarea>
+        </div>
+        <div class="modal-action">
+          <button type="button" class="btn" onclick="document.getElementById('createCharacterModal').close()">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <dialog id="createNoteModal" class="modal">
+    <div class="modal-box max-w-lg">
+      <h3 class="font-bold text-lg">保存注意事项</h3>
+      <form hx-post="/materials/material-notes" hx-target="#noteSelect" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) { handleMaterialCreate('noteSelect', 'createNoteModal', event.detail.xhr.getResponseHeader('X-New-Id')); this.reset(); }">
+        <input type="hidden" name="source" value="new_book">
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">标题</span></label>
+          <input type="text" name="title" required class="input input-bordered" />
+        </div>
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">内容</span></label>
+          <textarea id="noteContentForSave" name="content" rows="6" class="textarea textarea-bordered"></textarea>
+        </div>
+        <div class="modal-action">
+          <button type="button" class="btn" onclick="document.getElementById('createNoteModal').close()">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <dialog id="createStyleModal" class="modal">
+    <div class="modal-box max-w-lg">
+      <h3 class="font-bold text-lg">保存文风</h3>
+      <form hx-post="/materials/writing-styles" hx-target="#styleSelect" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) { handleMaterialCreate('styleSelect', 'createStyleModal', event.detail.xhr.getResponseHeader('X-New-Id')); this.reset(); }">
+        <input type="hidden" name="source" value="new_book">
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">标题</span></label>
+          <input type="text" name="title" required class="input input-bordered" />
+        </div>
+        <div class="form-control mb-2">
+          <label class="label"><span class="label-text">内容</span></label>
+          <textarea id="styleContentForSave" name="content" rows="6" class="textarea textarea-bordered"></textarea>
+        </div>
+        <div class="form-control mb-4">
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox" name="is_default" value="1" class="checkbox checkbox-primary" />
+            <span class="label-text">设为默认</span>
+          </label>
+        </div>
+        <div class="modal-action">
+          <button type="button" class="btn" onclick="document.getElementById('createStyleModal').close()">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
 {% endblock %}

@@ -44,11 +44,30 @@ async def materials_page(request: Request, tab: str = Query(default="plot"), db:
 
 @router.post("/plot-summaries", response_class=HTMLResponse)
 async def create_plot_summary(
-    request: Request, title: str = Form(...), content: str = Form(""), db: Session = Depends(get_db)
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(""),
+    source: str = Form(None),
+    db: Session = Depends(get_db),
 ):
     new_plot = PlotSummary(title=title, content=content)
     db.add(new_plot)
     db.commit()
+    db.refresh(new_plot)
+
+    if source == "new_book":
+        plots = db.query(PlotSummary).order_by(PlotSummary.updated_at.desc()).all()
+        from fastapi.templating import Jinja2Templates
+
+        templates = get_templates()
+        response = templates.TemplateResponse(
+            request,
+            "partials/select_options.html",
+            {"items": plots, "select_id": "plotSelect", "placeholder": "-- 选择已有剧情梗概 --"},
+        )
+        response.headers["X-New-Id"] = str(new_plot.id)
+        return response
+
     return RedirectResponse(url="/materials", status_code=303)
 
 
@@ -78,11 +97,24 @@ async def delete_plot_summary(plot_id: int, db: Session = Depends(get_db)):
 
 @router.post("/character-cards", response_class=HTMLResponse)
 async def create_character_card(
-    request: Request, title: str = Form(...), content: str = Form(""), db: Session = Depends(get_db)
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(""),
+    source: str = Form(None),
+    db: Session = Depends(get_db),
 ):
     new_card = CharacterCard(title=title, content=content)
     db.add(new_card)
     db.commit()
+    db.refresh(new_card)
+
+    if source == "new_book":
+        from fastapi.responses import HTMLResponse
+
+        response = HTMLResponse(content=f'<input type="hidden" name="X-New-Id" value="{new_card.id}">')
+        response.headers["X-New-Id"] = str(new_card.id)
+        return response
+
     return RedirectResponse(url="/materials?tab=character", status_code=303)
 
 
@@ -116,6 +148,7 @@ async def create_writing_style(
     title: str = Form(...),
     content: str = Form(""),
     is_default: int = Form(0),
+    source: str = Form(None),
     db: Session = Depends(get_db),
 ):
     if is_default == 1:
@@ -123,6 +156,21 @@ async def create_writing_style(
     new_style = WritingStyle(title=title, content=content, is_default=is_default)
     db.add(new_style)
     db.commit()
+    db.refresh(new_style)
+
+    if source == "new_book":
+        styles = db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
+        from fastapi.templating import Jinja2Templates
+
+        templates = get_templates()
+        response = templates.TemplateResponse(
+            request,
+            "partials/select_options.html",
+            {"items": styles, "select_id": "styleSelect", "placeholder": "-- 选择已有文风 --", "show_default": True},
+        )
+        response.headers["X-New-Id"] = str(new_style.id)
+        return response
+
     return RedirectResponse(url="/materials?tab=style", status_code=303)
 
 
@@ -162,11 +210,30 @@ async def delete_writing_style(style_id: int, db: Session = Depends(get_db)):
 
 @router.post("/material-notes", response_class=HTMLResponse)
 async def create_material_note(
-    request: Request, title: str = Form(...), content: str = Form(""), db: Session = Depends(get_db)
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(""),
+    source: str = Form(None),
+    db: Session = Depends(get_db),
 ):
     new_note = MaterialNote(title=title, content=content)
     db.add(new_note)
     db.commit()
+    db.refresh(new_note)
+
+    if source == "new_book":
+        notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
+        from fastapi.templating import Jinja2Templates
+
+        templates = get_templates()
+        response = templates.TemplateResponse(
+            request,
+            "partials/select_options.html",
+            {"items": notes, "select_id": "noteSelect", "placeholder": "-- 选择已有注意事项 --"},
+        )
+        response.headers["X-New-Id"] = str(new_note.id)
+        return response
+
     return RedirectResponse(url="/materials?tab=note", status_code=303)
 
 
