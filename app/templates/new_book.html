@@ -519,6 +519,50 @@
       modal.showModal();
     }
 
+    function previewCharacterSplit() {
+      const content = document.getElementById('characterContentForSave').value;
+      const statusEl = document.getElementById('characterSaveStatus');
+      const countEl = document.getElementById('characterCount');
+      
+      const sections = content.split(/\n\s*\n/).filter(s => s.trim());
+      const count = sections.length;
+      
+      if (count > 1) {
+        statusEl.classList.remove('hidden');
+        countEl.textContent = count;
+      } else {
+        statusEl.classList.add('hidden');
+      }
+    }
+
+    function handleCharacterSplitSave(event) {
+      document.getElementById('createCharacterModal').close();
+      
+      const newIdsHeader = event.detail.xhr.getResponseHeader('X-New-Ids');
+      let message = '人物卡保存成功';
+      
+      if (newIdsHeader) {
+        try {
+          const saved = JSON.parse(newIdsHeader);
+          if (saved.length > 1) {
+            const names = saved.map(s => s.name).join('、');
+            message = `已保存 ${saved.length} 个人物卡: ${names}`;
+          } else if (saved.length === 1) {
+            message = `已保存人物卡: ${saved[0].name}`;
+          }
+        } catch (e) {}
+      }
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-top toast-center';
+      toast.innerHTML = `<div class="alert alert-success"><span>${message}</span></div>`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+      
+      document.getElementById('characterContentForSave').value = '';
+      document.getElementById('characterSaveStatus').classList.add('hidden');
+    }
+
     function handleMaterialCreate(selectId, modalId, newId) {
       document.getElementById(modalId).close();
       
@@ -684,15 +728,15 @@
   <dialog id="createCharacterModal" class="modal">
     <div class="modal-box max-w-lg">
       <h3 class="font-bold text-lg">保存人物卡</h3>
-      <form hx-post="/materials/character-cards" hx-target="#characterModal" hx-swap="beforebegin" hx-on::after-request="if(event.detail.successful) { handleMaterialCreate('characterCard', 'createCharacterModal', event.detail.xhr.getResponseHeader('X-New-Id')); this.reset(); }">
-        <input type="hidden" name="source" value="new_book">
+      <div id="characterSaveStatus" class="hidden mb-3 p-3 bg-base-200 rounded-lg">
+        <p class="text-sm text-info">检测到 <span id="characterCount">0</span> 个人物，将保存为独立的素材</p>
+      </div>
+      <form hx-post="/materials/character-cards/split-save" hx-target="#characterModal" hx-swap="beforebegin" hx-on::after-request="if(event.detail.successful) { handleCharacterSplitSave(event); }">
         <div class="form-control mb-2">
-          <label class="label"><span class="label-text">标题</span></label>
-          <input type="text" name="title" required class="input input-bordered" />
-        </div>
-        <div class="form-control mb-2">
-          <label class="label"><span class="label-text">内容</span></label>
-          <textarea id="characterContentForSave" name="content" rows="6" class="textarea textarea-bordered"></textarea>
+          <label class="label">
+            <span class="label-text">内容（多人物用空行分隔，将自动拆分为独立素材）</span>
+          </label>
+          <textarea id="characterContentForSave" name="content" rows="8" class="textarea textarea-bordered" placeholder="张三: 主角，二十岁&#10;外貌：...&#10;&#10;李四: 配角，十八岁&#10;外貌：..." oninput="previewCharacterSplit()"></textarea>
         </div>
         <div class="modal-action">
           <button type="button" class="btn" onclick="document.getElementById('createCharacterModal').close()">取消</button>

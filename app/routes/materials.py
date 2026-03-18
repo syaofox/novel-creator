@@ -95,14 +95,118 @@ async def delete_plot_summary(plot_id: int, db: Session = Depends(get_db)):
     return RedirectResponse(url="/materials", status_code=303)
 
 
+def extract_character_names(content: str) -> list[str]:
+    """从人物卡内容中提取人物名称列表"""
+    if not content:
+        return []
+
+    import re
+
+    names = []
+    lines = content.strip().split("\n")
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        match = re.match(r"^([^:：]+)[:：]", line)
+        if match:
+            name = match.group(1).strip()
+            if name and name not in names:
+                names.append(name)
+
+    return names
+
+
+def generate_character_card_title(content: str) -> str:
+    """根据人物卡内容生成标题"""
+    names = extract_character_names(content)
+    if not names:
+        return "未命名人物卡"
+    if len(names) == 1:
+        return names[0]
+    if len(names) <= 3:
+        return "、".join(names)
+    return f"{names[0]}等{len(names)}人"
+
+
+def split_characters(content: str) -> list[dict[str, str]]:
+    """将人物卡内容拆分为多个单人物条目"""
+    if not content:
+        return []
+
+    import re
+
+    sections = re.split(r"\n\s*\n", content.strip())
+    characters = []
+
+    for section in sections:
+        section = section.strip()
+        if not section:
+            continue
+
+        lines = section.split("\n")
+        first_line = lines[0].strip() if lines else ""
+        match = re.match(r"^([^:：]+)[:：]\s*(.*)$", first_line)
+
+        if match:
+            name = match.group(1).strip()
+            first_line_content = match.group(2).strip()
+            remaining_lines = lines[1:] if len(lines) > 1 else []
+            all_content = [first_line_content] + remaining_lines if first_line_content else remaining_lines
+            section = "\n".join(all_content).strip()
+        else:
+            names_in_section = extract_character_names(section)
+            name = names_in_section[0] if names_in_section else "未命名"
+
+        characters.append({"name": name, "content": section})
+
+    return characters
+
+
+@router.post("/character-cards/split-save", response_class=HTMLResponse)
+async def split_save_character_cards(request: Request, content: str = Form(...), db: Session = Depends(get_db)):
+    """将多人物内容拆分为独立的单人物卡并保存"""
+    characters = split_characters(content)
+    saved_cards = []
+
+    if not characters:
+        new_card = CharacterCard(title="未命名人物卡", content=content)
+        db.add(new_card)
+        db.commit()
+        db.refresh(new_card)
+        saved_cards = [{"id": new_card.id, "name": new_card.title}]
+    else:
+        cards = []
+        for char in characters:
+            card = CharacterCard(title=char["name"], content=char["content"])
+            db.add(card)
+            cards.append(card)
+        db.commit()
+        for card in cards:
+            db.refresh(card)
+            saved_cards.append({"id": card.id, "name": card.title})
+
+    from fastapi.responses import HTMLResponse
+    import json
+
+    response = HTMLResponse(content=f'<input type="hidden" name="saved_count" value="{len(saved_cards)}">')
+    response.headers["X-New-Ids"] = json.dumps(saved_cards)
+    return response
+
+
 @router.post("/character-cards", response_class=HTMLResponse)
 async def create_character_card(
     request: Request,
-    title: str = Form(...),
+    title: str = Form(""),
     content: str = Form(""),
     source: str = Form(None),
+    auto_title: int = Form(0),
     db: Session = Depends(get_db),
 ):
+    if auto_title == 1 or not title.strip():
+        title = generate_character_card_title(content)
+
     new_card = CharacterCard(title=title, content=content)
     db.add(new_card)
     db.commit()
