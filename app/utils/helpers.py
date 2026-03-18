@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 @lru_cache
 def get_templates() -> Jinja2Templates:
     """返回缓存的 Jinja2Templates 单例"""
-    return Jinja2Templates(directory=TEMPLATE_DIR)
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates.env.filters["strip_start"] = lambda s: s.lstrip() if s else ""
+    return templates
 
 
 def get_book_dir(book_id: int) -> Path:

@@ -105,9 +105,7 @@
                     </form>
                   </div>
                 </div>
-                <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">
-                  {{ plot.content }}
-                </p>
+                <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">{{ plot.content | trim }}</p>
                 <p class="text-xs text-base-content/50 mt-2">
                   更新于: {{ plot.updated_at }}
                 </p>
@@ -177,9 +175,7 @@
                     </form>
                   </div>
                 </div>
-                <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">
-                  {{ card.content }}
-                </p>
+                <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">{{ card.content | trim }}</p>
                 <p class="text-xs text-base-content/50 mt-2">
                   更新于: {{ card.updated_at }}
                 </p>
@@ -249,9 +245,7 @@
                     </form>
                   </div>
                 </div>
-                <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">
-                  {{ note.content }}
-                </p>
+                <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">{{ note.content | trim }}</p>
                 <p class="text-xs text-base-content/50 mt-2">
                   更新于: {{ note.updated_at }}
                 </p>
@@ -345,9 +339,7 @@
                     {% endif %}
                   </div>
                 </div>
-                <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">
-                  {{ style.content }}
-                </p>
+                <p class="text-sm text-base-content/70 mt-1 whitespace-pre-wrap">{{ style.content | trim }}</p>
                 <p class="text-xs text-base-content/50 mt-2">
                   更新于: {{ style.updated_at }}
                 </p>
@@ -430,9 +422,7 @@
                     </form>
                   </div>
                 </div>
-                <p class="text-sm text-base-content/70 mt-2 whitespace-pre-wrap font-mono text-xs max-h-32 overflow-y-auto">
-                  {{ data.content[:500] }}{% if data.content|length > 500 %}...{% endif %}
-                </p>
+                <p class="text-sm text-base-content/70 mt-2 whitespace-pre-wrap font-mono text-xs max-h-32 overflow-y-auto">{{ data.content[:500] | trim }}{% if data.content|length > 500 %}...{% endif %}</p>
                 <p class="text-xs text-base-content/50 mt-2">
                   更新于: {{ data.updated_at }}
                 </p>
