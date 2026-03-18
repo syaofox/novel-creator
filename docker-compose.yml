@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
+    image: novel-creator
     container_name: novel-creator
     ports:
       - "8000:8000"

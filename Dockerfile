@@ -21,6 +21,7 @@ COPY package.json package-lock.json* ./
 RUN npm install
 
 COPY app/static ./app/static
+COPY app/templates ./app/templates
 RUN npm run build:css
 
 # ============================================================
