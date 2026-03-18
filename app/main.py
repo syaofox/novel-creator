@@ -65,10 +65,14 @@ async def home(request: Request, status: str | None = None, db: Session = Depend
 
     is_htmx = request.headers.get("HX-Request") == "true"
 
-    if is_htmx:
-        return templates.TemplateResponse(request, "partials/book_list.html", {"books": books})
+    current_status = status or "进行中"
 
-    return templates.TemplateResponse(request, "index.html", {"books": books, "status": status or "进行中"})
+    if is_htmx:
+        return templates.TemplateResponse(
+            request, "partials/tabs_with_list.html", {"books": books, "status": current_status}
+        )
+
+    return templates.TemplateResponse(request, "index.html", {"books": books, "status": current_status})
 
 
 # 异常处理等可以添加

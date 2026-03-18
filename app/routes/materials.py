@@ -213,7 +213,7 @@ async def get_materials_partial(request: Request, tab: str = Query(default="plot
     if is_htmx:
         return templates.TemplateResponse(
             request,
-            "partials/materials_tab.html",
+            "partials/materials_tabs.html",
             {
                 "plot_summaries": plot_summaries,
                 "character_cards": character_cards,
