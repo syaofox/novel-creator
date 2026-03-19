@@ -7,7 +7,19 @@
         <p>进度：{{ book.current_chapter }}/{{ book.target_chapters }}</p>
         <p>最后更新：{{ book.updated_at or book.created_at }}</p>
         <div class="card-actions justify-end">
-          <a href="/books/{{ book.id }}" class="btn btn-primary">进入创作</a>
+          {% if book.status == "已完结" %}
+            <button
+              class="btn btn-warning"
+              hx-post="/books/{{ book.id }}/unfinish"
+              hx-target="#book-list"
+              hx-swap="innerHTML"
+              hx-confirm="确定要将《{{ book.title }}》标记为未完成吗？"
+            >
+              标记为未完成
+            </button>
+          {% else %}
+            <a href="/books/{{ book.id }}" class="btn btn-primary">进入创作</a>
+          {% endif %}
           <a href="/books/{{ book.id }}/export" class="btn btn-outline">导出</a>
            <form
              action="/books/{{ book.id }}/delete"

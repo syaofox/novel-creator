@@ -424,3 +424,16 @@ async def finish_book(book_id: int, db: Session = Depends(get_db)):
         book.updated_at = get_china_now()
         db.commit()
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)
+
+
+@router.post("/{book_id}/unfinish")
+async def unfinish_book(request: Request, book_id: int, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if book:
+        book.status = "进行中"  # type: ignore
+        book.updated_at = get_china_now()
+        db.commit()
+
+    # 返回更新后的已完结书籍列表
+    books = db.query(Book).filter(Book.status == "已完结").order_by(Book.updated_at.desc()).all()
+    return get_templates().TemplateResponse(request, "partials/book_list.html", {"books": books, "status": "已完结"})
