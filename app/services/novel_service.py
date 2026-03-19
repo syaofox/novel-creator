@@ -156,6 +156,9 @@ class NovelService:
         current = int(book.current_chapter) if book.current_chapter is not None else 0
         if position <= current:
             self.repo.update_book(book, current_chapter=current + 1)
+        # 更新 target_chapters 为实际最大章节数
+        new_max = max(max_num + 1, position)
+        self.repo.update_book(book, target_chapters=new_max)
         return chapter
 
     def delete_chapter(self, book: Book, chapter_number: int) -> bool:
@@ -171,6 +174,9 @@ class NovelService:
         if chapter_number <= current:
             new_current = max(0, current - 1)
             self.repo.update_book(book, current_chapter=new_current)
+        # 更新 target_chapters 为实际最大章节数
+        new_max = self.repo.get_max_chapter_number(book.id)
+        self.repo.update_book(book, target_chapters=new_max)
         return True
 
     def get_max_chapter_number(self, book: Book) -> int:
