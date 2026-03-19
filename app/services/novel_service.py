@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import Book, Chapter
 from app.repositories.novel_repository import NovelRepository
 from app.services.ai_service import AiService
+from app.services.agents import ChapterWriterAgent, SummaryAgent
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +32,14 @@ class NovelService:
         return self.repo.get_prev_ending(book_id, chapter_number, chars)
 
     async def write_chapter(self, book: Book, chapter_number: int, core_event: str, prev_ending: str) -> str:
-        return await self.ai_service.write_chapter(book, chapter_number, core_event, prev_ending)
+        agent = ChapterWriterAgent(self.ai_service, book, self.ai_service.global_config)
+        return await agent.write(chapter_number, core_event, prev_ending)
 
     async def stream_write_chapter(
         self, book: Book, chapter_number: int, core_event: str, prev_ending: str
     ) -> AsyncGenerator[str]:
-        async for chunk in self.ai_service.stream_write_chapter(book, chapter_number, core_event, prev_ending):
+        agent = ChapterWriterAgent(self.ai_service, book, self.ai_service.global_config)
+        async for chunk in agent.write_stream(chapter_number, core_event, prev_ending):
             yield chunk
 
     async def update_summary(self, book: Book, chapter_number: int | None = None) -> str:
@@ -60,9 +63,8 @@ class NovelService:
         max_chapter = self.repo.get_max_chapter_number(book.id)
         is_last_chapter = chapter_number >= max_chapter
 
-        return await self.ai_service.update_summary(
-            book, new_chapter_text, chapter_number, is_last_chapter, chapter_title
-        )
+        agent = SummaryAgent(self.ai_service, book, self.ai_service.global_config)
+        return await agent.update(new_chapter_text, chapter_number, is_last_chapter, chapter_title)
 
     async def stream_update_summary(self, book: Book, chapter_number: int | None = None) -> AsyncGenerator[str]:
         """流式更新摘要"""
@@ -85,9 +87,8 @@ class NovelService:
         max_chapter = self.repo.get_max_chapter_number(book.id)
         is_last_chapter = chapter_number >= max_chapter
 
-        async for chunk in self.ai_service.stream_update_summary(
-            book, new_chapter_text, chapter_number, is_last_chapter, chapter_title
-        ):
+        agent = SummaryAgent(self.ai_service, book, self.ai_service.global_config)
+        async for chunk in agent.update_stream(new_chapter_text, chapter_number, is_last_chapter, chapter_title):
             yield chunk
 
     def update_chapter_title_and_core_event(self, book: Book, chapter_number: int, title: str, core_event: str):

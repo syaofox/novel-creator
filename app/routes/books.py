@@ -14,6 +14,7 @@ from app.config import settings as app_settings
 from app.database import get_db
 from app.models import Book, Chapter, GlobalConfig, PlotSummary, CharacterCard, WritingStyle, MaterialNote, BookInitData
 from app.services.ai_service import AiService
+from app.services.agents import InitBookAgent
 from app.services.file_service import delete_book_files
 from app.utils.config_helper import get_global_config_dict
 from app.utils.helpers import get_book_dir, get_templates
@@ -263,10 +264,10 @@ async def init_book_stream(
             model=global_config.get("default_model") or app_settings.default_model,
             global_config=global_config,
         )
+        agent = InitBookAgent(ai_service, global_config=global_config)
+        agent.with_jailbreak(jailbreak_prefix).with_style(style)
         try:
-            async for chunk in ai_service.stream_initialize_book(
-                basic_idea, genre, target_chapters, jailbreak_prefix, style
-            ):
+            async for chunk in agent.stream_initialize(basic_idea, genre, target_chapters):
                 data = json.dumps(chunk, ensure_ascii=False)
                 yield f"{data}\n"
                 await asyncio.sleep(0.01)

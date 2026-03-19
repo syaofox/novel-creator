@@ -12,6 +12,7 @@ from app.core.dependencies import DbSession, NovelServiceDep, get_ai_service
 from app.constants import TEMPLATE_DIR
 from app.models import Book, Chapter
 from app.utils.helpers import get_templates
+from app.services.agents import ChapterWriterAgent
 
 logger = logging.getLogger(__name__)
 
@@ -165,8 +166,9 @@ async def generate_chapter(
 
         global_config = get_global_config_dict(db)
         ai_service = get_ai_service(db)
+        agent = ChapterWriterAgent(ai_service, book, global_config)
         try:
-            content = await ai_service.write_chapter(book, int(chapter_number), core_event, prev_ending)
+            content = await agent.write(int(chapter_number), core_event, prev_ending)
         except TimeoutError:
             logger.error("Timeout during chapter generation")
             return HTMLResponse(content="生成超时，请稍后重试", status_code=504)
@@ -258,8 +260,9 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSes
 
         global_config = get_global_config_dict(db)
         ai_service = get_ai_service(db)
+        agent = ChapterWriterAgent(ai_service, book, global_config)
         try:
-            content = await ai_service.write_chapter(book, int(num), core_event, prev_ending)
+            content = await agent.write(int(num), core_event, prev_ending)
         except TimeoutError:
             logger.error("Timeout during chapter regeneration")
             return HTMLResponse(content="生成超时，请稍后重试", status_code=504)
@@ -318,10 +321,11 @@ async def stream_chapter(
     prev_ending = service.get_prev_ending(book_id, chapter_number)
 
     ai_service = get_ai_service(db)
+    agent = ChapterWriterAgent(ai_service, book, ai_service.global_config)
 
     async def generate():
         try:
-            async for chunk in ai_service.stream_write_chapter(book, chapter_number, core_event, prev_ending):
+            async for chunk in agent.write_stream(chapter_number, core_event, prev_ending):
                 data = json.dumps({"content": chunk}, ensure_ascii=False)
                 yield f"{data}\n"
                 await asyncio.sleep(0.01)

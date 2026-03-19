@@ -12,6 +12,7 @@ class BaseAgent(ABC):
     def __init__(self, ai_service: BaseAiService):
         self.ai_service = ai_service
 
+    @property
     @abstractmethod
     def system_prompt(self) -> str:
         pass
@@ -52,7 +53,7 @@ class AgentFactory:
         cls._agents[name] = agent_class
 
     @classmethod
-    def create(cls, name: str, ai_service: BaseAiService) -> BaseAgent:
+    def create(cls, name: str, ai_service: BaseAiService, **kwargs) -> BaseAgent:
         if name not in cls._agents:
             raise ValueError(f"Unknown agent: {name}")
-        return cls._agents[name](ai_service)
+        return cls._agents[name](ai_service, **kwargs)
