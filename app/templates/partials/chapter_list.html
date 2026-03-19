@@ -1,16 +1,25 @@
 <ul class="menu bg-base-200 rounded-box">
   {% set current = book.current_chapter or 0 %}
+  {% set max_done = namespace(value=0) %}
   {% for ch in chapters %}
-    {% set is_next = ch.chapter_number == current + 1 %}
+    {% if ch.status == "已完成" and ch.chapter_number > max_done.value %}
+      {% set max_done.value = ch.chapter_number %}
+    {% endif %}
+  {% endfor %}
+  {% set next_num = (current if current > max_done.value else max_done.value) + 1 %}
+  {% for ch in chapters %}
+    {% set can_click = ch.chapter_number <= next_num %}
     <li>
       <a
+        {% if can_click %}
         hx-get="/books/{{ book.id }}/chapters/write?num={{ ch.chapter_number }}"
         hx-target="#main-workspace"
         hx-swap="innerHTML"
         onclick="window.selectedChapter = {{ ch.chapter_number }}; console.log('选择章节:', window.selectedChapter);"
-      {% if is_next %}
-        class="text-primary font-bold"
-      {% endif %}
+        {% else %}
+        class="pointer-events-none opacity-50"
+        title="请先完成第 {{ next_num }} 章"
+        {% endif %}
       >
         {% if ch.status == "已完成" %}
           <svg
@@ -30,7 +39,7 @@
         {% else %}
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="h-4 w-4"
+            class="h-4 w-4 {% if not can_click %}text-base-content/30{% endif %}"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

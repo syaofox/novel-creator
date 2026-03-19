@@ -54,15 +54,19 @@ async def write_chapter_form(request: Request, book_id: int, db: DbSession, num:
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
+    max_num = repo.get_max_chapter_number(book_id)
+    current = int(book.current_chapter) if book.current_chapter is not None else 0
+    next_chapter = max(max_num, current) + 1
+
     if num is not None:
         chapter_num = num
         if chapter_num < 1:
             raise HTTPException(status_code=400, detail="章节号必须大于0")
+        # 禁止跳章节:不允许创建比下一章更靠后的章节
+        if chapter_num > next_chapter:
+            raise HTTPException(status_code=400, detail=f"请先完成第 {next_chapter} 章,不能跳章创作")
     else:
-        chapter_num = int(book.current_chapter) + 1
-        max_num = repo.get_max_chapter_number(book_id)
-        if chapter_num > max_num:
-            chapter_num = max_num + 1
+        chapter_num = next_chapter
 
     chapter = repo.get_chapter(book_id, chapter_num)
 
@@ -120,13 +124,21 @@ async def generate_chapter(
     chapter_number: int | None = None,
     core_event: str = Form(...),
 ):
+    from app.repositories.novel_repository import NovelRepository
+
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
+    repo = NovelRepository(db)
+    max_num = repo.get_max_chapter_number(book_id)
+    current = int(book.current_chapter) if book.current_chapter is not None else 0
+    next_chapter = max(max_num, current) + 1
+
     if chapter_number is None:
-        current = int(book.current_chapter) if book.current_chapter is not None else 0
-        chapter_number = current + 1
+        chapter_number = next_chapter
+    elif chapter_number > next_chapter:
+        raise HTTPException(status_code=400, detail=f"请先完成第 {next_chapter} 章,不能跳章创作")
 
     prev_ending = service.get_prev_ending(book_id, int(chapter_number))
 
@@ -208,12 +220,21 @@ async def generate_chapter(
 
 @router.get("/regenerate", response_class=HTMLResponse)
 async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSession, service: NovelServiceDep):
+    from app.repositories.novel_repository import NovelRepository
+
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
     if num < 1:
         raise HTTPException(status_code=400, detail="章节号必须大于0")
+
+    repo = NovelRepository(db)
+    max_num = repo.get_max_chapter_number(book_id)
+
+    # 禁止跳章:只允许重新生成已存在的章节
+    if num > max_num:
+        raise HTTPException(status_code=400, detail=f"第 {num} 章尚未创建,请先完成第 {max_num} 章")
 
     chapter = service.get_chapter(book_id, num)
 
@@ -310,13 +331,21 @@ async def stream_chapter(
     chapter_number: int | None = Form(None),
     core_event: str = Form(""),
 ):
+    from app.repositories.novel_repository import NovelRepository
+
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
+    repo = NovelRepository(db)
+    max_num = repo.get_max_chapter_number(book_id)
+    current = int(book.current_chapter) if book.current_chapter is not None else 0
+    next_chapter = max(max_num, current) + 1
+
     if chapter_number is None:
-        current = int(book.current_chapter) if book.current_chapter is not None else 0
-        chapter_number = current + 1
+        chapter_number = next_chapter
+    elif chapter_number > next_chapter:
+        raise HTTPException(status_code=400, detail=f"请先完成第 {next_chapter} 章,不能跳章创作")
 
     prev_ending = service.get_prev_ending(book_id, chapter_number)
 
