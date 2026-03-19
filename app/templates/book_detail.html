@@ -40,108 +40,40 @@
           <div class="space-y-2">
             <div class="collapse collapse-arrow bg-base-200">
               <input type="checkbox" checked />
-              <div class="collapse-title text-lg font-medium">记忆摘要</div>
-              <div class="collapse-content">
+              <div class="collapse-title text-lg font-medium">工具</div>
+              <div class="collapse-content space-y-2">
+                <button class="btn btn-sm btn-outline w-full" onclick="updateMemoryModalChapter(); memory_modal.showModal()">
+                  记忆摘要
+                </button>
+                <button class="btn btn-sm btn-outline w-full" onclick="style_modal.showModal()">
+                  风格规范
+                </button>
+                <a
+                  href="/books/{{ book.id }}/settings"
+                  class="btn btn-sm btn-outline w-full"
+                >参数设置</a>
+                <a
+                  href="/books/{{ book.id }}/export"
+                  class="btn btn-sm btn-outline w-full"
+                >导出全书</a>
                 <form
-                  id="summary-form"
-                  hx-post="/books/{{ book.id }}/ai/save-summary"
-                  hx-target="#save-summary-result"
-                  hx-swap="innerHTML"
+                  action="/books/{{ book.id }}/delete"
+                  method="post"
+                  hx-confirm="确定要删除这本书吗？此操作不可恢复！"
                 >
-                  <input type="hidden" name="chapter" id="summary-chapter-num" value="{{ book.current_chapter or 1 }}" />
-                  <input type="hidden" name="title" id="summary-title" value="" />
-                  <input type="hidden" name="core_event" id="summary-core-event" value="" />
-                  <textarea
-                    name="summary"
-                    id="memory-summary"
-                    class="textarea textarea-bordered w-full h-48 text-xs font-mono"
-                    placeholder="摘要内容"
-                  >{{ book.memory_summary or '' }}</textarea>
-                  <div id="ai-optimized-fields" class="hidden mt-2 p-2 bg-base-300 rounded text-xs">
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="font-bold">AI优化建议：</span>
-                      <button type="button" class="btn btn-xs btn-ghost" onclick="applyAiOptimization()">应用</button>
-                      <button type="button" class="btn btn-xs btn-ghost" onclick="dismissAiOptimization()">忽略</button>
-                    </div>
-                    <div id="ai-optimized-title" class="text-success"></div>
-                    <div id="ai-optimized-core-event" class="text-info mt-1"></div>
-                  </div>
-                  <div class="flex gap-2 mt-2">
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline flex-1"
-                      id="update-summary-btn"
-                      onclick="streamSummary()"
-                    >
-                      <span
-                        id="update-summary-loading"
-                        class="loading loading-spinner loading-xs hidden"
-                      ></span>
-                      <span id="update-summary-text">更新</span>
-                    </button>
-                    <button
-                      type="submit"
-                      class="btn btn-sm btn-outline flex-1"
-                      onclick="window.summaryModified = false;"
-                    >
-                      保存
-                    </button>
-                  </div>
-                </form>
-                <span id="save-summary-result" class="text-xs"></span>
-              </div>
-            <div class="collapse collapse-arrow bg-base-200 mt-2">
-              <input type="checkbox" />
-              <div class="collapse-title text-lg font-medium">风格规范</div>
-              <div class="collapse-content" id="style-summary">
-                <form
-                  hx-post="/books/{{ book.id }}/ai/update-style"
-                  hx-target="#style-summary"
-                  hx-swap="innerHTML"
-                >
-                  <textarea
-                    name="style"
-                    class="textarea textarea-bordered w-full h-32 text-sm"
-                    placeholder="输入小说的风格规范，如叙事视角、语言特点、节奏等"
-                  >
-{{ book.style }}</textarea
-                  >
-                  <button
-                    type="submit"
-                    class="btn btn-sm btn-outline w-full mt-2"
-                  >
-                    保存风格
+                  <button type="submit" class="btn btn-sm btn-error w-full">
+                    删除书籍
                   </button>
                 </form>
+                {% if book.current_chapter >= book.target_chapters and book.status == "进行中" %}
+                  <form action="/books/{{ book.id }}/finish" method="post">
+                    <button type="submit" class="btn btn-sm btn-warning w-full">
+                      标记完结
+                    </button>
+                  </form>
+                {% endif %}
               </div>
             </div>
-            <a
-              href="/books/{{ book.id }}/settings"
-              class="btn btn-sm btn-outline w-full"
-              >参数设置</a
-            >
-            <a
-              href="/books/{{ book.id }}/export"
-              class="btn btn-sm btn-outline w-full"
-              >导出全书</a
-            >
-             <form
-               action="/books/{{ book.id }}/delete"
-               method="post"
-               hx-confirm="确定要删除这本书吗？此操作不可恢复！"
-             >
-              <button type="submit" class="btn btn-sm btn-error w-full">
-                删除书籍
-              </button>
-            </form>
-            {% if book.current_chapter >= book.target_chapters and book.status == "进行中" %}
-              <form action="/books/{{ book.id }}/finish" method="post">
-                <button type="submit" class="btn btn-sm btn-warning w-full">
-                  标记完结
-                </button>
-              </form>
-            {% endif %}
-          </div>
         </div>
       </div>
     </div>
@@ -182,7 +114,7 @@
       if (items.length === 0) return '<span class="text-base-content/50">暂无伏笔</span>';
       
       return '<ul class="list-disc list-inside space-y-1">' + 
-        items.map(item => `<li class="text-warning">${escapeHtml(item.trim())}</li>`).join('') + 
+        items.map(item => `<li>${escapeHtml(item.trim())}</li>`).join('') + 
         '</ul>';
     }
     
@@ -190,15 +122,19 @@
       if (!text) return '<span class="text-base-content/50">暂无大纲</span>';
       
       const lines = text.split('\n').filter(line => line.trim());
+      const current = window.selectedChapter || {{ book.current_chapter or 1 }};
       return '<div class="space-y-1 text-xs">' + 
         lines.map(line => {
-          const completed = {{ book.current_chapter }};
           const match = line.match(/^第(\d+)章/);
           let chapterNum = 0;
           if (match) chapterNum = parseInt(match[1]);
           
-          const isCompleted = chapterNum > 0 && chapterNum <= completed;
-          const statusClass = isCompleted ? 'text-success' : (chapterNum === completed + 1 ? 'text-primary font-bold' : 'text-base-content/50');
+          let statusClass = 'text-base-content/50';
+          if (chapterNum === current) {
+            statusClass = 'font-bold';
+          } else if (chapterNum > 0 && chapterNum < current) {
+            statusClass = '';
+          }
           
           return `<div class="${statusClass}">${escapeHtml(line.trim())}</div>`;
         }).join('') + 
@@ -212,7 +148,7 @@
         html += `
           <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
             <input type="checkbox" checked />
-            <div class="collapse-title text-sm py-2 min-h-0 font-medium text-primary">📍 主线进度</div>
+            <div class="collapse-title text-sm py-2 min-h-0 font-medium">主线进度</div>
             <div class="collapse-content text-xs">
               ${renderOutline(sections['主线进度'])}
             </div>
@@ -223,7 +159,7 @@
         html += `
           <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
             <input type="checkbox" />
-            <div class="collapse-title text-sm py-2 min-h-0 font-medium text-warning">🔮 伏笔清单</div>
+            <div class="collapse-title text-sm py-2 min-h-0 font-medium">伏笔清单</div>
             <div class="collapse-content text-xs">
               ${renderForeshadowingList(sections['伏笔清单'])}
             </div>
@@ -234,7 +170,7 @@
         html += `
           <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
             <input type="checkbox" />
-            <div class="collapse-title text-sm py-2 min-h-0">👤 人物卡</div>
+            <div class="collapse-title text-sm py-2 min-h-0 font-medium">人物卡</div>
             <div class="collapse-content text-xs whitespace-pre-wrap">${escapeHtml(sections['人物卡'])}</div>
           </div>`;
       }
@@ -243,7 +179,7 @@
         html += `
           <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
             <input type="checkbox" />
-            <div class="collapse-title text-sm py-2 min-h-0">🌍 世界观</div>
+            <div class="collapse-title text-sm py-2 min-h-0 font-medium">世界观</div>
             <div class="collapse-content text-xs whitespace-pre-wrap">${escapeHtml(sections['世界观'])}</div>
           </div>`;
       }
@@ -252,7 +188,7 @@
         html += `
           <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
             <input type="checkbox" />
-            <div class="collapse-title text-sm py-2 min-h-0">✍️ 风格规范</div>
+            <div class="collapse-title text-sm py-2 min-h-0 font-medium">风格规范</div>
             <div class="collapse-content text-xs whitespace-pre-wrap">${escapeHtml(sections['风格规范'])}</div>
           </div>`;
       }
@@ -261,7 +197,7 @@
         html += `
           <div class="collapse collapse-arrow bg-base-200 rounded mb-2">
             <input type="checkbox" />
-            <div class="collapse-title text-sm py-2 min-h-0">📝 其他信息</div>
+            <div class="collapse-title text-sm py-2 min-h-0 font-medium">其他信息</div>
             <div class="collapse-content text-xs whitespace-pre-wrap">${escapeHtml(sections['其他信息'])}</div>
           </div>`;
       }
@@ -290,6 +226,9 @@
       const btnText = document.getElementById('update-summary-text');
       const chapterNum = window.selectedChapter || {{ book.current_chapter or 1 }};
       console.log('更新摘要章节:', chapterNum);
+
+      // 切换到编辑模式
+      switchSummaryTab('edit');
 
       // 更新隐藏字段中的章节号
       document.getElementById('summary-chapter-num').value = chapterNum;
@@ -475,5 +414,137 @@
       window.aiOptimizedCoreEvent = '';
     }
     
+  </script>
+
+  <!-- 记忆摘要模态框 -->
+  <dialog id="memory_modal" class="modal">
+    <div class="modal-box w-11/12 max-w-3xl">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+      </form>
+      <h3 class="font-bold text-lg mb-4">记忆摘要 - <span id="memory-modal-chapter">第 {{ book.current_chapter or 1 }} 章</span></h3>
+      
+      <div class="tabs tabs-boxed mb-4">
+        <a class="tab tab-active" onclick="switchSummaryTab('view')">查看</a>
+        <a class="tab" onclick="switchSummaryTab('edit')">编辑</a>
+      </div>
+      
+      <!-- 查看模式 -->
+      <div id="summary-view-tab">
+        <div id="summary-display" class="bg-base-200 p-4 rounded-lg max-h-[60vh] overflow-y-auto">
+          <!-- 解析后的摘要内容将在这里显示 -->
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button class="btn btn-sm btn-outline" onclick="switchSummaryTab('edit')">手动编辑</button>
+          <button class="btn btn-sm btn-primary" id="update-summary-btn" onclick="streamSummary()">
+            <span id="update-summary-loading" class="loading loading-spinner loading-xs hidden"></span>
+            <span id="update-summary-text">AI 更新</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 编辑模式 -->
+      <div id="summary-edit-tab" class="hidden">
+        <form id="summary-form" hx-post="/books/{{ book.id }}/ai/save-summary" hx-target="#save-summary-result" hx-swap="innerHTML">
+          <input type="hidden" name="chapter" id="summary-chapter-num" value="{{ book.current_chapter or 1 }}" />
+          <input type="hidden" name="title" id="summary-title" value="" />
+          <input type="hidden" name="core_event" id="summary-core-event" value="" />
+          <textarea name="summary" id="memory-summary" class="textarea textarea-bordered w-full h-64 text-sm font-mono" placeholder="摘要内容">{{ book.memory_summary or '' }}</textarea>
+          <div id="ai-optimized-fields" class="hidden mt-2 p-2 bg-base-300 rounded text-xs">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-bold">AI优化建议：</span>
+              <button type="button" class="btn btn-xs btn-ghost" onclick="applyAiOptimization()">应用</button>
+              <button type="button" class="btn btn-xs btn-ghost" onclick="dismissAiOptimization()">忽略</button>
+            </div>
+            <div id="ai-optimized-title" class="text-success"></div>
+            <div id="ai-optimized-core-event" class="text-info mt-1"></div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button type="button" class="btn btn-outline flex-1" onclick="switchSummaryTab('view')">取消</button>
+            <button type="submit" class="btn btn-primary flex-1" onclick="window.summaryModified = false; saveSummaryCallback()">保存</button>
+          </div>
+        </form>
+        <span id="save-summary-result" class="text-xs"></span>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>关闭</button>
+    </form>
+  </dialog>
+
+  <!-- 风格规范模态框 -->
+  <dialog id="style_modal" class="modal">
+    <div class="modal-box w-11/12 max-w-2xl">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+      </form>
+      <h3 class="font-bold text-lg mb-4">风格规范</h3>
+      <div id="style-summary">
+        <form hx-post="/books/{{ book.id }}/ai/update-style" hx-target="#style-result" hx-swap="innerHTML">
+          <textarea name="style" class="textarea textarea-bordered w-full h-64 text-sm" placeholder="输入小说的风格规范，如叙事视角、语言特点、节奏等">{{ book.style }}</textarea>
+          <button type="submit" class="btn btn-primary w-full mt-4">保存风格</button>
+        </form>
+        <div id="style-result" class="mt-2"></div>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>关闭</button>
+    </form>
+  </dialog>
+
+  <script>
+    // 更新模态框标题中的章节号
+    function updateMemoryModalChapter() {
+      const chapterNum = window.selectedChapter || {{ book.current_chapter or 1 }};
+      const chapterEl = document.getElementById('memory-modal-chapter');
+      if (chapterEl) {
+        chapterEl.textContent = '第 ' + chapterNum + ' 章';
+      }
+      // 同时更新隐藏字段
+      document.getElementById('summary-chapter-num').value = chapterNum;
+    }
+    
+    // 解析摘要并显示
+    function initSummaryDisplay() {
+      const summaryText = {{ (book.memory_summary or '') | tojson }};
+      const sections = parseSummary(summaryText);
+      const displayEl = document.getElementById('summary-display');
+      if (displayEl) {
+        displayEl.innerHTML = renderSummarySections(sections);
+      }
+    }
+    
+    // 切换标签页
+    function switchSummaryTab(tab) {
+      const viewTab = document.getElementById('summary-view-tab');
+      const editTab = document.getElementById('summary-edit-tab');
+      const tabs = document.querySelectorAll('#memory_modal .tab');
+      
+      if (tab === 'view') {
+        viewTab.classList.remove('hidden');
+        editTab.classList.add('hidden');
+        tabs[0].classList.add('tab-active');
+        tabs[1].classList.remove('tab-active');
+        initSummaryDisplay();
+      } else {
+        viewTab.classList.add('hidden');
+        editTab.classList.remove('hidden');
+        tabs[0].classList.remove('tab-active');
+        tabs[1].classList.add('tab-active');
+      }
+    }
+    
+    // 保存后回调
+    function saveSummaryCallback() {
+      setTimeout(() => {
+        initSummaryDisplay();
+        switchSummaryTab('view');
+      }, 500);
+    }
+    
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', initSummaryDisplay);
+    // htmx 页面切换时也初始化
+    document.addEventListener('htmx:afterSettle', initSummaryDisplay);
   </script>
 {% endblock %}
