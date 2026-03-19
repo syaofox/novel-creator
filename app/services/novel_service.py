@@ -98,13 +98,6 @@ class NovelService:
             chapter.core_event = core_event
             self.repo.db.commit()
 
-    async def compress_summary(self, book: Book) -> str:
-        return await self.ai_service.compress_summary(book)
-
-    async def stream_compress_summary(self, book: Book) -> AsyncGenerator[str]:
-        async for chunk in self.ai_service.stream_compress_summary(book):
-            yield chunk
-
     def save_summary(self, book: Book, summary: str) -> Book:
         return self.repo.update_book(book, memory_summary=summary)
 

@@ -85,35 +85,6 @@ async def stream_summary(book_id: int, db: DbSession, service: NovelServiceDep, 
     return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
-@router.post("/stream-compress-summary", response_class=HTMLResponse)
-async def stream_compress_summary(book_id: int, db: DbSession, service: NovelServiceDep):
-    book = service.get_book(book_id)
-    if not book:
-        return HTMLResponse(content="书籍不存在", status_code=404)
-
-    if not book.memory_summary:
-        return HTMLResponse(content="摘要为空，无法压缩", status_code=400)
-
-    async def generate():
-        try:
-            async for chunk in service.stream_compress_summary(book):
-                data = json.dumps({"content": chunk}, ensure_ascii=False)
-                yield f"{data}\n"
-                await asyncio.sleep(0.01)
-            yield json.dumps({"done": True}) + "\n"
-        except TimeoutError:
-            logger.error("Timeout during streaming compress summary")
-            yield json.dumps({"error": "压缩超时，请稍后重试"}) + "\n"
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during streaming compress summary: {e}")
-            yield json.dumps({"error": "网络连接失败，请检查网络"}) + "\n"
-        except Exception as e:
-            logger.exception("Error during streaming compress summary")
-            yield json.dumps({"error": str(e)}) + "\n"
-
-    return StreamingResponse(generate(), media_type="application/x-ndjson")
-
-
 @router.post("/save-summary", response_class=HTMLResponse)
 async def save_summary(
     book_id: int,
@@ -148,29 +119,6 @@ async def save_summary(
                 service.repo.db.commit()
 
     return "<span class='text-success'>保存成功</span>"
-
-
-@router.post("/compress-summary", response_class=HTMLResponse)
-async def compress_summary(request: Request, book_id: int, db: DbSession, service: NovelServiceDep):
-    book = service.get_book(book_id)
-    if not book:
-        return HTMLResponse(content="书籍不存在", status_code=404)
-
-    try:
-        compressed = await service.compress_summary(book)
-    except TimeoutError:
-        logger.error("Timeout during summary compression")
-        return HTMLResponse(content="压缩超时，请稍后重试", status_code=504)
-    except (OSError, ConnectionError) as e:
-        logger.error(f"Network error during summary compression: {e}")
-        return HTMLResponse(content="网络连接失败", status_code=503)
-    except Exception as e:
-        logger.exception("Error during summary compression")
-        return HTMLResponse(content=f"压缩摘要失败: {str(e)}", status_code=500)
-
-    service.save_summary(book, compressed)
-    templates = get_templates()
-    return templates.TemplateResponse(request, "partials/memory_summary.html", {"book": book})
 
 
 @router.post("/update-style", response_class=HTMLResponse)
