@@ -350,17 +350,34 @@ class AiService:
         self._log_response(response)
         return response.choices[0].message.content or ""
 
-    async def update_summary(self, book: Book, new_chapter_text: str, chapter_number: int | None = None) -> str:
+    async def update_summary(
+        self,
+        book: Book,
+        new_chapter_text: str,
+        chapter_number: int | None = None,
+        is_last_chapter: bool = True,
+        chapter_title: str = "",
+    ) -> str:
         """根据新章节和旧摘要生成新摘要"""
         if chapter_number is None:
             chapter_number = int(book.current_chapter) if book.current_chapter else 1
-        next_chapter = min(chapter_number + 1, book.target_chapters)
-        user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
-            old_summary=book.memory_summary,
-            new_chapter=new_chapter_text,
-            chapter_number=chapter_number,
-            next_chapter=next_chapter,
-        )
+        next_chapter = chapter_number + 1
+
+        if is_last_chapter:
+            user_prompt = prompts.UPDATE_SUMMARY_PROMPT_LAST.format(
+                old_summary=book.memory_summary,
+                new_chapter=new_chapter_text,
+                chapter_number=chapter_number,
+                chapter_title=chapter_title,
+            )
+        else:
+            user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
+                old_summary=book.memory_summary,
+                new_chapter=new_chapter_text,
+                chapter_number=chapter_number,
+                next_chapter=next_chapter,
+                chapter_title=chapter_title,
+            )
         messages: list[ChatCompletionMessageParam] = [
             {
                 "role": "system",
@@ -381,17 +398,34 @@ class AiService:
         self._log_response(response)
         return response.choices[0].message.content or ""
 
-    async def stream_update_summary(self, book: Book, new_chapter_text: str, chapter_number: int | None = None):
-        """流式生成新摘要"""
+    async def stream_update_summary(
+        self,
+        book: Book,
+        new_chapter_text: str,
+        chapter_number: int | None = None,
+        is_last_chapter: bool = True,
+        chapter_title: str = "",
+    ):
+        """流式生成新摘要，返回 (chunk, title, core_event) 元组"""
         if chapter_number is None:
             chapter_number = int(book.current_chapter) if book.current_chapter else 1
-        next_chapter = min(chapter_number + 1, book.target_chapters)
-        user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
-            old_summary=book.memory_summary,
-            new_chapter=new_chapter_text,
-            chapter_number=chapter_number,
-            next_chapter=next_chapter,
-        )
+        next_chapter = chapter_number + 1
+
+        if is_last_chapter:
+            user_prompt = prompts.UPDATE_SUMMARY_PROMPT_LAST.format(
+                old_summary=book.memory_summary,
+                new_chapter=new_chapter_text,
+                chapter_number=chapter_number,
+                chapter_title=chapter_title,
+            )
+        else:
+            user_prompt = prompts.UPDATE_SUMMARY_PROMPT.format(
+                old_summary=book.memory_summary,
+                new_chapter=new_chapter_text,
+                chapter_number=chapter_number,
+                next_chapter=next_chapter,
+                chapter_title=chapter_title,
+            )
         messages: list[ChatCompletionMessageParam] = [
             {
                 "role": "system",
@@ -411,13 +445,16 @@ class AiService:
         self._log_request("stream_update_summary", params)
         response = await self.client.chat.completions.create(**params)
         first_chunk = True
+        full_content = ""
         async for chunk in response:
             if first_chunk:
                 logger.info("=== API 响应（流式摘要） ===")
                 logger.info(f"Model: {chunk.model}")
                 first_chunk = False
             if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+                content = chunk.choices[0].delta.content
+                full_content += content
+                yield content
         logger.info("Stream summary completed")
 
     async def stream_compress_summary(self, book: Book):

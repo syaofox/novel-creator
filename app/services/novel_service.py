@@ -40,25 +40,63 @@ class NovelService:
             yield chunk
 
     async def update_summary(self, book: Book, chapter_number: int | None = None) -> str:
+        """更新摘要，返回摘要文本"""
         if chapter_number is None:
             chapter_number = int(book.current_chapter) if book.current_chapter else 1
 
         chapter = self.repo.get_chapter(book.id, chapter_number)
-        if not chapter or not chapter.content:
-            raise ValueError("章节内容为空，无法更新摘要")
+        if not chapter:
+            raise ValueError("章节不存在")
 
-        return await self.ai_service.update_summary(book, chapter.content, chapter_number)
+        chapter_title = str(chapter.title) if chapter.title else f"第{chapter_number}章"
+
+        if chapter.content:
+            new_chapter_text = chapter.content
+        elif chapter.core_event:
+            new_chapter_text = f"[本章内容尚未生成，仅有核心事件规划]\n核心事件：{chapter.core_event}"
+        else:
+            raise ValueError("章节内容和核心事件都为空，无法更新摘要")
+
+        max_chapter = self.repo.get_max_chapter_number(book.id)
+        is_last_chapter = chapter_number >= max_chapter
+
+        return await self.ai_service.update_summary(
+            book, new_chapter_text, chapter_number, is_last_chapter, chapter_title
+        )
 
     async def stream_update_summary(self, book: Book, chapter_number: int | None = None) -> AsyncGenerator[str]:
+        """流式更新摘要"""
         if chapter_number is None:
             chapter_number = int(book.current_chapter) if book.current_chapter else 1
 
         chapter = self.repo.get_chapter(book.id, chapter_number)
-        if not chapter or not chapter.content:
-            raise ValueError("章节内容为空，无法更新摘要")
+        if not chapter:
+            raise ValueError("章节不存在")
 
-        async for chunk in self.ai_service.stream_update_summary(book, chapter.content, chapter_number):
+        chapter_title = str(chapter.title) if chapter.title else f"第{chapter_number}章"
+
+        if chapter.content:
+            new_chapter_text = chapter.content
+        elif chapter.core_event:
+            new_chapter_text = f"[本章内容尚未生成，仅有核心事件规划]\n核心事件：{chapter.core_event}"
+        else:
+            raise ValueError("章节内容和核心事件都为空，无法更新摘要")
+
+        max_chapter = self.repo.get_max_chapter_number(book.id)
+        is_last_chapter = chapter_number >= max_chapter
+
+        async for chunk in self.ai_service.stream_update_summary(
+            book, new_chapter_text, chapter_number, is_last_chapter, chapter_title
+        ):
             yield chunk
+
+    def update_chapter_title_and_core_event(self, book: Book, chapter_number: int, title: str, core_event: str):
+        """更新章节标题和核心事件"""
+        chapter = self.repo.get_chapter(book.id, chapter_number)
+        if chapter:
+            self.repo.update_chapter(chapter, title=title)
+            chapter.core_event = core_event
+            self.repo.db.commit()
 
     async def compress_summary(self, book: Book) -> str:
         return await self.ai_service.compress_summary(book)
@@ -106,6 +144,38 @@ class NovelService:
 
     def finish_book(self, book: Book) -> Book:
         return self.repo.update_book(book, status="已完结")
+
+    def add_chapter(self, book: Book, position: int, title: str, core_event: str = "") -> Chapter:
+        """在指定位置添加新章节，后续章节自动重新编号"""
+        max_num = self.repo.get_max_chapter_number(book.id)
+        if position < 1:
+            position = 1
+        if position > max_num + 1:
+            position = max_num + 1
+        chapter = self.repo.insert_chapter_at(book.id, position, title, core_event)
+        current = int(book.current_chapter) if book.current_chapter is not None else 0
+        if position <= current:
+            self.repo.update_book(book, current_chapter=current + 1)
+        return chapter
+
+    def delete_chapter(self, book: Book, chapter_number: int) -> bool:
+        """删除指定章节，后续章节自动重新编号"""
+        chapter = self.repo.get_chapter(book.id, chapter_number)
+        if not chapter:
+            return False
+        self.repo.delete_chapter(chapter)
+        max_num = self.repo.get_max_chapter_number(book.id)
+        if chapter_number <= max_num:
+            self.repo.renumber_chapters(book.id, chapter_number + 1, offset=-1)
+        current = int(book.current_chapter) if book.current_chapter is not None else 0
+        if chapter_number <= current:
+            new_current = max(0, current - 1)
+            self.repo.update_book(book, current_chapter=new_current)
+        return True
+
+    def get_max_chapter_number(self, book: Book) -> int:
+        """获取书籍的最大章节号"""
+        return self.repo.get_max_chapter_number(book.id)
 
     def delete_book(self, book: Book) -> None:
         from app.services.file_service import delete_book_files

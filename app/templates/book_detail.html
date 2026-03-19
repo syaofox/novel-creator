@@ -48,12 +48,24 @@
                   hx-target="#save-summary-result"
                   hx-swap="innerHTML"
                 >
+                  <input type="hidden" name="chapter" id="summary-chapter-num" value="{{ book.current_chapter or 1 }}" />
+                  <input type="hidden" name="title" id="summary-title" value="" />
+                  <input type="hidden" name="core_event" id="summary-core-event" value="" />
                   <textarea
                     name="summary"
                     id="memory-summary"
                     class="textarea textarea-bordered w-full h-48 text-xs font-mono"
                     placeholder="摘要内容"
                   >{{ book.memory_summary or '' }}</textarea>
+                  <div id="ai-optimized-fields" class="hidden mt-2 p-2 bg-base-300 rounded text-xs">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="font-bold">AI优化建议：</span>
+                      <button type="button" class="btn btn-xs btn-ghost" onclick="applyAiOptimization()">应用</button>
+                      <button type="button" class="btn btn-xs btn-ghost" onclick="dismissAiOptimization()">忽略</button>
+                    </div>
+                    <div id="ai-optimized-title" class="text-success"></div>
+                    <div id="ai-optimized-core-event" class="text-info mt-1"></div>
+                  </div>
                   <div class="flex gap-2 mt-2">
                     <button
                       type="button"
@@ -290,14 +302,30 @@
       const btnText = document.getElementById('update-summary-text');
       const chapterNum = window.selectedChapter || {{ book.current_chapter or 1 }};
       console.log('更新摘要章节:', chapterNum);
-      
+
+      // 更新隐藏字段中的章节号
+      document.getElementById('summary-chapter-num').value = chapterNum;
+
+      // 恢复并隐藏优化建议区域
+      const aiFields = document.getElementById('ai-optimized-fields');
+      aiFields.innerHTML = `
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-bold">AI优化建议：</span>
+          <button type="button" class="btn btn-xs btn-ghost" onclick="applyAiOptimization()">应用</button>
+          <button type="button" class="btn btn-xs btn-ghost" onclick="dismissAiOptimization()">忽略</button>
+        </div>
+        <div id="ai-optimized-title" class="text-success"></div>
+        <div id="ai-optimized-core-event" class="text-info mt-1"></div>
+      `;
+      aiFields.classList.add('hidden');
+
       startRequest();
       btn.disabled = true;
       loadingSpinner.classList.remove('hidden');
       btnText.classList.add('hidden');
       let firstChunk = true;
       summaryEl.value = '更新中...';
-      
+
       fetch(`/books/${bookId}/ai/stream-summary`, {
         method: "POST",
         headers: {
@@ -315,6 +343,8 @@
           function read() {
             reader.read().then(({ done, value }) => {
               if (done) {
+                // 从摘要中提取优化后的标题和核心事件
+                extractAndShowOptimization(summaryEl.value, chapterNum);
                 endRequest();
                 btn.disabled = false;
                 loadingSpinner.classList.add('hidden');
@@ -330,6 +360,8 @@
                   const data = JSON.parse(line);
 
                   if (data.done) {
+                    // 从摘要中提取优化后的标题和核心事件
+                    extractAndShowOptimization(summaryEl.value, chapterNum);
                     endRequest();
                     btn.disabled = false;
                     loadingSpinner.classList.add('hidden');
@@ -373,6 +405,86 @@
           loadingSpinner.classList.add('hidden');
           btnText.classList.remove('hidden');
         });
+    }
+
+    function extractAndShowOptimization(summary, chapterNum) {
+      // 从摘要的【主线进度】部分提取当前章节的标题和核心事件
+      // 格式：第X章: 标题 - 核心事件描述（状态）
+      const pattern = new RegExp(`第${chapterNum}章[：:]\\s*(.+?)\\s*[-—]\\s*(.+?)\\s*[（(](已完成|规划中)[）)]`);
+      const match = summary.match(pattern);
+
+      if (match) {
+        const title = match[1].trim();
+        const coreEvent = match[2].trim();
+        showAiOptimization(title, coreEvent);
+      }
+    }
+
+    function showAiOptimization(title, coreEvent) {
+      const container = document.getElementById('ai-optimized-fields');
+      const titleEl = document.getElementById('ai-optimized-title');
+      const coreEventEl = document.getElementById('ai-optimized-core-event');
+
+      if (title) {
+        titleEl.textContent = '标题: ' + title;
+        titleEl.classList.remove('hidden');
+      } else {
+        titleEl.classList.add('hidden');
+      }
+
+      if (coreEvent) {
+        coreEventEl.textContent = '核心事件: ' + coreEvent;
+        coreEventEl.classList.remove('hidden');
+      } else {
+        coreEventEl.classList.add('hidden');
+      }
+
+      container.classList.remove('hidden');
+
+      // 存储优化结果
+      window.aiOptimizedTitle = title || '';
+      window.aiOptimizedCoreEvent = coreEvent || '';
+    }
+
+    function applyAiOptimization() {
+      if (window.aiOptimizedTitle) {
+        document.getElementById('summary-title').value = window.aiOptimizedTitle;
+      }
+      if (window.aiOptimizedCoreEvent) {
+        document.getElementById('summary-core-event').value = window.aiOptimizedCoreEvent;
+      }
+
+      // 如果当前在编辑章节页面，也更新那里的标题和核心事件
+      const chapterTitleInput = document.querySelector('#main-workspace input[name="title"]');
+      const chapterCoreEventInput = document.querySelector('#main-workspace textarea[name="core_event"]');
+      if (chapterTitleInput && window.aiOptimizedTitle) {
+        chapterTitleInput.value = window.aiOptimizedTitle;
+      }
+      if (chapterCoreEventInput && window.aiOptimizedCoreEvent) {
+        chapterCoreEventInput.value = window.aiOptimizedCoreEvent;
+      }
+
+      // 显示应用成功的反馈
+      const container = document.getElementById('ai-optimized-fields');
+      container.innerHTML = `
+        <div class="flex items-center gap-2 text-success">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>已应用优化建议，点击"保存"按钮保存更改</span>
+        </div>
+      `;
+
+      // 3秒后隐藏提示
+      setTimeout(() => {
+        container.classList.add('hidden');
+      }, 3000);
+    }
+
+    function dismissAiOptimization() {
+      document.getElementById('ai-optimized-fields').classList.add('hidden');
+      window.aiOptimizedTitle = '';
+      window.aiOptimizedCoreEvent = '';
     }
     
     function streamCompressSummary() {

@@ -24,3 +24,9 @@ class ChapterOut(ChapterBase):
 class WriteChapterRequest(BaseModel):
     core_event: str
     chapter_number: int | None = None
+
+
+class AddChapterRequest(BaseModel):
+    position: int
+    title: str
+    core_event: str = ""

@@ -27,8 +27,10 @@ async def update_summary(request: Request, book_id: int, db: DbSession, service:
         return HTMLResponse(content="请先完成至少一章内容", status_code=400)
 
     chapter = service.get_chapter(book_id, chapter_number)
-    if not chapter or not chapter.content:
-        return HTMLResponse(content="当前章节不存在或内容为空，请先保存章节", status_code=400)
+    if not chapter:
+        return HTMLResponse(content="当前章节不存在", status_code=400)
+    if not chapter.content and not chapter.core_event:
+        return HTMLResponse(content="当前章节内容和核心事件都为空，请先填写", status_code=400)
 
     try:
         new_summary = await service.update_summary(book, chapter_number)
@@ -57,9 +59,11 @@ async def stream_summary(book_id: int, db: DbSession, service: NovelServiceDep, 
     if chapter_number < 1:
         return HTMLResponse(content="请先至少保存一章内容", status_code=400)
 
-    chapter = service.get_chapter(book_id, chapter_number)
-    if not chapter or not chapter.content:
-        return HTMLResponse(content=f"第{chapter_number}章内容为空，请先保存章节内容", status_code=400)
+    chapter_obj = service.get_chapter(book_id, chapter_number)
+    if not chapter_obj:
+        return HTMLResponse(content=f"第{chapter_number}章不存在", status_code=400)
+    if not chapter_obj.content and not chapter_obj.core_event:
+        return HTMLResponse(content=f"第{chapter_number}章内容和核心事件都为空，请先填写", status_code=400)
 
     async def generate():
         try:
@@ -111,11 +115,38 @@ async def stream_compress_summary(book_id: int, db: DbSession, service: NovelSer
 
 
 @router.post("/save-summary", response_class=HTMLResponse)
-async def save_summary(book_id: int, db: DbSession, service: NovelServiceDep, summary: str = Form(...)):
+async def save_summary(
+    book_id: int,
+    db: DbSession,
+    service: NovelServiceDep,
+    summary: str = Form(...),
+    chapter: int | None = Form(None),
+    title: str | None = Form(None),
+    core_event: str | None = Form(None),
+):
     book = service.get_book(book_id)
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
+
     service.save_summary(book, summary)
+
+    # 如果提供了标题和核心事件，同时更新章节
+    if (title or core_event) and chapter:
+        chapter_number = chapter
+    elif title or core_event:
+        chapter_number = book.current_chapter or 1
+    else:
+        chapter_number = None
+
+    if chapter_number and (title or core_event):
+        chapter_obj = service.get_chapter(book_id, chapter_number)
+        if chapter_obj:
+            if title:
+                service.repo.update_chapter(chapter_obj, title=title)
+            if core_event:
+                chapter_obj.core_event = core_event
+                service.repo.db.commit()
+
     return "<span class='text-success'>保存成功</span>"
 
 

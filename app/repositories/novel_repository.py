@@ -142,3 +142,34 @@ class NovelRepository:
         if not content:
             return ""
         return content[-chars:]
+
+    def renumber_chapters(self, book_id: int, start_from: int, offset: int = 1) -> list[Chapter]:
+        """重新编号从 start_from 开始的所有章节，每个章节号增加 offset"""
+        chapters = (
+            self.db.query(Chapter)
+            .filter(Chapter.book_id == book_id, Chapter.chapter_number >= start_from)
+            .order_by(Chapter.chapter_number.desc())
+            .all()
+        )
+        for chapter in chapters:
+            chapter.chapter_number = chapter.chapter_number + offset
+        self.db.commit()
+        for chapter in chapters:
+            self.db.refresh(chapter)
+        return chapters
+
+    def insert_chapter_at(self, book_id: int, position: int, title: str, core_event: str = "") -> Chapter:
+        """在指定位置插入新章节，后续章节自动重新编号"""
+        self.renumber_chapters(book_id, position)
+        chapter = Chapter(
+            book_id=book_id, chapter_number=position, title=title, content="", core_event=core_event, status="未完成"
+        )
+        self.db.add(chapter)
+        self.db.commit()
+        self.db.refresh(chapter)
+        return chapter
+
+    def get_max_chapter_number(self, book_id: int) -> int:
+        """获取书籍的最大章节号"""
+        latest = self.get_latest_chapter(book_id)
+        return int(latest.chapter_number) if latest else 0

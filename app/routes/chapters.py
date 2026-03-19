@@ -45,83 +45,69 @@ def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
 
 
 @router.get("/write", response_class=HTMLResponse)
-async def write_chapter_form(
-    request: Request, book_id: int, num: int | None = None, edit: bool = False, db: DbSession = None
-):
-    if db is None:
-        from app.database import SessionLocal
+async def write_chapter_form(request: Request, book_id: int, db: DbSession, num: int | None = None, edit: bool = False):
+    from app.repositories.novel_repository import NovelRepository
 
-        db = SessionLocal()
-        close_db = True
+    repo = NovelRepository(db)
+    book = repo.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    if num is not None:
+        chapter_num = num
+        if chapter_num < 1:
+            raise HTTPException(status_code=400, detail="章节号必须大于0")
     else:
-        close_db = False
+        chapter_num = int(book.current_chapter) + 1
+        max_num = repo.get_max_chapter_number(book_id)
+        if chapter_num > max_num:
+            chapter_num = max_num + 1
 
-    try:
-        from app.repositories.novel_repository import NovelRepository
+    chapter = repo.get_chapter(book_id, chapter_num)
 
-        repo = NovelRepository(db)
-        book = repo.get_book_by_id(book_id)
-        if not book:
-            raise HTTPException(status_code=404, detail="书籍不存在")
+    core_event = (
+        chapter.core_event
+        if chapter and chapter.core_event
+        else extract_chapter_outline(str(book.memory_summary), chapter_num)
+    )
 
-        if num is not None:
-            chapter_num = num
-            if chapter_num < 1 or chapter_num > book.target_chapters:
-                raise HTTPException(status_code=400, detail="章节号超出范围")
-            current = int(book.current_chapter) if book.current_chapter is not None else 0
-            if chapter_num > current + 1:
-                raise HTTPException(status_code=400, detail="请按顺序完成章节")
-        else:
-            chapter_num = int(book.current_chapter) + 1
+    prev_ending = repo.get_prev_ending(book_id, chapter_num)
 
-        chapter = repo.get_chapter(book_id, chapter_num)
+    is_completed = chapter is not None and chapter.status == "已完成"
+    is_editing = is_completed or edit
+    existing_content = ""
+    if is_editing and chapter:
+        existing_content = chapter.content or ""
 
-        core_event = (
-            chapter.core_event
-            if chapter and chapter.core_event
-            else extract_chapter_outline(str(book.memory_summary), chapter_num)
-        )
+    templates = get_templates()
 
-        prev_ending = repo.get_prev_ending(book_id, chapter_num)
-
-        is_completed = chapter is not None and chapter.status == "已完成"
-        is_editing = is_completed or edit
-        existing_content = ""
-        if is_editing and chapter:
-            existing_content = chapter.content or ""
-
-        templates = get_templates()
-
-        if is_completed and not edit:
-            return templates.TemplateResponse(
-                request,
-                "chapter_preview.html",
-                {
-                    "book": book,
-                    "chapter_number": chapter_num,
-                    "chapter": chapter,
-                    "prev_ending": prev_ending,
-                    "core_event": core_event,
-                    "content": existing_content,
-                },
-            )
-
+    if is_completed and not edit:
         return templates.TemplateResponse(
             request,
-            "write_chapter.html",
+            "chapter_preview.html",
             {
                 "book": book,
                 "chapter_number": chapter_num,
+                "chapter": chapter,
                 "prev_ending": prev_ending,
                 "core_event": core_event,
-                "editing": is_editing,
-                "chapter": chapter,
-                "existing_content": existing_content,
+                "content": existing_content,
             },
         )
-    finally:
-        if close_db:
-            db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "write_chapter.html",
+        {
+            "book": book,
+            "chapter_number": chapter_num,
+            "prev_ending": prev_ending,
+            "core_event": core_event,
+            "editing": is_editing,
+            "chapter": chapter,
+            "existing_content": existing_content,
+        },
+    )
 
 
 @router.post("/", response_class=HTMLResponse)
@@ -224,8 +210,8 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSes
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    if num < 1 or num > book.target_chapters:
-        raise HTTPException(status_code=400, detail="章节号超出范围")
+    if num < 1:
+        raise HTTPException(status_code=400, detail="章节号必须大于0")
 
     chapter = service.get_chapter(book_id, num)
 
@@ -316,10 +302,10 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSes
 async def stream_chapter(
     request: Request,
     book_id: int,
+    db: DbSession,
+    service: NovelServiceDep,
     chapter_number: int | None = Form(None),
     core_event: str = Form(""),
-    db: DbSession = None,
-    service: NovelServiceDep = None,
 ):
     book = service.get_book(book_id)
     if not book:
@@ -356,22 +342,6 @@ async def stream_chapter(
     return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
-@router.get("/{chapter_num}", response_class=HTMLResponse)
-async def read_chapter(request: Request, book_id: int, chapter_num: int, db: DbSession, service: NovelServiceDep):
-    book = service.get_book(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="书籍不存在")
-    chapter = service.get_chapter(book_id, chapter_num)
-    if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
-    content = chapter.content or ""
-
-    templates = get_templates()
-    return templates.TemplateResponse(
-        request, "chapter_view.html", {"book": book, "chapter": chapter, "content": content}
-    )
-
-
 @router.get("/list", response_class=HTMLResponse)
 async def get_chapter_list(book_id: int, db: DbSession, service: NovelServiceDep):
     book = service.get_book(book_id)
@@ -381,6 +351,54 @@ async def get_chapter_list(book_id: int, db: DbSession, service: NovelServiceDep
 
     templates = get_templates()
     return templates.TemplateResponse("partials/chapter_list.html", {"book": book, "chapters": chapters})
+
+
+@router.get("/add", response_class=HTMLResponse)
+async def add_chapter_form(request: Request, book_id: int, db: DbSession, position: int | None = None):
+    from app.repositories.novel_repository import NovelRepository
+
+    repo = NovelRepository(db)
+    book = repo.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    max_num = repo.get_max_chapter_number(book_id)
+    if position is None or position < 1:
+        position = max_num + 1
+
+    templates = get_templates()
+    return templates.TemplateResponse(
+        request, "partials/add_chapter.html", {"book": book, "position": position, "max_num": max_num}
+    )
+
+
+@router.post("/add", response_class=HTMLResponse)
+async def add_chapter_endpoint(
+    request: Request,
+    book_id: int,
+    db: DbSession,
+    service: NovelServiceDep,
+    position: int = Form(...),
+    title: str = Form(...),
+    core_event: str = Form(""),
+):
+    book = service.get_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    if position < 1:
+        return HTMLResponse(content="插入位置必须大于0", status_code=400)
+
+    try:
+        chapter = service.add_chapter(book, position, title, core_event)
+    except Exception as e:
+        logger.exception("Error adding chapter")
+        return HTMLResponse(content=f"添加章节失败: {str(e)}", status_code=500)
+
+    templates = get_templates()
+    chapters = service.get_chapters(book_id)
+    chapter_list_html = templates.get_template("partials/chapter_list.html").render(book=book, chapters=chapters)
+    return HTMLResponse(content=chapter_list_html)
 
 
 @router.post("/save", response_class=HTMLResponse)
@@ -396,16 +414,10 @@ async def save_chapter_endpoint(
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
 
-    if chapter_number < 1 or chapter_number > book.target_chapters:
-        return HTMLResponse(content="章节号超出范围", status_code=400)
+    if chapter_number < 1:
+        return HTMLResponse(content="章节号必须大于0", status_code=400)
 
     chapter = service.get_chapter(book_id, chapter_number)
-
-    current = int(book.current_chapter) if book.current_chapter is not None else 0
-
-    is_new_chapter = chapter is None
-    if is_new_chapter and chapter_number != current + 1:
-        return HTMLResponse(content="章节编号不连续", status_code=400)
 
     try:
         chapter, _ = service.save_chapter(book, chapter_number, content)
@@ -429,3 +441,39 @@ async def save_chapter_endpoint(
     )
     oob_html = f'<div id="chapter-list" hx-swap-oob="true">{chapter_list_html}</div>'
     return HTMLResponse(content=oob_html + content_html)
+
+
+@router.get("/{chapter_num}", response_class=HTMLResponse)
+async def read_chapter(request: Request, book_id: int, chapter_num: int, db: DbSession, service: NovelServiceDep):
+    book = service.get_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+    chapter = service.get_chapter(book_id, chapter_num)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+    content = chapter.content or ""
+
+    templates = get_templates()
+    return templates.TemplateResponse(
+        request, "chapter_view.html", {"book": book, "chapter": chapter, "content": content}
+    )
+
+
+@router.delete("/{chapter_num}", response_class=HTMLResponse)
+async def delete_chapter_endpoint(book_id: int, chapter_num: int, db: DbSession, service: NovelServiceDep):
+    book = service.get_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    if chapter_num < 1:
+        raise HTTPException(status_code=400, detail="章节号必须大于0")
+
+    success = service.delete_chapter(book, chapter_num)
+    if not success:
+        raise HTTPException(status_code=404, detail="章节不存在")
+
+    templates = get_templates()
+    chapters = service.get_chapters(book_id)
+    return HTMLResponse(
+        content=templates.get_template("partials/chapter_list.html").render(book=book, chapters=chapters)
+    )
