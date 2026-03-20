@@ -1,0 +1,18 @@
+<div class="form-control mb-2">
+  <input
+    type="text"
+    name="title"
+    required
+    value="{{ extracted_title }}"
+    placeholder="文风名称"
+    class="input input-bordered"
+  />
+</div>
+<div class="form-control mb-2">
+  <textarea
+    name="content"
+    rows="8"
+    placeholder="写作风格规范..."
+    class="textarea textarea-bordered"
+  >{{ extracted_content }}</textarea>
+</div>

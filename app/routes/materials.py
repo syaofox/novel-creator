@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import AiServiceDep
 from app.database import get_db
 from app.models import PlotSummary, CharacterCard, WritingStyle, MaterialNote, BookInitData, get_china_now
 from app.constants import DEFAULT_STYLE, TEMPLATE_DIR
@@ -244,6 +245,23 @@ async def delete_character_card(card_id: int, db: Session = Depends(get_db)):
     db.delete(card)
     db.commit()
     return RedirectResponse(url="/materials?tab=character", status_code=303)
+
+
+@router.post("/writing-styles/extract", response_class=HTMLResponse)
+async def extract_writing_style(request: Request, text_snippet: str = Form(...), ai_service: AiServiceDep = None):
+    from app.services.agents import AgentFactory
+
+    agent = AgentFactory.create("style_extractor", ai_service)
+    result = await agent.extract_style(text_snippet)
+    extracted_title = result.get("title", "")
+    extracted_content = result.get("content", "")
+
+    templates = get_templates()
+    return templates.TemplateResponse(
+        request,
+        "partials/style_extracted.html",
+        {"extracted_title": extracted_title, "extracted_content": extracted_content},
+    )
 
 
 @router.post("/writing-styles", response_class=HTMLResponse)

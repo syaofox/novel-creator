@@ -266,25 +266,52 @@
         <div class="card bg-base-100 shadow-md mb-4">
           <div class="card-body">
             <h2 class="card-title">新增文风</h2>
-            <form method="post" action="/materials/writing-styles">
-              <div class="form-control mb-2">
-                <input
-                  type="text"
-                  name="title"
-                  required
-                  placeholder="文风名称"
-                  class="input input-bordered"
-                />
-              </div>
-              <div class="form-control mb-2">
+
+            <div class="collapse collapse-arrow bg-base-200 mb-4">
+              <input type="checkbox" />
+              <div class="collapse-title font-medium">从文字片段提取文风</div>
+              <div class="collapse-content">
                 <textarea
-                  name="content"
+                  id="textSnippet"
                   rows="4"
-                  placeholder="写作风格规范..."
-                  class="textarea textarea-bordered"
+                  placeholder="粘贴一段文字，AI 将自动分析其写作风格..."
+                  class="textarea textarea-bordered w-full"
+                ></textarea>
+                <button
+                  type="button"
+                  hx-post="/materials/writing-styles/extract"
+                  hx-vals="js:{text_snippet: document.getElementById('textSnippet').value}"
+                  hx-target="#style-form-fields"
+                  hx-swap="innerHTML"
+                  class="btn btn-secondary btn-sm mt-2"
                 >
+                  <span class="loading loading-spinner loading-xs htmx-indicator"></span>
+                  AI 提取文风
+                </button>
+              </div>
+            </div>
+
+            <form method="post" action="/materials/writing-styles">
+              <div id="style-form-fields">
+                <div class="form-control mb-2">
+                  <input
+                    type="text"
+                    name="title"
+                    required
+                    placeholder="文风名称"
+                    class="input input-bordered"
+                  />
+                </div>
+                <div class="form-control mb-2">
+                  <textarea
+                    name="content"
+                    rows="4"
+                    placeholder="写作风格规范..."
+                    class="textarea textarea-bordered"
+                  >
 {{ default_style }}</textarea
-                >
+                  >
+                </div>
               </div>
               <div class="form-control mb-4">
                 <label class="label cursor-pointer justify-start gap-2">
