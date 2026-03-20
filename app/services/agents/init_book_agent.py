@@ -33,12 +33,16 @@ class InitBookAgent(BaseAgent):
         )
         return self
 
-    @property
-    def system_prompt(self) -> str:
+    def _build_system_prompt(self, target_chapters: int) -> str:
+        """构建 system prompt，支持动态 target_chapters 参数"""
         jailbreak = self._jailbreak_prefix
         return ((jailbreak + "\n\n") if jailbreak else "") + prompts.INIT_BOOK_SYSTEM_PROMPT.format(
-            target_chapters=0, style_section=self._style_section
+            target_chapters=target_chapters, style_section=self._style_section
         )
+
+    @property
+    def system_prompt(self) -> str:
+        return self._build_system_prompt(target_chapters=0)
 
     def build_prompt(self, basic_idea: str, genre: str, target_chapters: int) -> str:
         return f"""用户创意：{basic_idea}
@@ -47,9 +51,7 @@ class InitBookAgent(BaseAgent):
 
     def _build_messages(self, basic_idea: str, genre: str, target_chapters: int) -> list[ChatCompletionMessageParam]:
         """构建 API 调用的 messages"""
-        system_content = (
-            (self._jailbreak_prefix + "\n\n") if self._jailbreak_prefix else ""
-        ) + prompts.INIT_BOOK_SYSTEM_PROMPT.format(target_chapters=target_chapters, style_section=self._style_section)
+        system_content = self._build_system_prompt(target_chapters)
         user_prompt = self.build_prompt(basic_idea, genre, target_chapters)
 
         return [{"role": "system", "content": system_content}, {"role": "user", "content": user_prompt}]
