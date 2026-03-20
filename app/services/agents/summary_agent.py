@@ -6,39 +6,26 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.models import Book
 from app.utils import prompts
+from app.utils.ai_utils import get_config_value
 from app.services.agents.base_agent import BaseAgent, AgentFactory
-from app.services.base_ai_service import BaseAiService
+from app.services.ai_service import AiService
 from app.constants import DEFAULT_JAILBREAK_PREFIX, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
 
 logger = logging.getLogger(__name__)
 
 
-def _get_config_value(book: Book, global_config: dict[str, Any] | None, key: str, default: Any) -> Any:
-    """获取配置值：优先使用书籍配置，其次使用全局配置，最后使用默认值"""
-    book_config = book.config if book.config is not None else {}
-    if key in book_config:
-        return book_config[key]
-    if global_config is not None and key in global_config:
-        value = global_config[key]
-        if key in ("temperature", "top_p"):
-            return float(str(value)) if value is not None else default
-        if key == "max_tokens":
-            return int(value) if value is not None else default
-        if key == "stream":
-            return bool(int(value)) if value is not None else default
-        return value
-    return default
-
-
 class SummaryAgent(BaseAgent):
-    def __init__(self, ai_service: BaseAiService, book: Book, global_config: dict[str, Any] | None = None):
+    def __init__(self, ai_service: AiService, book: Book, global_config: dict[str, Any] | None = None):
         super().__init__(ai_service)
         self.book = book
         self.global_config = global_config or {}
 
+    def _get_config_value(self, key: str, default: Any) -> Any:
+        return get_config_value(self.book, self.global_config, key, default)
+
     @property
     def system_prompt(self) -> str:
-        jailbreak = _get_config_value(self.book, self.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+        jailbreak = self._get_config_value("jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
         return jailbreak + "\n\n" + prompts.UPDATE_SUMMARY_SYSTEM_PROMPT
 
     def build_prompt(
@@ -65,6 +52,24 @@ class SummaryAgent(BaseAgent):
                 chapter_title=chapter_title,
             )
 
+    def _build_messages(
+        self, new_chapter_text: str, chapter_number: int, is_last_chapter: bool = True, chapter_title: str = ""
+    ) -> list[ChatCompletionMessageParam]:
+        next_chapter = chapter_number + 1
+        return [
+            {"role": "system", "content": self.system_prompt},
+            {
+                "role": "user",
+                "content": self.build_prompt(
+                    new_chapter=new_chapter_text,
+                    chapter_number=chapter_number,
+                    chapter_title=chapter_title,
+                    next_chapter=next_chapter,
+                    is_last_chapter=is_last_chapter,
+                ),
+            },
+        ]
+
     async def update(
         self,
         new_chapter_text: str,
@@ -75,32 +80,14 @@ class SummaryAgent(BaseAgent):
         """非流式生成新摘要"""
         if chapter_number is None:
             chapter_number = int(self.book.current_chapter) if self.book.current_chapter else 1
-        next_chapter = chapter_number + 1
 
-        user_prompt = self.build_prompt(
-            new_chapter=new_chapter_text,
-            chapter_number=chapter_number,
-            chapter_title=chapter_title,
-            next_chapter=next_chapter,
-            is_last_chapter=is_last_chapter,
+        messages = self._build_messages(new_chapter_text, chapter_number, is_last_chapter, chapter_title)
+        temperature = self._get_config_value("temperature", DEFAULT_TEMPERATURE)
+        max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
+
+        return await self.ai_service.call_with_messages(
+            messages=messages, temperature=temperature, max_tokens=max_tokens
         )
-
-        messages: list[ChatCompletionMessageParam] = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-
-        temperature = _get_config_value(self.book, self.global_config, "temperature", DEFAULT_TEMPERATURE)
-        max_tokens = _get_config_value(self.book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
-
-        params = {
-            "model": self.ai_service.model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        response = await self.ai_service.client.chat.completions.create(**params)
-        return response.choices[0].message.content or ""
 
     async def update_stream(
         self,
@@ -112,36 +99,15 @@ class SummaryAgent(BaseAgent):
         """流式生成新摘要"""
         if chapter_number is None:
             chapter_number = int(self.book.current_chapter) if self.book.current_chapter else 1
-        next_chapter = chapter_number + 1
 
-        user_prompt = self.build_prompt(
-            new_chapter=new_chapter_text,
-            chapter_number=chapter_number,
-            chapter_title=chapter_title,
-            next_chapter=next_chapter,
-            is_last_chapter=is_last_chapter,
-        )
+        messages = self._build_messages(new_chapter_text, chapter_number, is_last_chapter, chapter_title)
+        temperature = self._get_config_value("temperature", DEFAULT_TEMPERATURE)
+        max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
 
-        messages: list[ChatCompletionMessageParam] = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-
-        temperature = _get_config_value(self.book, self.global_config, "temperature", DEFAULT_TEMPERATURE)
-        max_tokens = _get_config_value(self.book, self.global_config, "max_tokens", DEFAULT_MAX_TOKENS)
-
-        params = {
-            "model": self.ai_service.model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "stream": True,
-        }
-        response = await self.ai_service.client.chat.completions.create(**params)
-
-        async for chunk in response:
-            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+        async for chunk in self.ai_service.call_with_messages_stream(
+            messages=messages, temperature=temperature, max_tokens=max_tokens
+        ):
+            yield chunk
 
 
 AgentFactory.register("summary", SummaryAgent)

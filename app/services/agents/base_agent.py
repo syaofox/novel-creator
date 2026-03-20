@@ -3,13 +3,13 @@ from abc import ABC, abstractmethod
 from typing import Any
 from collections.abc import AsyncGenerator
 
-from app.services.base_ai_service import BaseAiService
+from app.services.ai_service import AiService
 
 logger = logging.getLogger(__name__)
 
 
 class BaseAgent(ABC):
-    def __init__(self, ai_service: BaseAiService):
+    def __init__(self, ai_service: AiService):
         self.ai_service = ai_service
 
     @property
@@ -53,7 +53,7 @@ class AgentFactory:
         cls._agents[name] = agent_class
 
     @classmethod
-    def create(cls, name: str, ai_service: BaseAiService, **kwargs) -> BaseAgent:
+    def create(cls, name: str, ai_service: AiService, **kwargs) -> BaseAgent:
         if name not in cls._agents:
             raise ValueError(f"Unknown agent: {name}")
         return cls._agents[name](ai_service, **kwargs)
