@@ -507,7 +507,9 @@
     
     // 解析摘要并显示
     function initSummaryDisplay() {
-      const summaryText = {{ (book.memory_summary or '') | tojson }};
+      // 优先从 textarea 获取当前内容（可能是更新后的），否则使用模板变量
+      const summaryEl = document.getElementById('memory-summary');
+      const summaryText = summaryEl ? summaryEl.value : {{ (book.memory_summary or '') | tojson }};
       const sections = parseSummary(summaryText);
       const displayEl = document.getElementById('summary-display');
       if (displayEl) {
