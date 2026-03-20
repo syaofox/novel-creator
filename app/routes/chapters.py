@@ -121,7 +121,7 @@ async def generate_chapter(
     book_id: int,
     db: DbSession,
     service: NovelServiceDep,
-    chapter_number: int | None = None,
+    chapter_number: int | None = Form(None),
     core_event: str = Form(...),
 ):
     from app.repositories.novel_repository import NovelRepository

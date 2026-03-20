@@ -224,8 +224,12 @@
       const btn = document.getElementById('update-summary-btn');
       const loadingSpinner = document.getElementById('update-summary-loading');
       const btnText = document.getElementById('update-summary-text');
-      const chapterNum = window.selectedChapter || {{ book.current_chapter or 1 }};
-      console.log('更新摘要章节:', chapterNum);
+
+      // 优先从当前工作区的表单中获取章节号，避免使用可能过期的 window.selectedChapter
+      const workspaceChapterInput = document.querySelector('#main-workspace input[name="chapter_number"]');
+      const currentChapter = workspaceChapterInput ? parseInt(workspaceChapterInput.value) : null;
+      const chapterNum = currentChapter || {{ book.current_chapter or 1 }};
+      console.log('更新摘要章节:', chapterNum, '(来源:', currentChapter ? '表单' : 'book.current_chapter', ')');
 
       // 切换到编辑模式
       switchSummaryTab('edit');
@@ -489,7 +493,10 @@
   <script>
     // 更新模态框标题中的章节号
     function updateMemoryModalChapter() {
-      const chapterNum = window.selectedChapter || {{ book.current_chapter or 1 }};
+      // 优先从当前工作区的表单中获取章节号
+      const workspaceChapterInput = document.querySelector('#main-workspace input[name="chapter_number"]');
+      const currentChapter = workspaceChapterInput ? parseInt(workspaceChapterInput.value) : null;
+      const chapterNum = currentChapter || {{ book.current_chapter or 1 }};
       const chapterEl = document.getElementById('memory-modal-chapter');
       if (chapterEl) {
         chapterEl.textContent = '第 ' + chapterNum + ' 章';
