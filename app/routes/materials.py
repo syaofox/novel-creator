@@ -1,7 +1,9 @@
+import asyncio
+import json
 import logging
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, Query
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import AiServiceDep
@@ -247,21 +249,23 @@ async def delete_character_card(card_id: int, db: Session = Depends(get_db)):
     return RedirectResponse(url="/materials?tab=character", status_code=303)
 
 
-@router.post("/writing-styles/extract", response_class=HTMLResponse)
-async def extract_writing_style(request: Request, text_snippet: str = Form(...), ai_service: AiServiceDep = None):
+@router.post("/writing-styles/extract-stream")
+async def extract_writing_style_stream(text_snippet: str = Form(...), ai_service: AiServiceDep = None):
     from app.services.agents import AgentFactory
 
     agent = AgentFactory.create("style_extractor", ai_service)
-    result = await agent.extract_style(text_snippet)
-    extracted_title = result.get("title", "")
-    extracted_content = result.get("content", "")
 
-    templates = get_templates()
-    return templates.TemplateResponse(
-        request,
-        "partials/style_extracted.html",
-        {"extracted_title": extracted_title, "extracted_content": extracted_content},
-    )
+    async def generate():
+        try:
+            async for chunk in agent.stream_extract_style(text_snippet):
+                data = json.dumps({"content": chunk}, ensure_ascii=False)
+                yield f"{data}\n"
+                await asyncio.sleep(0.01)
+            yield json.dumps({"done": True}) + "\n"
+        except Exception as e:
+            yield json.dumps({"error": str(e)}) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.post("/writing-styles", response_class=HTMLResponse)

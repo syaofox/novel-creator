@@ -277,41 +277,41 @@
                   placeholder="粘贴一段文字，AI 将自动分析其写作风格..."
                   class="textarea textarea-bordered w-full"
                 ></textarea>
-                <button
-                  type="button"
-                  hx-post="/materials/writing-styles/extract"
-                  hx-vals="js:{text_snippet: document.getElementById('textSnippet').value}"
-                  hx-target="#style-form-fields"
-                  hx-swap="innerHTML"
-                  class="btn btn-secondary btn-sm mt-2"
-                >
-                  <span class="loading loading-spinner loading-xs htmx-indicator"></span>
-                  AI 提取文风
-                </button>
+                <div class="flex items-center gap-2 mt-2">
+                  <button
+                    type="button"
+                    id="extractStyleBtn"
+                    onclick="extractStyle()"
+                    class="btn btn-secondary btn-sm"
+                  >
+                    AI 提取文风
+                  </button>
+                  <span id="extract-status" class="text-sm"></span>
+                </div>
               </div>
             </div>
 
             <form method="post" action="/materials/writing-styles">
-              <div id="style-form-fields">
-                <div class="form-control mb-2">
-                  <input
-                    type="text"
-                    name="title"
-                    required
-                    placeholder="文风名称"
-                    class="input input-bordered"
-                  />
-                </div>
-                <div class="form-control mb-2">
-                  <textarea
-                    name="content"
-                    rows="4"
-                    placeholder="写作风格规范..."
-                    class="textarea textarea-bordered"
-                  >
+              <div class="form-control mb-2">
+                <input
+                  id="styleTitle"
+                  type="text"
+                  name="title"
+                  required
+                  placeholder="文风名称"
+                  class="input input-bordered"
+                />
+              </div>
+              <div class="form-control mb-2">
+                <textarea
+                  id="styleContent"
+                  name="content"
+                  rows="4"
+                  placeholder="写作风格规范..."
+                  class="textarea textarea-bordered"
+                >
 {{ default_style }}</textarea
-                  >
-                </div>
+                >
               </div>
               <div class="form-control mb-4">
                 <label class="label cursor-pointer justify-start gap-2">
@@ -467,4 +467,86 @@
     <!-- 编辑弹窗容器 -->
     <div id="modal-container"></div>
   </div>
+
+  <script>
+    function extractStyle() {
+      const snippet = document.getElementById('textSnippet').value;
+      if (!snippet.trim()) return;
+
+      const titleEl = document.getElementById('styleTitle');
+      const contentEl = document.getElementById('styleContent');
+      const statusEl = document.getElementById('extract-status');
+      const btn = document.getElementById('extractStyleBtn');
+
+      titleEl.value = '';
+      contentEl.value = '';
+      statusEl.textContent = '提取中...';
+      statusEl.className = 'text-sm text-info';
+      btn.disabled = true;
+      startRequest();
+
+      fetch('/materials/writing-styles/extract-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ text_snippet: snippet }),
+      })
+        .then((response) => {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let fullText = '';
+
+          function read() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                const lines = fullText.split('\n');
+                const titleLine = lines[0] || '';
+                const match = titleLine.match(/^标题[：:]\s*(.+)/);
+                if (match) {
+                  titleEl.value = match[1].trim();
+                  contentEl.value = lines.slice(1).join('\n').trim();
+                } else {
+                  contentEl.value = fullText;
+                }
+                statusEl.textContent = '提取完成';
+                statusEl.className = 'text-sm text-success';
+                btn.disabled = false;
+                endRequest();
+                return;
+              }
+
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split('\n').filter((line) => line.trim());
+
+              lines.forEach((line) => {
+                try {
+                  const data = JSON.parse(line);
+                  if (data.done) return;
+                  if (data.error) {
+                    statusEl.textContent = '提取失败: ' + data.error;
+                    statusEl.className = 'text-sm text-error';
+                    btn.disabled = false;
+                    endRequest();
+                    return;
+                  }
+                  if (data.content) {
+                    fullText += data.content;
+                    contentEl.value = fullText;
+                    contentEl.scrollTop = contentEl.scrollHeight;
+                  }
+                } catch (e) {}
+              });
+
+              read();
+            });
+          }
+          read();
+        })
+        .catch((error) => {
+          statusEl.textContent = '请求失败: ' + error.message;
+          statusEl.className = 'text-sm text-error';
+          btn.disabled = false;
+          endRequest();
+        });
+    }
+  </script>
 {% endblock %}
