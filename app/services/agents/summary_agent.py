@@ -6,27 +6,19 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.models import Book
 from app.utils import prompts
-from app.utils.ai_utils import get_config_value
 from app.services.agents.base_agent import BaseAgent, AgentFactory
 from app.services.ai_service import AiService
-from app.constants import DEFAULT_JAILBREAK_PREFIX, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
+from app.constants import DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
 
 logger = logging.getLogger(__name__)
 
 
 class SummaryAgent(BaseAgent):
     def __init__(self, ai_service: AiService, book: Book, global_config: dict[str, Any] | None = None):
-        super().__init__(ai_service)
-        self.book = book
-        self.global_config = global_config or {}
+        super().__init__(ai_service, book, global_config)
 
-    def _get_config_value(self, key: str, default: Any) -> Any:
-        return get_config_value(self.book, self.global_config, key, default)
-
-    @property
-    def system_prompt(self) -> str:
-        jailbreak = self._get_config_value("jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
-        return jailbreak + "\n\n" + prompts.UPDATE_SUMMARY_SYSTEM_PROMPT
+    def _get_role_prompt(self) -> str:
+        return prompts.UPDATE_SUMMARY_SYSTEM_PROMPT
 
     def build_prompt(
         self,
@@ -36,16 +28,17 @@ class SummaryAgent(BaseAgent):
         next_chapter: int | None = None,
         is_last_chapter: bool = True,
     ) -> str:
+        memory_summary = getattr(self.book, "memory_summary", "")
         if is_last_chapter:
             return prompts.UPDATE_SUMMARY_PROMPT_LAST.format(
-                old_summary=self.book.memory_summary,
+                old_summary=memory_summary,
                 new_chapter=new_chapter,
                 chapter_number=chapter_number,
                 chapter_title=chapter_title,
             )
         else:
             return prompts.UPDATE_SUMMARY_PROMPT.format(
-                old_summary=self.book.memory_summary,
+                old_summary=memory_summary,
                 new_chapter=new_chapter,
                 chapter_number=chapter_number,
                 next_chapter=next_chapter,
@@ -77,9 +70,9 @@ class SummaryAgent(BaseAgent):
         is_last_chapter: bool = True,
         chapter_title: str = "",
     ) -> str:
-        """非流式生成新摘要"""
         if chapter_number is None:
-            chapter_number = int(self.book.current_chapter) if self.book.current_chapter else 1
+            current_chapter = getattr(self.book, "current_chapter", None)
+            chapter_number = int(current_chapter) if current_chapter else 1
 
         messages = self._build_messages(new_chapter_text, chapter_number, is_last_chapter, chapter_title)
         temperature = self._get_config_value("temperature", DEFAULT_TEMPERATURE)
@@ -96,9 +89,9 @@ class SummaryAgent(BaseAgent):
         is_last_chapter: bool = True,
         chapter_title: str = "",
     ) -> AsyncGenerator[str]:
-        """流式生成新摘要"""
         if chapter_number is None:
-            chapter_number = int(self.book.current_chapter) if self.book.current_chapter else 1
+            current_chapter = getattr(self.book, "current_chapter", None)
+            chapter_number = int(current_chapter) if current_chapter else 1
 
         messages = self._build_messages(new_chapter_text, chapter_number, is_last_chapter, chapter_title)
         temperature = self._get_config_value("temperature", DEFAULT_TEMPERATURE)

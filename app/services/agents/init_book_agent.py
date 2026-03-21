@@ -17,15 +17,18 @@ logger = logging.getLogger(__name__)
 
 class InitBookAgent(BaseAgent):
     def __init__(self, ai_service: AiService, book: Book | None = None, global_config: dict[str, Any] | None = None):
-        super().__init__(ai_service)
-        self.book = book
-        self.global_config = global_config or {}
-        self._jailbreak_prefix = ""
+        super().__init__(ai_service, book, global_config)
         self._style_section = ""
+        self._jailbreak_override = ""
 
     def with_jailbreak(self, jailbreak_prefix: str = "") -> "InitBookAgent":
-        self._jailbreak_prefix = jailbreak_prefix
+        self._jailbreak_override = jailbreak_prefix
         return self
+
+    def _get_jailbreak_prefix(self) -> str:
+        if self._jailbreak_override:
+            return self._jailbreak_override
+        return super()._get_jailbreak_prefix()
 
     def with_style(self, style: str = "") -> "InitBookAgent":
         self._style_section = (
@@ -33,16 +36,14 @@ class InitBookAgent(BaseAgent):
         )
         return self
 
+    def _get_role_prompt(self) -> str:
+        return prompts.INIT_BOOK_SYSTEM_PROMPT.format(target_chapters=0, style_section=self._style_section)
+
     def _build_system_prompt(self, target_chapters: int) -> str:
-        """构建 system prompt，支持动态 target_chapters 参数"""
-        jailbreak = self._jailbreak_prefix
-        return ((jailbreak + "\n\n") if jailbreak else "") + prompts.INIT_BOOK_SYSTEM_PROMPT.format(
+        jailbreak = self._get_jailbreak_prefix()
+        return (jailbreak + "\n\n" if jailbreak else "") + prompts.INIT_BOOK_SYSTEM_PROMPT.format(
             target_chapters=target_chapters, style_section=self._style_section
         )
-
-    @property
-    def system_prompt(self) -> str:
-        return self._build_system_prompt(target_chapters=0)
 
     def build_prompt(self, basic_idea: str, genre: str, target_chapters: int) -> str:
         return f"""用户创意：{basic_idea}
@@ -50,18 +51,12 @@ class InitBookAgent(BaseAgent):
 目标章节数：{target_chapters}"""
 
     def _build_messages(self, basic_idea: str, genre: str, target_chapters: int) -> list[ChatCompletionMessageParam]:
-        """构建 API 调用的 messages"""
         system_content = self._build_system_prompt(target_chapters)
         user_prompt = self.build_prompt(basic_idea, genre, target_chapters)
 
         return [{"role": "system", "content": system_content}, {"role": "user", "content": user_prompt}]
 
-    def _get_config_value(self, key: str, default: Any) -> Any:
-        """获取配置值：优先使用书籍配置，其次使用全局配置，最后使用默认值"""
-        return get_config_value(self.book, self.global_config, key, default)
-
     async def initialize(self, basic_idea: str, genre: str, target_chapters: int) -> dict[str, str]:
-        """初始化书籍，返回解析后的数据"""
         messages = self._build_messages(basic_idea, genre, target_chapters)
         temperature = self._get_config_value("temperature", DEFAULT_TEMPERATURE)
         max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
@@ -103,7 +98,6 @@ class InitBookAgent(BaseAgent):
     async def stream_initialize(
         self, basic_idea: str, genre: str, target_chapters: int
     ) -> AsyncGenerator[dict[str, str]]:
-        """流式初始化小说，直接返回原始内容块"""
         messages = self._build_messages(basic_idea, genre, target_chapters)
         temperature = self._get_config_value("temperature", DEFAULT_TEMPERATURE)
         max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)

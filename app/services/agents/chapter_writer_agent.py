@@ -6,40 +6,22 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.models import Book
 from app.utils import prompts
-from app.utils.ai_utils import get_config_value
 from app.services.agents.base_agent import BaseAgent, AgentFactory
 from app.services.ai_service import AiService
-from app.constants import (
-    DEFAULT_JAILBREAK_PREFIX,
-    DEFAULT_SYSTEM_TEMPLATE,
-    DEFAULT_TEMPERATURE,
-    DEFAULT_TOP_P,
-    DEFAULT_MAX_TOKENS,
-)
+from app.constants import DEFAULT_SYSTEM_TEMPLATE, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_TOKENS
 
 logger = logging.getLogger(__name__)
 
 
 class ChapterWriterAgent(BaseAgent):
     def __init__(self, ai_service: AiService, book: Book, global_config: dict[str, Any] | None = None):
-        super().__init__(ai_service)
-        self.book = book
-        self.global_config = global_config or {}
+        super().__init__(ai_service, book, global_config)
 
-    def _get_config_value(self, key: str, default: Any) -> Any:
-        return get_config_value(self.book, self.global_config, key, default)
-
-    @property
-    def system_prompt(self) -> str:
-        jailbreak = self._get_config_value("jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+    def _get_role_prompt(self) -> str:
         system_template = self._get_config_value("system_template", DEFAULT_SYSTEM_TEMPLATE)
-        return (
-            jailbreak
-            + "\n\n"
-            + system_template.format(
-                memory=self.book.memory_summary, style=self.book.style or "请根据小说的风格规范进行写作。"
-            )
-        )
+        memory = getattr(self.book, "memory_summary", "")
+        style = getattr(self.book, "style", "") or "请根据小说的风格规范进行写作。"
+        return system_template.format(memory=memory, style=style)
 
     def build_prompt(self, chapter_number: int, core_event: str, prev_ending: str) -> str:
         return prompts.WRITE_CHAPTER_PROMPT.format(
@@ -55,7 +37,6 @@ class ChapterWriterAgent(BaseAgent):
         ]
 
     async def write(self, chapter_number: int, core_event: str, prev_ending: str) -> str:
-        """非流式生成章节正文"""
         messages = self._build_messages(chapter_number, core_event, prev_ending)
         temperature = self._get_config_value("temperature", DEFAULT_TEMPERATURE)
         top_p = self._get_config_value("top_p", DEFAULT_TOP_P)
@@ -66,7 +47,6 @@ class ChapterWriterAgent(BaseAgent):
         )
 
     async def write_stream(self, chapter_number: int, core_event: str, prev_ending: str) -> AsyncGenerator[str]:
-        """流式生成章节正文"""
         messages = self._build_messages(chapter_number, core_event, prev_ending)
         temperature = self._get_config_value("temperature", DEFAULT_TEMPERATURE)
         top_p = self._get_config_value("top_p", DEFAULT_TOP_P)

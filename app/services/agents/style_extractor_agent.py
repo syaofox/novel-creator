@@ -1,9 +1,7 @@
 import logging
 from collections.abc import AsyncGenerator
 
-from app.constants import DEFAULT_JAILBREAK_PREFIX
 from app.services.agents.base_agent import BaseAgent, AgentFactory
-from app.utils.ai_utils import get_config_value
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +16,9 @@ _EXTRACT_STYLE_PROMPT = (
 
 
 class StyleExtractorAgent(BaseAgent):
-    @property
-    def system_prompt(self) -> str:
-        jailbreak = get_config_value(None, self.ai_service.global_config, "jailbreak_prefix", DEFAULT_JAILBREAK_PREFIX)
+    def _get_role_prompt(self) -> str:
         return (
-            jailbreak + "\n\n" + "你是一个专业的小说写作风格分析专家。"
+            "你是一个专业的小说写作风格分析专家。"
             "请分析给定的文字片段，提取其写作风格特征，"
             "包括但不限于：句式特点、修辞手法、节奏韵律、"
             "用词偏好、叙事视角、情感基调、场景描写方式等。"
