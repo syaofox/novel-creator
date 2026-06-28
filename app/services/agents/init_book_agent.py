@@ -24,6 +24,7 @@ class InitBookAgent(BaseAgent):
         super().__init__(ai_service, book, global_config)
         self._style_section = ""
         self._jailbreak_override = ""
+        self._target_chapters: int = 0
 
     def with_jailbreak(self, jailbreak_prefix: str = "") -> "InitBookAgent":
         self._jailbreak_override = jailbreak_prefix
@@ -42,9 +43,10 @@ class InitBookAgent(BaseAgent):
 
     def _get_role_prompt(self) -> str:
         system_prompt = get_agent_prompt(self.global_config, "init_book_system_prompt")
-        return system_prompt.format(target_chapters=0, style_section=self._style_section)
+        return system_prompt.format(target_chapters=self._target_chapters, style_section=self._style_section)
 
     def _build_system_prompt(self, target_chapters: int) -> str:
+        self._target_chapters = target_chapters
         jailbreak = self._get_jailbreak_prefix()
         system_prompt = get_agent_prompt(self.global_config, "init_book_system_prompt")
         return (jailbreak + "\n\n" if jailbreak else "") + system_prompt.format(

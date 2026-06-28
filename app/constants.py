@@ -47,9 +47,9 @@ AGENT_PROMPT_LABELS: dict[str, str] = {
 
 AGENT_PROMPT_TIPS: dict[str, str] = {
     "system_template": "可用 {style} 占位符",
-    "summary_system_prompt": "",
-    "summary_user_prompt": "可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} {next_chapter} 占位符",
-    "summary_user_prompt_last": "可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} 占位符",
+    "summary_system_prompt": "所有格式说明已移至此处以优化缓存。注意：修改后需同步更新 summary_user_prompt/_last 模板",
+    "summary_user_prompt": "仅放动态数据。可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} {next_chapter} 占位符",
+    "summary_user_prompt_last": "仅放动态数据。可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} 占位符",
     "init_book_system_prompt": "可用 {target_chapters} {style_section} 占位符",
     "init_book_user_prompt": "可用 {basic_idea} {genre} {target_chapters} 占位符",
     "style_extractor_system_prompt": "",
