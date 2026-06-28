@@ -3,7 +3,7 @@ import tempfile
 
 import pytest
 
-from app.repositories.file_repository import FileRepository
+from app.repositories.file_repository import FileRepository, GlobalConfig
 from app.utils.config_helper import get_global_config_dict
 
 
@@ -24,6 +24,7 @@ class TestGetGlobalConfigDict:
         gc.jailbreak_prefix = "test_prefix"
         gc.system_template = "test_template"
         gc.agent_models = {"chapter_writer": "deepseek-v4-pro"}
+        gc.agent_prompts = {"summary_system_prompt": "custom"}
         repo.save_global_config(gc)
 
         result = get_global_config_dict(repo)
@@ -34,6 +35,7 @@ class TestGetGlobalConfigDict:
         assert result["jailbreak_prefix"] == "test_prefix"
         assert result["system_template"] == "test_template"
         assert result["agent_models"] == {"chapter_writer": "deepseek-v4-pro"}
+        assert result["agent_prompts"] == {"summary_system_prompt": "custom"}
 
     def test_creates_default_config_when_not_exists(self, repo):
         result = get_global_config_dict(repo)
@@ -44,3 +46,4 @@ class TestGetGlobalConfigDict:
         assert "jailbreak_prefix" in result
         assert "system_template" in result
         assert "agent_models" in result
+        assert "agent_prompts" in result

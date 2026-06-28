@@ -4,9 +4,46 @@ import re
 from typing import Any
 
 from app.repositories.file_repository import Book
-from app.constants import DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_TOKENS
+from app.constants import (
+    DEFAULT_TEMPERATURE,
+    DEFAULT_TOP_P,
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_JAILBREAK_PREFIX,
+    DEFAULT_SYSTEM_TEMPLATE,
+)
+from app.utils import prompts
 
 logger = logging.getLogger(__name__)
+
+PROMPT_DEFAULTS: dict[str, str] = {
+    "system_template": DEFAULT_SYSTEM_TEMPLATE,
+    "jailbreak_prefix": DEFAULT_JAILBREAK_PREFIX,
+    "chapter_writer_user_prompt": prompts.WRITE_CHAPTER_PROMPT,
+    "summary_system_prompt": prompts.UPDATE_SUMMARY_SYSTEM_PROMPT,
+    "summary_user_prompt": prompts.UPDATE_SUMMARY_PROMPT,
+    "summary_user_prompt_last": prompts.UPDATE_SUMMARY_PROMPT_LAST,
+    "init_book_system_prompt": prompts.INIT_BOOK_SYSTEM_PROMPT,
+    "init_book_user_prompt": "用户创意：{basic_idea}\n小说类型：{genre}\n目标章节数：{target_chapters}",
+    "style_extractor_system_prompt": (
+        "你是一个专业的小说写作风格分析专家。"
+        "请分析给定的文字片段，提取其写作风格特征，"
+        "包括但不限于：句式特点、修辞手法、节奏韵律、"
+        "用词偏好、叙事视角、情感基调、场景描写方式等。"
+    ),
+    "style_extractor_user_prompt": (
+        "请以 JSON 格式分析以下文字片段的写作风格。\n"
+        "要求：\n"
+        '- "title"：为这种风格取一个简洁准确的名称（2-6个字）\n'
+        '- "content"：详细描述该风格的各个特征，每一条独立成行\n'
+        '示例：{"title": "简洁干练", "content": "1. 短句为主，节奏明快\\n2. 多用白描手法\\n3. 叙事直白精炼"}'
+    ),
+}
+
+
+def get_agent_prompt(global_config: dict[str, Any] | None, key: str) -> str:
+    """获取 Agent prompt，优先使用全局配置，否则返回代码默认值"""
+    agent_prompts = (global_config or {}).get("agent_prompts", {}) if global_config else {}
+    return agent_prompts.get(key) or PROMPT_DEFAULTS.get(key, "")
 
 
 def get_config_value(book: Book | None, global_config: dict[str, Any] | None, key: str, default: Any) -> Any:

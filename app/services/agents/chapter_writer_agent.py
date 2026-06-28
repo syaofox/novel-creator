@@ -7,7 +7,7 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.repositories.file_repository import Book
 from app.utils import prompts
-from app.utils.ai_utils import extract_dynamic_sections, extract_stable_sections
+from app.utils.ai_utils import extract_dynamic_sections, extract_stable_sections, get_agent_prompt
 from app.services.agents.base_agent import BaseAgent, AgentFactory
 from app.services.ai_service import AiService
 from app.constants import DEFAULT_SYSTEM_TEMPLATE, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_TOKENS
@@ -36,7 +36,8 @@ class ChapterWriterAgent(BaseAgent):
         return base
 
     def build_prompt(self, chapter_number: int, core_event: str, prev_ending: str) -> str:
-        return prompts.WRITE_CHAPTER_PROMPT.format(
+        user_prompt = get_agent_prompt(self.global_config, "chapter_writer_user_prompt")
+        return user_prompt.format(
             chapter_number=chapter_number, core_event=core_event, prev_ending=prev_ending
         )
 

@@ -9,6 +9,7 @@ from app.utils import prompts
 from app.services.agents.base_agent import BaseAgent, AgentFactory
 from app.services.ai_service import AiService
 from app.constants import DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
+from app.utils.ai_utils import get_agent_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class SummaryAgent(BaseAgent):
         super().__init__(ai_service, book, global_config)
 
     def _get_role_prompt(self) -> str:
-        return prompts.UPDATE_SUMMARY_SYSTEM_PROMPT
+        return get_agent_prompt(self.global_config, "summary_system_prompt")
 
     def build_prompt(
         self,
@@ -34,14 +35,16 @@ class SummaryAgent(BaseAgent):
     ) -> str:
         memory_summary = getattr(self.book, "memory_summary", "")
         if is_last_chapter:
-            return prompts.UPDATE_SUMMARY_PROMPT_LAST.format(
+            user_prompt = get_agent_prompt(self.global_config, "summary_user_prompt_last")
+            return user_prompt.format(
                 old_summary=memory_summary,
                 new_chapter=new_chapter,
                 chapter_number=chapter_number,
                 chapter_title=chapter_title,
             )
         else:
-            return prompts.UPDATE_SUMMARY_PROMPT.format(
+            user_prompt = get_agent_prompt(self.global_config, "summary_user_prompt")
+            return user_prompt.format(
                 old_summary=memory_summary,
                 new_chapter=new_chapter,
                 chapter_number=chapter_number,

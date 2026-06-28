@@ -14,4 +14,5 @@ def get_global_config_dict(repo: FileRepository) -> dict:
         "jailbreak_prefix": config.jailbreak_prefix or "",
         "system_template": config.system_template or "",
         "agent_models": config.agent_models,
+        "agent_prompts": config.agent_prompts,
     }

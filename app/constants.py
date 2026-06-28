@@ -32,6 +32,30 @@ DEFAULT_SYSTEM_TEMPLATE = (
     "你是我的长篇小说专属写手。请严格遵守以下写作风格规范：\n{style}"
 )
 
+AGENT_PROMPT_LABELS: dict[str, str] = {
+    "system_template": "系统模板（章节写作）",
+    "jailbreak_prefix": "破限前缀",
+    "chapter_writer_user_prompt": "章节写作 - 用户提问",
+    "summary_system_prompt": "摘要更新 - 系统提示",
+    "summary_user_prompt": "摘要更新 - 用户提问（有下一章）",
+    "summary_user_prompt_last": "摘要更新 - 用户提问（最后一章）",
+    "init_book_system_prompt": "书籍初始化 - 系统提示",
+    "init_book_user_prompt": "书籍初始化 - 用户提问",
+    "style_extractor_system_prompt": "风格提取 - 系统提示",
+    "style_extractor_user_prompt": "风格提取 - 用户提问",
+}
+
+AGENT_PROMPT_TIPS: dict[str, str] = {
+    "system_template": "可用 {style} 占位符",
+    "summary_system_prompt": "",
+    "summary_user_prompt": "可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} {next_chapter} 占位符",
+    "summary_user_prompt_last": "可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} 占位符",
+    "init_book_system_prompt": "可用 {target_chapters} {style_section} 占位符",
+    "init_book_user_prompt": "可用 {basic_idea} {genre} {target_chapters} 占位符",
+    "style_extractor_system_prompt": "",
+    "style_extractor_user_prompt": "",
+}
+
 STYLE_PRESETS = {
     "默认": (
         "语言优美流畅，叙事自然；\n"

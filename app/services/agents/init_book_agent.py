@@ -7,7 +7,7 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.repositories.file_repository import Book
 from app.utils import prompts
-from app.utils.ai_utils import get_config_value, extract_json, parse_marked_content
+from app.utils.ai_utils import get_config_value, extract_json, parse_marked_content, get_agent_prompt
 from app.services.agents.base_agent import BaseAgent, AgentFactory
 from app.services.ai_service import AiService
 from app.constants import DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS
@@ -41,18 +41,19 @@ class InitBookAgent(BaseAgent):
         return self
 
     def _get_role_prompt(self) -> str:
-        return prompts.INIT_BOOK_SYSTEM_PROMPT.format(target_chapters=0, style_section=self._style_section)
+        system_prompt = get_agent_prompt(self.global_config, "init_book_system_prompt")
+        return system_prompt.format(target_chapters=0, style_section=self._style_section)
 
     def _build_system_prompt(self, target_chapters: int) -> str:
         jailbreak = self._get_jailbreak_prefix()
-        return (jailbreak + "\n\n" if jailbreak else "") + prompts.INIT_BOOK_SYSTEM_PROMPT.format(
+        system_prompt = get_agent_prompt(self.global_config, "init_book_system_prompt")
+        return (jailbreak + "\n\n" if jailbreak else "") + system_prompt.format(
             target_chapters=target_chapters, style_section=self._style_section
         )
 
     def build_prompt(self, basic_idea: str, genre: str, target_chapters: int) -> str:
-        return f"""用户创意：{basic_idea}
-小说类型：{genre}
-目标章节数：{target_chapters}"""
+        user_prompt = get_agent_prompt(self.global_config, "init_book_user_prompt")
+        return user_prompt.format(basic_idea=basic_idea, genre=genre, target_chapters=target_chapters)
 
     def _build_messages(self, basic_idea: str, genre: str, target_chapters: int) -> list[ChatCompletionMessageParam]:
         system_content = self._build_system_prompt(target_chapters)

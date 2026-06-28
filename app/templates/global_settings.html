@@ -1,135 +1,121 @@
 {% extends "base.html" %}
 {% block content %}
-  <div class="max-w-2xl mx-auto">
+  <div class="max-w-4xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">全局设置</h1>
+
+    <div class="tabs tabs-box mb-4">
+      <button class="tab tab-active" onclick="switchTab('basic')" id="tab-basic">基本设置</button>
+      <button class="tab" onclick="switchTab('prompts')" id="tab-prompts">Prompt 管理</button>
+    </div>
+
     <form action="/settings/global" method="post" class="space-y-4">
-      <div class="divider">API 配置</div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">DeepSeek API Key</span>
-        </label>
-        <input
-          type="password"
-          name="deepseek_api_key"
-          value="{{ config.deepseek_api_key }}"
-          class="input"
-        />
-      </div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">API Base URL</span>
-        </label>
-        <input
-          type="text"
-          name="deepseek_base_url"
-          value="{{ config.deepseek_base_url }}"
-          class="input"
-        />
-      </div>
-      <div class="divider">AI Agent 模型配置</div>
-      {% for agent_name, agent_label in {
-        'chapter_writer': '章节写作',
-        'summary': '摘要更新',
-        'init_book': '书籍初始化',
-        'style_extractor': '风格提取',
-      }.items() %}
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">{{ agent_label }}</span>
-        </label>
-        <select name="agent_model_{{ agent_name }}" class="select">
-          <option value="">默认（deepseek-v4-flash）</option>
-          <option value="deepseek-v4-flash" {% if config.agent_models.get(agent_name) == 'deepseek-v4-flash' %}selected{% endif %}>deepseek-v4-flash（快速模式）</option>
-          <option value="deepseek-v4-pro" {% if config.agent_models.get(agent_name) == 'deepseek-v4-pro' %}selected{% endif %}>deepseek-v4-pro（推荐，思考模式）</option>
-        </select>
-      </div>
-      {% endfor %}
+      <div id="section-basic">
+        <div class="divider">API 配置</div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">DeepSeek API Key</span>
+          </label>
+          <input type="password" name="deepseek_api_key" value="{{ config.deepseek_api_key }}" class="input" />
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">API Base URL</span>
+          </label>
+          <input type="text" name="deepseek_base_url" value="{{ config.deepseek_base_url }}" class="input" />
+        </div>
 
-      <div class="divider">AI 写作参数</div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">Temperature (0-2)</span>
-        </label>
-        <input
-          type="range"
-          name="temperature"
-          min="0"
-          max="2"
-          step="0.01"
-          value="{{ config.temperature }}"
-          class="range"
-        />
-        <span class="text-sm text-base-content/60"
-          >{{ config.temperature }}</span
-        >
-      </div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">Top P (0-1)</span>
-        </label>
-        <input
-          type="number"
-          name="top_p"
-          min="0"
-          max="1"
-          step="0.01"
-          value="{{ config.top_p }}"
-          class="input"
-        />
-      </div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">Max Tokens</span>
-        </label>
-        <input
-          type="number"
-          name="max_tokens"
-          min="1"
-          max="384000"
-          value="{{ config.max_tokens }}"
-          class="input"
-        />
-      </div>
-      <div class="form-control">
-        <label class="label cursor-pointer">
-          <span class="label-text">流式输出</span>
-          <input
-            type="checkbox"
-            name="stream"
-            {% if config.stream %}checked{% endif %}
-            class="toggle"
-          />
-        </label>
-      </div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">破限前缀</span>
-        </label>
-        <textarea
-          name="jailbreak_prefix"
-          rows="4"
-          class="textarea"
-        >
-{{ config.jailbreak_prefix }}</textarea
-        >
-      </div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">系统模板</span>
-        </label>
-        <textarea
-          name="system_template"
-          rows="6"
-          class="textarea"
-        >
-{{ config.system_template }}</textarea
-        >
+        <div class="divider">AI Agent 模型配置</div>
+        {% for agent_name, agent_label in {
+          'chapter_writer': '章节写作',
+          'summary': '摘要更新',
+          'init_book': '书籍初始化',
+          'style_extractor': '风格提取',
+        }.items() %}
+        <div class="form-control">
+          <label class="label"><span class="label-text">{{ agent_label }}</span></label>
+          <select name="agent_model_{{ agent_name }}" class="select">
+            <option value="">默认（deepseek-v4-flash）</option>
+            <option value="deepseek-v4-flash" {% if config.agent_models.get(agent_name) == 'deepseek-v4-flash' %}selected{% endif %}>deepseek-v4-flash（快速模式）</option>
+            <option value="deepseek-v4-pro" {% if config.agent_models.get(agent_name) == 'deepseek-v4-pro' %}selected{% endif %}>deepseek-v4-pro（思考模式）</option>
+          </select>
+        </div>
+        {% endfor %}
+
+        <div class="divider">AI 写作参数</div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Temperature (0-2)</span></label>
+          <input type="range" name="temperature" min="0" max="2" step="0.01" value="{{ config.temperature }}" class="range" />
+          <span class="text-sm text-base-content/60">{{ config.temperature }}</span>
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Top P (0-1)</span></label>
+          <input type="number" name="top_p" min="0" max="1" step="0.01" value="{{ config.top_p }}" class="input" />
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Max Tokens</span></label>
+          <input type="number" name="max_tokens" min="1" max="384000" value="{{ config.max_tokens }}" class="input" />
+        </div>
+        <div class="form-control">
+          <label class="label cursor-pointer">
+            <span class="label-text">流式输出</span>
+            <input type="checkbox" name="stream" {% if config.stream %}checked{% endif %} class="toggle" />
+          </label>
+        </div>
       </div>
 
-      <div class="form-control mt-6">
+      <div id="section-prompts" class="hidden">
+        <div class="divider">用户自定义 Prompt</div>
+        <p class="text-sm text-base-content/60 mb-4">留空则使用代码内置默认值。修改后点击「还原默认」可恢复内置值。</p>
+
+        {% set prompt_fields = [
+          ('system_template', '系统模板（章节写作）', config.system_template, '可用 {style} 占位符'),
+          ('jailbreak_prefix', '破限前缀', config.jailbreak_prefix, ''),
+          ('chapter_writer_user_prompt', '章节写作 - 用户提问', config.agent_prompts.get('chapter_writer_user_prompt', ''), '可用 {chapter_number} {core_event} {prev_ending} 占位符'),
+          ('summary_system_prompt', '摘要更新 - 系统提示', config.agent_prompts.get('summary_system_prompt', ''), ''),
+          ('summary_user_prompt', '摘要更新 - 用户提问（有下一章）', config.agent_prompts.get('summary_user_prompt', ''), '可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} {next_chapter} 占位符'),
+          ('summary_user_prompt_last', '摘要更新 - 用户提问（最后一章）', config.agent_prompts.get('summary_user_prompt_last', ''), '可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} 占位符'),
+          ('init_book_system_prompt', '书籍初始化 - 系统提示', config.agent_prompts.get('init_book_system_prompt', ''), '可用 {target_chapters} {style_section} 占位符'),
+          ('init_book_user_prompt', '书籍初始化 - 用户提问', config.agent_prompts.get('init_book_user_prompt', ''), '可用 {basic_idea} {genre} {target_chapters} 占位符'),
+          ('style_extractor_system_prompt', '风格提取 - 系统提示', config.agent_prompts.get('style_extractor_system_prompt', ''), ''),
+          ('style_extractor_user_prompt', '风格提取 - 用户提问', config.agent_prompts.get('style_extractor_user_prompt', ''), ''),
+        ] %}
+
+        {% for key, label, value, tip in prompt_fields %}
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">{{ label }}</span>
+          </label>
+          {% if tip %}
+          <span class="text-xs text-base-content/60 mb-1">{{ tip }}</span>
+          {% endif %}
+          <textarea name="prompt_{{ key }}" rows="4" class="textarea font-mono text-sm">{{ value }}</textarea>
+          <button type="button" class="btn btn-ghost btn-xs self-end mt-1" onclick="resetPrompt('{{ key }}')">还原默认</button>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="form-control mt-6 flex flex-row gap-2">
         <button type="submit" class="btn btn-primary">保存</button>
         <a href="/" class="btn btn-ghost">返回首页</a>
       </div>
     </form>
   </div>
+
+  <script>
+    function switchTab(name) {
+      document.getElementById('section-basic').classList.toggle('hidden', name !== 'basic');
+      document.getElementById('section-prompts').classList.toggle('hidden', name !== 'prompts');
+      document.getElementById('tab-basic').classList.toggle('tab-active', name === 'basic');
+      document.getElementById('tab-prompts').classList.toggle('tab-active', name === 'prompts');
+    }
+
+    const PROMPT_DEFAULTS = {{ prompt_defaults_json|safe }};
+
+    function resetPrompt(key) {
+      const textarea = document.querySelector(`textarea[name="prompt_${key}"]`);
+      if (textarea && PROMPT_DEFAULTS[key] !== undefined) {
+        textarea.value = PROMPT_DEFAULTS[key];
+      }
+    }
+  </script>
 {% endblock %}

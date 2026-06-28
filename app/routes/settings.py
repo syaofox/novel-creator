@@ -1,9 +1,12 @@
+import json
+
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.core.dependencies import RepoDep
 from app.repositories.file_repository import GlobalConfig
 from app.utils.helpers import get_templates
+from app.utils.ai_utils import PROMPT_DEFAULTS
 from app.constants import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
@@ -58,7 +61,10 @@ async def global_settings_form(request: Request, repo: RepoDep):
     if not config.system_template:
         config.system_template = DEFAULT_SYSTEM_TEMPLATE
     templates = get_templates()
-    return templates.TemplateResponse(request, "global_settings.html", {"config": config})
+    return templates.TemplateResponse(request, "global_settings.html", {
+        "config": config,
+        "prompt_defaults_json": json.dumps(PROMPT_DEFAULTS, ensure_ascii=False),
+    })
 
 
 @global_settings_router.post("/global", response_class=HTMLResponse)
@@ -77,7 +83,15 @@ async def save_global_settings(request: Request, repo: RepoDep):
     config.top_p = float(form.get("top_p", config.top_p if config.top_p is not None else DEFAULT_TOP_P))
     config.max_tokens = int(form.get("max_tokens", config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS))
     config.stream = form.get("stream") == "on"
-    config.jailbreak_prefix = form.get("jailbreak_prefix", config.jailbreak_prefix or DEFAULT_JAILBREAK_PREFIX)
-    config.system_template = form.get("system_template", config.system_template or DEFAULT_SYSTEM_TEMPLATE)
+    config.jailbreak_prefix = form.get("prompt_jailbreak_prefix", config.jailbreak_prefix or DEFAULT_JAILBREAK_PREFIX)
+    config.system_template = form.get("prompt_system_template", config.system_template or DEFAULT_SYSTEM_TEMPLATE)
+    agent_prompts: dict[str, str] = {}
+    for key in PROMPT_DEFAULTS:
+        if key in ("system_template", "jailbreak_prefix"):
+            continue
+        value = form.get(f"prompt_{key}")
+        if value:
+            agent_prompts[key] = value
+    config.agent_prompts = agent_prompts
     repo.save_global_config(config)
     return RedirectResponse(url="/", status_code=303)
