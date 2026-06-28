@@ -96,6 +96,7 @@ class AiService:
         temperature: float | None = None,
         max_tokens: int | None = None,
         top_p: float | None = None,
+        response_format: dict[str, str] | None = None,
     ) -> AsyncGenerator[str]:
         temperature = (
             temperature if temperature is not None else self._get_config_value("temperature", DEFAULT_TEMPERATURE)
@@ -114,18 +115,35 @@ class AiService:
         }
         if top_p:
             params["top_p"] = top_p
+        if response_format:
+            params["response_format"] = response_format
 
         self._log_request("call_llm_stream", params)
         response = await self.client.chat.completions.create(**params)
 
         first_chunk = True
+        total_content = []
+        finish_reason = None
+        usage = None
         async for chunk in response:
             if first_chunk:
                 logger.info("=== API 响应（流式） ===")
                 logger.info(f"Model: {chunk.model}")
                 first_chunk = False
             if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+                content = chunk.choices[0].delta.content
+                total_content.append(content)
+                yield content
+            if chunk.choices and chunk.choices[0].finish_reason:
+                finish_reason = chunk.choices[0].finish_reason
+            if hasattr(chunk, "usage") and chunk.usage:
+                usage = chunk.usage
+
+        logger.info(f"Finish reason: {finish_reason}")
+        if usage:
+            logger.info(f"Usage: {usage}")
+        if total_content:
+            logger.info(f"Content: {''.join(total_content)[:200]}...")
         logger.info("Stream completed")
 
     async def call_with_messages(
@@ -133,7 +151,7 @@ class AiService:
         messages: list[ChatCompletionMessageParam],
         temperature: float,
         max_tokens: int,
-        top_p: float = 0,
+        top_p: float | None = None,
         response_format: dict[str, str] | None = None,
     ) -> str:
         """直接传递 messages 列表的非流式调用"""
@@ -154,7 +172,12 @@ class AiService:
         return response.choices[0].message.content or ""
 
     async def call_with_messages_stream(
-        self, messages: list[ChatCompletionMessageParam], temperature: float, max_tokens: int, top_p: float = 0
+        self,
+        messages: list[ChatCompletionMessageParam],
+        temperature: float,
+        max_tokens: int,
+        top_p: float | None = None,
+        response_format: dict[str, str] | None = None,
     ) -> AsyncGenerator[str]:
         """直接传递 messages 列表的流式调用"""
         params: dict[str, Any] = {
@@ -166,16 +189,33 @@ class AiService:
         }
         if top_p:
             params["top_p"] = top_p
+        if response_format:
+            params["response_format"] = response_format
 
         self._log_request("call_with_messages_stream", params)
         response = await self.client.chat.completions.create(**params)
 
         first_chunk = True
+        total_content = []
+        finish_reason = None
+        usage = None
         async for chunk in response:
             if first_chunk:
                 logger.info("=== API 响应（流式） ===")
                 logger.info(f"Model: {chunk.model}")
                 first_chunk = False
             if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+                content = chunk.choices[0].delta.content
+                total_content.append(content)
+                yield content
+            if chunk.choices and chunk.choices[0].finish_reason:
+                finish_reason = chunk.choices[0].finish_reason
+            if hasattr(chunk, "usage") and chunk.usage:
+                usage = chunk.usage
+
+        logger.info(f"Finish reason: {finish_reason}")
+        if usage:
+            logger.info(f"Usage: {usage}")
+        if total_content:
+            logger.info(f"Content: {''.join(total_content)[:200]}...")
         logger.info("Stream completed")
