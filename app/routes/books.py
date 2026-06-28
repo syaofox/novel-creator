@@ -84,7 +84,11 @@ async def new_book_form(request: Request, repo: RepoDep):
         request,
         "new_book.html",
         {
-            **gc,
+            "default_temperature": gc["temperature"],
+            "default_top_p": gc["top_p"],
+            "default_max_tokens": gc["max_tokens"],
+            "jailbreak_prefix": gc["jailbreak_prefix"],
+            "system_template": gc["system_template"],
             "default_style": DEFAULT_STYLE,
             "style_presets": STYLE_PRESETS,
             "genre_options": GENRE_OPTIONS,
