@@ -23,13 +23,16 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-y: scroll;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
   color: var(--text);
   background: var(--bg-muted);
   line-height: 1.6;
-  scrollbar-gutter: stable;
 }
 
 /* ===== Container ===== */
