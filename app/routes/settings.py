@@ -53,6 +53,10 @@ async def global_settings_form(request: Request, repo: RepoDep):
     if not config.id:
         config = GlobalConfig()
         repo.save_global_config(config)
+    if not config.jailbreak_prefix:
+        config.jailbreak_prefix = DEFAULT_JAILBREAK_PREFIX
+    if not config.system_template:
+        config.system_template = DEFAULT_SYSTEM_TEMPLATE
     templates = get_templates()
     return templates.TemplateResponse(request, "global_settings.html", {"config": config})
 
