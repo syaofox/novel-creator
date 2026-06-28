@@ -5,19 +5,35 @@ from collections.abc import AsyncGenerator
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
-from app.constants import DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_TOKENS
+from app.constants import (
+    DEFAULT_TEMPERATURE,
+    DEFAULT_TOP_P,
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_REASONING_EFFORT,
+)
 from app.models import Book
 from app.utils.ai_utils import get_config_value, get_temperature_top_p_tokens
 
 logger = logging.getLogger(__name__)
 
 
+def _build_extra_body(
+    thinking_mode: bool | None,
+) -> dict[str, Any]:
+    extra: dict[str, Any] = {}
+    if thinking_mode is True:
+        extra["thinking"] = {"type": "enabled"}
+    elif thinking_mode is False:
+        extra["thinking"] = {"type": "disabled"}
+    return extra
+
+
 class AiService:
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://api.deepseek.com/v1",
-        model: str = "deepseek-reasoner",
+        base_url: str = "https://api.deepseek.com",
+        model: str = "deepseek-v4-pro",
         global_config: dict[str, Any] | None = None,
     ):
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
@@ -45,6 +61,8 @@ class AiService:
         logger.info(f"Top_p: {params.get('top_p')}")
         logger.info(f"Max_tokens: {params.get('max_tokens')}")
         logger.info(f"Stream: {params.get('stream')}")
+        logger.info(f"Thinking: {params.get('extra_body', {}).get('thinking')}")
+        logger.info(f"Reasoning effort: {params.get('reasoning_effort')}")
         for i, msg in enumerate(params.get("messages", [])):
             content = msg.get("content", "")
             logger.info(f"Message[{i}] ({msg.get('role')}): {content[:200]}...")
@@ -52,7 +70,12 @@ class AiService:
     def _log_response(self, response: Any):
         logger.info("=== API 响应 ===")
         logger.info(f"Model: {response.model}")
-        logger.info(f"Usage: {response.usage}")
+        usage = response.usage
+        logger.info(f"Usage: {usage}")
+        cache_hit = getattr(usage, "prompt_cache_hit_tokens", None)
+        cache_miss = getattr(usage, "prompt_cache_miss_tokens", None)
+        if cache_hit is not None:
+            logger.info(f"Cache hit: {cache_hit}, Cache miss: {cache_miss}")
         content = response.choices[0].message.content
         logger.info(f"Content: {content[:200]}...")
 
@@ -64,6 +87,9 @@ class AiService:
         max_tokens: int | None = None,
         top_p: float | None = None,
         response_format: dict[str, str] | None = None,
+        model: str | None = None,
+        thinking_mode: bool | None = None,
+        reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
     ) -> str:
         temperature = (
             temperature if temperature is not None else self._get_config_value("temperature", DEFAULT_TEMPERATURE)
@@ -74,7 +100,7 @@ class AiService:
         messages = self._build_messages(system_prompt, user_prompt)
 
         params: dict[str, Any] = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -83,6 +109,12 @@ class AiService:
             params["top_p"] = top_p
         if response_format:
             params["response_format"] = response_format
+
+        extra_body = _build_extra_body(thinking_mode)
+        if extra_body:
+            params["extra_body"] = extra_body
+        if reasoning_effort and thinking_mode is not False:
+            params["reasoning_effort"] = reasoning_effort
 
         self._log_request("call_llm", params)
         response = await self.client.chat.completions.create(**params)
@@ -97,6 +129,9 @@ class AiService:
         max_tokens: int | None = None,
         top_p: float | None = None,
         response_format: dict[str, str] | None = None,
+        model: str | None = None,
+        thinking_mode: bool | None = None,
+        reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
     ) -> AsyncGenerator[str]:
         temperature = (
             temperature if temperature is not None else self._get_config_value("temperature", DEFAULT_TEMPERATURE)
@@ -107,7 +142,7 @@ class AiService:
         messages = self._build_messages(system_prompt, user_prompt)
 
         params: dict[str, Any] = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -117,6 +152,12 @@ class AiService:
             params["top_p"] = top_p
         if response_format:
             params["response_format"] = response_format
+
+        extra_body = _build_extra_body(thinking_mode)
+        if extra_body:
+            params["extra_body"] = extra_body
+        if reasoning_effort and thinking_mode is not False:
+            params["reasoning_effort"] = reasoning_effort
 
         self._log_request("call_llm_stream", params)
         response = await self.client.chat.completions.create(**params)
@@ -142,6 +183,10 @@ class AiService:
         logger.info(f"Finish reason: {finish_reason}")
         if usage:
             logger.info(f"Usage: {usage}")
+            cache_hit = getattr(usage, "prompt_cache_hit_tokens", None)
+            cache_miss = getattr(usage, "prompt_cache_miss_tokens", None)
+            if cache_hit is not None:
+                logger.info(f"Cache hit: {cache_hit}, Cache miss: {cache_miss}")
         if total_content:
             logger.info(f"Content: {''.join(total_content)[:200]}...")
         logger.info("Stream completed")
@@ -153,10 +198,13 @@ class AiService:
         max_tokens: int,
         top_p: float | None = None,
         response_format: dict[str, str] | None = None,
+        model: str | None = None,
+        thinking_mode: bool | None = None,
+        reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
     ) -> str:
         """直接传递 messages 列表的非流式调用"""
         params: dict[str, Any] = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -165,6 +213,12 @@ class AiService:
             params["top_p"] = top_p
         if response_format:
             params["response_format"] = response_format
+
+        extra_body = _build_extra_body(thinking_mode)
+        if extra_body:
+            params["extra_body"] = extra_body
+        if reasoning_effort and thinking_mode is not False:
+            params["reasoning_effort"] = reasoning_effort
 
         self._log_request("call_with_messages", params)
         response = await self.client.chat.completions.create(**params)
@@ -178,10 +232,13 @@ class AiService:
         max_tokens: int,
         top_p: float | None = None,
         response_format: dict[str, str] | None = None,
+        model: str | None = None,
+        thinking_mode: bool | None = None,
+        reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
     ) -> AsyncGenerator[str]:
         """直接传递 messages 列表的流式调用"""
         params: dict[str, Any] = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -191,6 +248,12 @@ class AiService:
             params["top_p"] = top_p
         if response_format:
             params["response_format"] = response_format
+
+        extra_body = _build_extra_body(thinking_mode)
+        if extra_body:
+            params["extra_body"] = extra_body
+        if reasoning_effort and thinking_mode is not False:
+            params["reasoning_effort"] = reasoning_effort
 
         self._log_request("call_with_messages_stream", params)
         response = await self.client.chat.completions.create(**params)
@@ -216,6 +279,10 @@ class AiService:
         logger.info(f"Finish reason: {finish_reason}")
         if usage:
             logger.info(f"Usage: {usage}")
+            cache_hit = getattr(usage, "prompt_cache_hit_tokens", None)
+            cache_miss = getattr(usage, "prompt_cache_miss_tokens", None)
+            if cache_hit is not None:
+                logger.info(f"Cache hit: {cache_hit}, Cache miss: {cache_miss}")
         if total_content:
             logger.info(f"Content: {''.join(total_content)[:200]}...")
         logger.info("Stream completed")

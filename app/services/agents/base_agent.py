@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAgent(ABC):
+    AGENT_MODEL: str | None = None
+    THINKING_MODE: bool | None = None
+    REASONING_EFFORT: str | None = None
+
     def __init__(self, ai_service: AiService, book: "Book | None" = None, global_config: dict[str, Any] | None = None):
         self.ai_service = ai_service
         self.book = book
@@ -38,13 +42,27 @@ class BaseAgent(ABC):
     def build_prompt(self, **kwargs) -> str:
         return ""
 
+    def _get_call_kwargs(self) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {}
+        if self.AGENT_MODEL is not None:
+            kwargs["model"] = self.AGENT_MODEL
+        if self.THINKING_MODE is not None:
+            kwargs["thinking_mode"] = self.THINKING_MODE
+        if self.REASONING_EFFORT is not None:
+            kwargs["reasoning_effort"] = self.REASONING_EFFORT
+        return kwargs
+
     async def run(self, **kwargs) -> str:
         user_prompt = self.build_prompt(**kwargs)
-        return await self.ai_service.call_llm(user_prompt=user_prompt, system_prompt=self.system_prompt)
+        return await self.ai_service.call_llm(
+            user_prompt=user_prompt, system_prompt=self.system_prompt, **self._get_call_kwargs()
+        )
 
     async def run_stream(self, **kwargs) -> AsyncGenerator[str]:
         user_prompt = self.build_prompt(**kwargs)
-        async for chunk in self.ai_service.call_llm_stream(user_prompt=user_prompt, system_prompt=self.system_prompt):
+        async for chunk in self.ai_service.call_llm_stream(
+            user_prompt=user_prompt, system_prompt=self.system_prompt, **self._get_call_kwargs()
+        ):
             yield chunk
 
     async def run_json(self, **kwargs) -> dict[str, Any]:
@@ -53,6 +71,7 @@ class BaseAgent(ABC):
             user_prompt=user_prompt,
             system_prompt=self.system_prompt + "\n请返回有效的 JSON 格式。",
             response_format={"type": "json_object"},
+            **self._get_call_kwargs(),
         )
         try:
             return json.loads(result)

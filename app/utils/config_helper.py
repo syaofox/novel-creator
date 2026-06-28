@@ -41,6 +41,8 @@ def get_global_config_dict(db: Session) -> dict[str, str | int]:
         db.refresh(config)
 
     return {
+        "deepseek_api_key": config.deepseek_api_key,
+        "deepseek_base_url": config.deepseek_base_url,
         "temperature": config.temperature,
         "top_p": config.top_p,
         "max_tokens": config.max_tokens,

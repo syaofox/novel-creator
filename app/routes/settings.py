@@ -82,7 +82,7 @@ async def save_global_settings(request: Request, db: Session = Depends(get_db)):
         config = GlobalConfig(id=1)
         db.add(config)
     config.deepseek_api_key = form.get("deepseek_api_key", config.deepseek_api_key or "")
-    config.deepseek_base_url = form.get("deepseek_base_url", config.deepseek_base_url or "https://api.deepseek.com/v1")
+    config.deepseek_base_url = form.get("deepseek_base_url", config.deepseek_base_url or "https://api.deepseek.com")
     config.default_model = form.get("default_model", config.default_model or DEFAULT_MODEL)
     config.temperature = float(form.get("temperature", config.temperature or DEFAULT_TEMPERATURE))
     config.top_p = float(form.get("top_p", config.top_p or DEFAULT_TOP_P))

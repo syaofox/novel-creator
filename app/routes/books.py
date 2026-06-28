@@ -258,10 +258,13 @@ async def init_book_stream(
     global_config = get_global_config_dict(db)
 
     async def generate():
+        api_key = global_config.get("deepseek_api_key") or app_settings.deepseek_api_key
+        base_url = global_config.get("deepseek_base_url") or app_settings.deepseek_base_url
+        model = global_config.get("default_model") or app_settings.default_model
         ai_service = AiService(
-            api_key=app_settings.deepseek_api_key,
-            base_url=app_settings.deepseek_base_url,
-            model=global_config.get("default_model") or app_settings.default_model,
+            api_key=api_key,
+            base_url=base_url,
+            model=model,
             global_config=global_config,
         )
         agent = InitBookAgent(ai_service, global_config=global_config)

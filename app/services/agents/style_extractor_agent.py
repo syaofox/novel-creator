@@ -16,6 +16,9 @@ _EXTRACT_STYLE_PROMPT = (
 
 
 class StyleExtractorAgent(BaseAgent):
+    AGENT_MODEL = "deepseek-v4-pro"
+    THINKING_MODE = True
+
     def _get_role_prompt(self) -> str:
         return (
             "你是一个专业的小说写作风格分析专家。"

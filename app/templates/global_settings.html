@@ -32,16 +32,30 @@
         </label>
         <select name="default_model" class="select select-bordered">
           <option
+            value="deepseek-v4-pro"
+            {% if config.default_model == 'deepseek-v4-pro' %}selected{% endif %}
+          >
+            deepseek-v4-pro（推荐，思考模式）
+          </option>
+          <option
+            value="deepseek-v4-flash"
+            {% if config.default_model == 'deepseek-v4-flash' %}selected{% endif %}
+          >
+            deepseek-v4-flash（快速模式）
+          </option>
+          <option
             value="deepseek-reasoner"
             {% if config.default_model == 'deepseek-reasoner' %}selected{% endif %}
+            disabled
           >
-            deepseek-reasoner
+            deepseek-reasoner（已弃用）
           </option>
           <option
             value="deepseek-chat"
             {% if config.default_model == 'deepseek-chat' %}selected{% endif %}
+            disabled
           >
-            deepseek-chat
+            deepseek-chat（已弃用）
           </option>
         </select>
       </div>
@@ -86,7 +100,7 @@
           type="number"
           name="max_tokens"
           min="1"
-          max="32768"
+          max="384000"
           value="{{ config.max_tokens }}"
           class="input input-bordered"
         />

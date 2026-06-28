@@ -14,14 +14,16 @@ logger = logging.getLogger(__name__)
 
 
 class ChapterWriterAgent(BaseAgent):
+    AGENT_MODEL = "deepseek-v4-flash"
+    THINKING_MODE = False
+
     def __init__(self, ai_service: AiService, book: Book, global_config: dict[str, Any] | None = None):
         super().__init__(ai_service, book, global_config)
 
     def _get_role_prompt(self) -> str:
         system_template = self._get_config_value("system_template", DEFAULT_SYSTEM_TEMPLATE)
-        memory = getattr(self.book, "memory_summary", "")
         style = getattr(self.book, "style", "") or "请根据小说的风格规范进行写作。"
-        return system_template.format(memory=memory, style=style)
+        return system_template.format(memory="", style=style)
 
     def build_prompt(self, chapter_number: int, core_event: str, prev_ending: str) -> str:
         return prompts.WRITE_CHAPTER_PROMPT.format(
@@ -31,9 +33,13 @@ class ChapterWriterAgent(BaseAgent):
     def _build_messages(
         self, chapter_number: int, core_event: str, prev_ending: str
     ) -> list[ChatCompletionMessageParam]:
+        memory = getattr(self.book, "memory_summary", "")
+        user_content = self.build_prompt(chapter_number, core_event, prev_ending)
+        if memory:
+            user_content = f"【当前小说记忆摘要】\n{memory}\n\n{user_content}"
         return [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": self.build_prompt(chapter_number, core_event, prev_ending)},
+            {"role": "user", "content": user_content},
         ]
 
     async def write(self, chapter_number: int, core_event: str, prev_ending: str) -> str:
@@ -43,7 +49,8 @@ class ChapterWriterAgent(BaseAgent):
         max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
 
         return await self.ai_service.call_with_messages(
-            messages=messages, temperature=temperature, max_tokens=max_tokens, top_p=top_p
+            messages=messages, temperature=temperature, max_tokens=max_tokens, top_p=top_p,
+            **self._get_call_kwargs(),
         )
 
     async def write_stream(self, chapter_number: int, core_event: str, prev_ending: str) -> AsyncGenerator[str]:
@@ -53,7 +60,8 @@ class ChapterWriterAgent(BaseAgent):
         max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
 
         async for chunk in self.ai_service.call_with_messages_stream(
-            messages=messages, temperature=temperature, max_tokens=max_tokens, top_p=top_p
+            messages=messages, temperature=temperature, max_tokens=max_tokens, top_p=top_p,
+            **self._get_call_kwargs(),
         ):
             yield chunk
 

@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class PlotAgent(BaseAgent):
+    AGENT_MODEL = "deepseek-v4-pro"
+    THINKING_MODE = True
+
     def _get_role_prompt(self) -> str:
         return "你是一个专业的小说剧情分析专家。请分析给定的小说内容，提取剧情要点、人物动机和情节发展。"
 

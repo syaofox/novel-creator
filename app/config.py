@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env")
 
     deepseek_api_key: str = Field(default="")
-    deepseek_base_url: str = Field(default="https://api.deepseek.com/v1")
+    deepseek_base_url: str = Field(default="https://api.deepseek.com")
     default_model: str = Field(default=DEFAULT_MODEL)
     database_url: str = Field(default="sqlite:///./data/novel.db")
 

@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 class InitBookAgent(BaseAgent):
+    AGENT_MODEL = "deepseek-v4-pro"
+    THINKING_MODE = True
+
     def __init__(self, ai_service: AiService, book: Book | None = None, global_config: dict[str, Any] | None = None):
         super().__init__(ai_service, book, global_config)
         self._style_section = ""
@@ -62,7 +65,9 @@ class InitBookAgent(BaseAgent):
         max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
 
         content = await self.ai_service.call_with_messages(
-            messages=messages, temperature=temperature, max_tokens=max_tokens, response_format={"type": "json_object"}
+            messages=messages, temperature=temperature, max_tokens=max_tokens,
+            response_format={"type": "json_object"},
+            **self._get_call_kwargs(),
         )
 
         if not content:
@@ -103,7 +108,8 @@ class InitBookAgent(BaseAgent):
         max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
 
         async for chunk in self.ai_service.call_with_messages_stream(
-            messages=messages, temperature=temperature, max_tokens=max_tokens
+            messages=messages, temperature=temperature, max_tokens=max_tokens,
+            **self._get_call_kwargs(),
         ):
             yield {"content": chunk}
 

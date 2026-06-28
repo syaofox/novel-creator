@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 class SummaryAgent(BaseAgent):
+    AGENT_MODEL = "deepseek-v4-pro"
+    THINKING_MODE = True
+
     def __init__(self, ai_service: AiService, book: Book, global_config: dict[str, Any] | None = None):
         super().__init__(ai_service, book, global_config)
 
@@ -79,7 +82,8 @@ class SummaryAgent(BaseAgent):
         max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
 
         return await self.ai_service.call_with_messages(
-            messages=messages, temperature=temperature, max_tokens=max_tokens
+            messages=messages, temperature=temperature, max_tokens=max_tokens,
+            **self._get_call_kwargs(),
         )
 
     async def update_stream(
@@ -98,7 +102,8 @@ class SummaryAgent(BaseAgent):
         max_tokens = self._get_config_value("max_tokens", DEFAULT_MAX_TOKENS)
 
         async for chunk in self.ai_service.call_with_messages_stream(
-            messages=messages, temperature=temperature, max_tokens=max_tokens
+            messages=messages, temperature=temperature, max_tokens=max_tokens,
+            **self._get_call_kwargs(),
         ):
             yield chunk
 

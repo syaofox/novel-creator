@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class CharacterAgent(BaseAgent):
+    AGENT_MODEL = "deepseek-v4-pro"
+    THINKING_MODE = True
+
     def _get_role_prompt(self) -> str:
         return "你是一个专业的小说人物设定专家。请根据给定的小说内容，分析和塑造人物角色。"
 
