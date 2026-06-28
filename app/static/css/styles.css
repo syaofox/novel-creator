@@ -470,6 +470,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .tab {
+  flex: 1;
+  text-align: center;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
