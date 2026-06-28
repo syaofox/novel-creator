@@ -207,16 +207,17 @@ async def preview_book(
     temperature: float = Form(DEFAULT_TEMPERATURE),
     top_p: float = Form(DEFAULT_TOP_P),
     max_tokens: int = Form(DEFAULT_MAX_TOKENS),
-    stream: bool = Form(DEFAULT_STREAM),
+    stream: str = Form("true"),
     jailbreak_prefix: str = Form(""),
     system_template: str = Form(DEFAULT_SYSTEM_TEMPLATE),
     style: str = Form(""),
     init_data: str = Form(""),
 ):
+    stream_bool = stream.lower() in ("true", "1", "on")
     genre_list = genre.split(",") if genre else []
     params = get_preview_params(
         request, repo, title, genre_list, target_chapters,
-        basic_idea, temperature, top_p, max_tokens, stream,
+        basic_idea, temperature, top_p, max_tokens, stream_bool,
         jailbreak_prefix, system_template, style, init_data,
     )
     templates = get_templates()
@@ -278,7 +279,7 @@ async def create_book(
     temperature: float = Form(DEFAULT_TEMPERATURE),
     top_p: float = Form(DEFAULT_TOP_P),
     max_tokens: int = Form(DEFAULT_MAX_TOKENS),
-    stream: bool = Form(DEFAULT_STREAM),
+    stream: str = Form("true"),
     jailbreak_prefix: str = Form(DEFAULT_JAILBREAK_PREFIX),
     system_template: str = Form(DEFAULT_SYSTEM_TEMPLATE),
     style: str = Form(""),
@@ -289,6 +290,7 @@ async def create_book(
     other: str = Form(""),
 ):
     genre_str = genre if genre else ""
+    stream_bool = stream.lower() in ("true", "1", "on")
 
     basic_idea_parts = [
         f"剧情梗概: {plot_summary}" if plot_summary else "",
@@ -300,7 +302,7 @@ async def create_book(
         "temperature": temperature,
         "top_p": top_p,
         "max_tokens": max_tokens,
-        "stream": stream,
+        "stream": stream_bool,
         "jailbreak_prefix": jailbreak_prefix,
         "system_template": system_template,
     }
