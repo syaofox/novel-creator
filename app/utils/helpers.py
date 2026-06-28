@@ -1,5 +1,6 @@
 import logging
 import re
+import tomllib
 from collections.abc import Callable
 from functools import lru_cache, wraps
 from pathlib import Path
@@ -14,9 +15,19 @@ logger = logging.getLogger(__name__)
 
 
 @lru_cache
+def get_version() -> str:
+    """从 pyproject.toml 读取版本号"""
+    toml_path = Path(__file__).resolve().parent.parent.parent / "pyproject.toml"
+    with open(toml_path, "rb") as f:
+        data = tomllib.load(f)
+    return data["project"]["version"]
+
+
+@lru_cache
 def get_templates() -> Jinja2Templates:
     """返回缓存的 Jinja2Templates 单例"""
     templates = Jinja2Templates(directory=TEMPLATE_DIR)
+    templates.env.globals["version"] = get_version()
     templates.env.filters["strip_start"] = lambda s: s.lstrip() if s else ""
     return templates
 

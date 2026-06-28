@@ -2,16 +2,16 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 
 from app.core.dependencies import RepoDep
 from app.routes import books, chapters, ai
 from app.routes import materials
 from app.routes.settings import book_settings_router, global_settings_router
+from app.utils.helpers import get_templates
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -39,8 +39,6 @@ app.include_router(materials.router)
 app.include_router(book_settings_router)
 app.include_router(global_settings_router)
 
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
-
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, status: str | None = None, repo: RepoDep = None):
@@ -54,8 +52,8 @@ async def home(request: Request, status: str | None = None, repo: RepoDep = None
     current_status = status or "进行中"
 
     if is_htmx:
-        return templates.TemplateResponse(
+        return get_templates().TemplateResponse(
             request, "partials/tabs_with_list.html", {"books": books, "status": current_status}
         )
 
-    return templates.TemplateResponse(request, "index.html", {"books": books, "status": current_status})
+    return get_templates().TemplateResponse(request, "index.html", {"books": books, "status": current_status})
