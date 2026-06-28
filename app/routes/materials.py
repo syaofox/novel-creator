@@ -256,7 +256,7 @@ async def delete_character_card(card_id: int, repo: RepoDep):
 async def extract_writing_style_stream(ai_service: AiServiceDep, text_snippet: str = Form(...)):
     from app.services.agents import AgentFactory
 
-    agent = AgentFactory.create("style_extractor", ai_service)
+    agent = AgentFactory.create("style_extractor", ai_service, global_config=ai_service.global_config)
 
     async def generate():
         try:
