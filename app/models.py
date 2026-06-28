@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey, Float, Boolean
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -100,16 +100,15 @@ class Chapter(Base):
     created_at = Column(DateTime(timezone=True), default=get_china_now)
 
 
-# 新增：全局配置表（单行，id=1）
 class GlobalConfig(Base):
     __tablename__ = "global_config"
     id = Column(Integer, primary_key=True, default=1)
     deepseek_api_key = Column(String, default="")
     deepseek_base_url = Column(String, default="https://api.deepseek.com")
     default_model = Column(String, default="deepseek-v4-pro")
-    temperature = Column(String, default="0.78")
-    top_p = Column(String, default="0.92")
+    temperature = Column(Float, default=0.78)
+    top_p = Column(Float, default=0.92)
     max_tokens = Column(Integer, default=16384)
-    stream = Column(Integer, default=1)
+    stream = Column(Boolean, default=True)
     jailbreak_prefix = Column(Text, default=DEFAULT_JAILBREAK_PREFIX)
     system_template = Column(Text, default=DEFAULT_SYSTEM_TEMPLATE)

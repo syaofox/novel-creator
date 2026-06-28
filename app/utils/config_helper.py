@@ -12,7 +12,7 @@ from app.constants import (
 )
 
 
-def get_global_config_dict(db: Session) -> dict[str, str | int]:
+def get_global_config_dict(db: Session) -> dict:
     """获取全局配置字典
 
     如果数据库中不存在配置，则创建默认配置记录。
@@ -28,10 +28,10 @@ def get_global_config_dict(db: Session) -> dict[str, str | int]:
     if not config:
         config = GlobalConfig(
             id=1,
-            temperature=str(DEFAULT_TEMPERATURE),
-            top_p=str(DEFAULT_TOP_P),
+            temperature=DEFAULT_TEMPERATURE,
+            top_p=DEFAULT_TOP_P,
             max_tokens=DEFAULT_MAX_TOKENS,
-            stream=1 if DEFAULT_STREAM else 0,
+            stream=DEFAULT_STREAM,
             jailbreak_prefix=DEFAULT_JAILBREAK_PREFIX,
             system_template=DEFAULT_SYSTEM_TEMPLATE,
             default_model=DEFAULT_MODEL,
@@ -41,13 +41,13 @@ def get_global_config_dict(db: Session) -> dict[str, str | int]:
         db.refresh(config)
 
     return {
-        "deepseek_api_key": config.deepseek_api_key,
-        "deepseek_base_url": config.deepseek_base_url,
+        "deepseek_api_key": config.deepseek_api_key or "",
+        "deepseek_base_url": config.deepseek_base_url or "",
         "temperature": config.temperature,
         "top_p": config.top_p,
         "max_tokens": config.max_tokens,
         "stream": config.stream,
-        "jailbreak_prefix": config.jailbreak_prefix,
-        "system_template": config.system_template,
-        "default_model": config.default_model,
+        "jailbreak_prefix": config.jailbreak_prefix or "",
+        "system_template": config.system_template or "",
+        "default_model": config.default_model or "",
     }

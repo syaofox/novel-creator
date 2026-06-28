@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any
 from collections.abc import AsyncGenerator
 
@@ -6,6 +7,7 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.models import Book
 from app.utils import prompts
+from app.utils.ai_utils import extract_dynamic_sections, extract_stable_sections
 from app.services.agents.base_agent import BaseAgent, AgentFactory
 from app.services.ai_service import AiService
 from app.constants import DEFAULT_SYSTEM_TEMPLATE, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_TOKENS
@@ -23,23 +25,35 @@ class ChapterWriterAgent(BaseAgent):
     def _get_role_prompt(self) -> str:
         system_template = self._get_config_value("system_template", DEFAULT_SYSTEM_TEMPLATE)
         style = getattr(self.book, "style", "") or "请根据小说的风格规范进行写作。"
-        return system_template.format(memory="", style=style)
+        base = system_template.format(style=style)
+
+        memory_summary = getattr(self.book, "memory_summary", "") or ""
+        stable = extract_stable_sections(memory_summary)
+        if stable:
+            base = base + "\n\n" + stable
+
+        return base
 
     def build_prompt(self, chapter_number: int, core_event: str, prev_ending: str) -> str:
         return prompts.WRITE_CHAPTER_PROMPT.format(
             chapter_number=chapter_number, core_event=core_event, prev_ending=prev_ending
         )
 
+    def _build_user_content(self, chapter_number: int, core_event: str, prev_ending: str) -> str:
+        memory_summary = getattr(self.book, "memory_summary", "") or ""
+        dynamic = extract_dynamic_sections(memory_summary)
+        parts = []
+        if dynamic:
+            parts.append(dynamic)
+        parts.append(self.build_prompt(chapter_number, core_event, prev_ending))
+        return "\n\n".join(parts)
+
     def _build_messages(
         self, chapter_number: int, core_event: str, prev_ending: str
     ) -> list[ChatCompletionMessageParam]:
-        memory = getattr(self.book, "memory_summary", "")
-        user_content = self.build_prompt(chapter_number, core_event, prev_ending)
-        if memory:
-            user_content = f"【当前小说记忆摘要】\n{memory}\n\n{user_content}"
         return [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_content},
+            {"role": "user", "content": self._build_user_content(chapter_number, core_event, prev_ending)},
         ]
 
     async def write(self, chapter_number: int, core_event: str, prev_ending: str) -> str:

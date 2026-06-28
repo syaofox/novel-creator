@@ -60,10 +60,10 @@ async def global_settings_form(request: Request, db: Session = Depends(get_db)):
     if not config:
         config = GlobalConfig(
             id=1,
-            temperature=str(DEFAULT_TEMPERATURE),
-            top_p=str(DEFAULT_TOP_P),
+            temperature=DEFAULT_TEMPERATURE,
+            top_p=DEFAULT_TOP_P,
             max_tokens=DEFAULT_MAX_TOKENS,
-            stream=1 if DEFAULT_STREAM else 0,
+            stream=DEFAULT_STREAM,
             jailbreak_prefix=DEFAULT_JAILBREAK_PREFIX,
             system_template=DEFAULT_SYSTEM_TEMPLATE,
         )
@@ -84,9 +84,9 @@ async def save_global_settings(request: Request, db: Session = Depends(get_db)):
     config.deepseek_api_key = form.get("deepseek_api_key", config.deepseek_api_key or "")
     config.deepseek_base_url = form.get("deepseek_base_url", config.deepseek_base_url or "https://api.deepseek.com")
     config.default_model = form.get("default_model", config.default_model or DEFAULT_MODEL)
-    config.temperature = float(form.get("temperature", config.temperature or DEFAULT_TEMPERATURE))
-    config.top_p = float(form.get("top_p", config.top_p or DEFAULT_TOP_P))
-    config.max_tokens = int(form.get("max_tokens", config.max_tokens or DEFAULT_MAX_TOKENS))
+    config.temperature = float(form.get("temperature", config.temperature if config.temperature is not None else DEFAULT_TEMPERATURE))
+    config.top_p = float(form.get("top_p", config.top_p if config.top_p is not None else DEFAULT_TOP_P))
+    config.max_tokens = int(form.get("max_tokens", config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS))
     config.stream = form.get("stream") == "on"
     config.jailbreak_prefix = form.get("jailbreak_prefix", config.jailbreak_prefix or DEFAULT_JAILBREAK_PREFIX)
     config.system_template = form.get("system_template", config.system_template or DEFAULT_SYSTEM_TEMPLATE)

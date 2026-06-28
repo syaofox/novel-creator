@@ -307,36 +307,36 @@ class TestGetConfigValue:
         result = get_config_value(mock_book, global_config, "temperature", 0.8)
         assert result == 0.7
 
-    def test_string_to_float(self):
+    def test_passthrough_float(self):
         mock_book = MagicMock()
         mock_book.config = {}
-        global_config = {"temperature": "0.9"}
+        global_config = {"temperature": 0.9}
 
         result = get_config_value(mock_book, global_config, "temperature", 0.8)
         assert result == 0.9
         assert isinstance(result, float)
 
-    def test_string_to_int(self):
+    def test_passthrough_int(self):
         mock_book = MagicMock()
         mock_book.config = {}
-        global_config = {"max_tokens": "4096"}
+        global_config = {"max_tokens": 4096}
 
         result = get_config_value(mock_book, global_config, "max_tokens", 16384)
         assert result == 4096
         assert isinstance(result, int)
 
-    def test_stream_conversion(self):
+    def test_passthrough_bool_true(self):
         mock_book = MagicMock()
         mock_book.config = {}
-        global_config = {"stream": 1}
+        global_config = {"stream": True}
 
         result = get_config_value(mock_book, global_config, "stream", False)
         assert result is True
 
-    def test_stream_zero_returns_false(self):
+    def test_passthrough_bool_false(self):
         mock_book = MagicMock()
         mock_book.config = {}
-        global_config = {"stream": 0}
+        global_config = {"stream": False}
 
         result = get_config_value(mock_book, global_config, "stream", True)
         assert result is False

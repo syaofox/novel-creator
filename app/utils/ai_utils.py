@@ -17,14 +17,7 @@ def get_config_value(book: Book | None, global_config: dict[str, Any] | None, ke
             return book_config[key]
 
     if global_config is not None and key in global_config:
-        value = global_config[key]
-        if key in ("temperature", "top_p"):
-            return float(str(value)) if value is not None else default
-        if key == "max_tokens":
-            return int(value) if value is not None else default
-        if key == "stream":
-            return bool(int(value)) if value is not None else default
-        return value
+        return global_config[key]
 
     return default
 
@@ -70,6 +63,46 @@ def extract_json(content: str) -> str:
 
     # 如果都不行，返回原始内容
     return content
+
+
+MEMORY_STABLE_SECTIONS = ["人物卡", "世界观", "风格规范"]
+MEMORY_DYNAMIC_SECTIONS = ["主线进度", "伏笔清单", "其他信息"]
+
+
+def extract_stable_sections(memory_summary: str) -> str:
+    """从记忆摘要中提取稳定的章节(人物卡,世界观,风格规范)
+
+    这些 sections 变化频率低,可以注入 system prompt 以提高 DeepSeek V4 缓存命中率。
+    """
+    if not memory_summary:
+        return ""
+    sections = []
+    for key in MEMORY_STABLE_SECTIONS:
+        pattern = rf"【{key}】\s*(.*?)(?=\n【|$)"
+        match = re.search(pattern, memory_summary, re.DOTALL)
+        if match:
+            content = match.group(1).strip()
+            if content:
+                sections.append(f"【{key}】\n{content}")
+    return "\n\n".join(sections)
+
+
+def extract_dynamic_sections(memory_summary: str) -> str:
+    """从记忆摘要中提取动态章节(主线进度,伏笔清单,其他信息)
+
+    这些 sections 每章都会变化,应放在 user prompt 中。
+    """
+    if not memory_summary:
+        return ""
+    sections = []
+    for key in MEMORY_DYNAMIC_SECTIONS:
+        pattern = rf"【{key}】\s*(.*?)(?=\n【|$)"
+        match = re.search(pattern, memory_summary, re.DOTALL)
+        if match:
+            content = match.group(1).strip()
+            if content:
+                sections.append(f"【{key}】\n{content}")
+    return "\n\n".join(sections)
 
 
 def parse_marked_content(content: str) -> dict[str, str]:

@@ -43,12 +43,12 @@ router = APIRouter(prefix="/books", tags=["books"])
 async def new_book_form(request: Request, db: Session = Depends(get_db)):
     config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
     if config:
-        jailbreak_prefix = config.jailbreak_prefix
-        system_template = config.system_template
-        temperature = float(str(config.temperature))
-        top_p = float(str(config.top_p))
-        max_tokens = int(config.max_tokens)  # type: ignore
-        stream = bool(config.stream)
+        jailbreak_prefix = config.jailbreak_prefix or DEFAULT_JAILBREAK_PREFIX
+        system_template = config.system_template or DEFAULT_SYSTEM_TEMPLATE
+        temperature = config.temperature if config.temperature is not None else DEFAULT_TEMPERATURE
+        top_p = config.top_p if config.top_p is not None else DEFAULT_TOP_P
+        max_tokens = config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS
+        stream = config.stream if config.stream is not None else DEFAULT_STREAM
     else:
         jailbreak_prefix = DEFAULT_JAILBREAK_PREFIX
         system_template = DEFAULT_SYSTEM_TEMPLATE
@@ -119,18 +119,18 @@ def get_preview_params(
 ):
     config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
     if config:
-        if temperature == DEFAULT_TEMPERATURE:
-            temperature = float(str(config.temperature))
-        if top_p == DEFAULT_TOP_P:
-            top_p = float(str(config.top_p))
-        if max_tokens == DEFAULT_MAX_TOKENS:
-            max_tokens = int(config.max_tokens)  # type: ignore
-        if stream == DEFAULT_STREAM:
-            stream = bool(config.stream)  # type: ignore
-        if not jailbreak_prefix:
-            jailbreak_prefix = str(config.jailbreak_prefix)
-        if system_template == DEFAULT_SYSTEM_TEMPLATE:
-            system_template = str(config.system_template)
+        if temperature == DEFAULT_TEMPERATURE and config.temperature is not None:
+            temperature = config.temperature
+        if top_p == DEFAULT_TOP_P and config.top_p is not None:
+            top_p = config.top_p
+        if max_tokens == DEFAULT_MAX_TOKENS and config.max_tokens is not None:
+            max_tokens = config.max_tokens
+        if stream == DEFAULT_STREAM and config.stream is not None:
+            stream = config.stream
+        if not jailbreak_prefix and config.jailbreak_prefix:
+            jailbreak_prefix = config.jailbreak_prefix
+        if system_template == DEFAULT_SYSTEM_TEMPLATE and config.system_template:
+            system_template = config.system_template
 
     genre_str = genre if isinstance(genre, str) else ", ".join(genre) if genre else ""
 
