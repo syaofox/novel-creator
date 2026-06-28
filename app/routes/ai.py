@@ -14,19 +14,19 @@ router = APIRouter(prefix="/books/{book_id}/ai", tags=["ai"])
 
 
 @router.post("/update-summary", response_class=HTMLResponse)
-async def update_summary(request: Request, book_id: int, repo: RepoDep, service: NovelServiceDep):
+async def update_summary(request: Request, book_id: int, repo: RepoDep, service: NovelServiceDep, chapter: int | None = Form(None)):
     book = service.get_book(book_id)
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
 
-    chapter_number = book.current_chapter or 1
+    chapter_number = chapter if chapter is not None else (book.current_chapter or 1)
     if chapter_number < 1:
         return HTMLResponse(content="请先完成至少一章内容", status_code=400)
 
-    chapter = service.get_chapter(book_id, chapter_number)
-    if not chapter:
-        return HTMLResponse(content="当前章节不存在", status_code=400)
-    if not chapter.content and not chapter.core_event:
+    chapter_obj = service.get_chapter(book_id, chapter_number)
+    if not chapter_obj:
+        return HTMLResponse(content=f"第{chapter_number}章不存在", status_code=400)
+    if not chapter_obj.content and not chapter_obj.core_event:
         return HTMLResponse(content="当前章节内容和核心事件都为空，请先填写", status_code=400)
 
     try:
@@ -96,23 +96,7 @@ async def save_summary(
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
 
-    service.save_summary(book, summary)
-
-    chapter_number: int | None = None
-    if (title or core_event) and chapter:
-        chapter_number = chapter
-    elif title or core_event:
-        chapter_number = book.current_chapter or 1
-
-    if chapter_number and (title or core_event):
-        ch = service.get_chapter(book_id, chapter_number)
-        if ch:
-            if title:
-                ch.title = title
-            if core_event:
-                ch.core_event = core_event
-            repo.update_chapter(ch)
-
+    service.save_summary_with_chapter_update(book, summary, chapter, title, core_event)
     return "<span class='text-success'>保存成功</span>"
 
 

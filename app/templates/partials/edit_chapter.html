@@ -15,14 +15,20 @@
 
 <div class="form-control mb-4">
   <label class="label">
+    <span class="label-text">章节标题</span>
+  </label>
+  <input type="text" class="input" value="{{ title }}" readonly />
+</div>
+
+<div class="form-control mb-4">
+  <label class="label">
     <span class="label-text">本章核心事件</span>
   </label>
   <textarea
     readonly
     rows="3"
     class="textarea bg-gray-50"
-  >
-{{ core_event }}</textarea>
+  >{{ core_event }}</textarea>
 </div>
 
 <div class="form-control mb-4">
@@ -33,8 +39,7 @@
     readonly
     rows="4"
     class="textarea bg-gray-50"
-  >
-{{ prev_ending }}</textarea>
+  >{{ prev_ending }}</textarea>
 </div>
 
 <div class="mt-4">
@@ -44,9 +49,11 @@
     hx-swap="innerHTML"
   >
     <input type="hidden" name="chapter_number" value="{{ chapter_number }}">
+    <input type="hidden" name="title" value="{{ title }}">
     <div class="form-control">
       <label class="label">
         <span class="label-text">章节内容</span>
+        <span id="word-count" class="label-text-alt text-base-content/50">{{ content|length }}字</span>
       </label>
       <textarea
         id="chapter-content"
@@ -54,6 +61,7 @@
         rows="30"
         class="textarea font-mono whitespace-pre-wrap"
         placeholder="章节内容..."
+        oninput="document.getElementById('word-count').textContent = this.value.length + '字'"
       >{{ content }}</textarea>
     </div>
     <div class="form-control mt-4">
@@ -72,6 +80,7 @@
     const bookId = {{ book.id }};
     const chapterNumber = {{ chapter_number }};
     const coreEvent = {{ core_event|tojson }};
+    const chapterTitle = {{ title|tojson }};
 
     function startStreaming() {
       startRequest();
@@ -86,6 +95,7 @@
           book_id: String(bookId),
           chapter_number: String(chapterNumber),
           core_event: coreEvent,
+          title: chapterTitle,
         }),
       })
         .then((response) => {

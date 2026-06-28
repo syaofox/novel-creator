@@ -1,5 +1,6 @@
 """Integration tests for chapters routes."""
 
+from app.main import app
 from app.repositories.file_repository import Book
 
 
@@ -167,6 +168,70 @@ class TestChapterRoutes:
             data={"position": 1, "title": "标题", "core_event": "事件"},
         )
         assert response.status_code == 404
+
+    def test_generate_chapter_with_title(self, client, repo):
+        book = repo.create_book(Book(
+            id=0, title="测试", genre="仙侠", target_chapters=5, basic_idea="创意",
+            config={"stream": False}, current_chapter=0,
+        ))
+        from unittest.mock import AsyncMock, MagicMock
+        from app.services.novel_service import NovelService
+        mock_ai = MagicMock()
+        mock_ai.global_config = {}
+        mock_service = MagicMock(spec=NovelService)
+        mock_service.get_book.return_value = book
+        mock_service.get_prev_ending.return_value = ""
+        mock_service.write_chapter = AsyncMock(return_value="章节内容")
+        mock_service.get_chapters.return_value = []
+        mock_service.ai_service = mock_ai
+        from app.core.dependencies import get_novel_service
+        app.dependency_overrides[get_novel_service] = lambda: mock_service
+        try:
+            response = client.post(
+                f"/books/{book.id}/chapters/",
+                data={"chapter_number": 1, "title": "自定义标题", "core_event": "核心事件"},
+            )
+            assert response.status_code == 200
+            mock_service.write_chapter.assert_called_once_with(book, 1, "核心事件", "")
+        finally:
+            app.dependency_overrides.pop(get_novel_service, None)
+
+    def test_save_chapter_with_title(self, client, repo):
+        book = repo.create_book(Book(
+            id=0, title="测试", genre="仙侠", target_chapters=5, basic_idea="创意",
+            config={}, current_chapter=0,
+        ))
+        response = client.post(
+            f"/books/{book.id}/chapters/save",
+            data={"chapter_number": 1, "title": "自定义标题", "content": "正文"},
+        )
+        assert response.status_code == 200
+        chapter = repo.get_chapter(book.id, 1)
+        assert chapter.title == "自定义标题"
+
+    def test_regenerate_shows_form(self, client, repo):
+        book = repo.create_book(Book(
+            id=0, title="测试", genre="仙侠", target_chapters=5, basic_idea="创意",
+            config={}, current_chapter=1,
+        ))
+        repo.create_chapter(book.id, 1, "第1章", "正文", core_event="旧事件", status="已完成")
+        response = client.get(f"/books/{book.id}/chapters/regenerate?num=1")
+        assert response.status_code == 200
+        assert "重新生成" in response.text
+
+    def test_add_chapter_with_innerhtml_swap(self, client, repo):
+        book = repo.create_book(Book(
+            id=0, title="测试", genre="仙侠", target_chapters=5, basic_idea="创意",
+            config={}, current_chapter=0,
+        ))
+        repo.create_chapter(book.id, 1, "第1章", "正文", status="已完成")
+        response = client.post(
+            f"/books/{book.id}/chapters/add",
+            data={"position": 2, "title": "新章节", "core_event": "新事件"},
+        )
+        assert response.status_code == 200
+        chapter = repo.get_chapter(book.id, 2)
+        assert chapter.title == "新章节"
 
     def test_optimize_outline_success(self, client, repo):
         book = repo.create_book(Book(

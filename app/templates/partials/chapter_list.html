@@ -53,6 +53,9 @@
           </svg>
         {% endif %}
         第{{ ch.chapter_number }}章 {{ ch.title }}
+        {% if ch.content %}
+          <span class="text-xs text-base-content/50 ml-auto">{{ ch.content|length }}字</span>
+        {% endif %}
       </a>
     </li>
   {% else %}

@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
 
-from app.core.dependencies import RepoDep, NovelServiceDep
+from app.core.dependencies import RepoDep, NovelServiceDep, AiServiceDep
 from app.repositories.file_repository import Book, Chapter
 from app.utils.helpers import get_templates
 from app.services.agents import ChapterWriterAgent
@@ -30,7 +30,7 @@ def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
         if not line:
             continue
         if line.startswith(f"第{chapter_number}章") or re.match(rf"^{chapter_number}[:、.]", line):
-            parts = re.split(r"[:、.]", line, 1)
+            parts = re.split(r"[:、.]", line, maxsplit=1)
             if len(parts) > 1:
                 return parts[1].strip()
             return line
@@ -38,7 +38,7 @@ def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
         idx = chapter_number - 1
         if idx < len(lines):
             line = lines[idx].strip()
-            parts = re.split(r"[:、.]", line, 1)
+            parts = re.split(r"[:、.]", line, maxsplit=1)
             if len(parts) > 1:
                 return parts[1].strip()
             return line
@@ -46,7 +46,7 @@ def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
 
 
 @router.get("/write", response_class=HTMLResponse)
-async def write_chapter_form(request: Request, book_id: int, repo: RepoDep, num: int | None = None, edit: bool = False):
+async def write_chapter_form(request: Request, book_id: int, repo: RepoDep, num: int | None = None, edit: bool = False, regenerate: bool = False):
     book = repo.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
@@ -59,30 +59,33 @@ async def write_chapter_form(request: Request, book_id: int, repo: RepoDep, num:
         chapter_num = num
         if chapter_num < 1:
             raise HTTPException(status_code=400, detail="章节号必须大于0")
-        if chapter_num > next_chapter:
+        if chapter_num > next_chapter and not regenerate:
             raise HTTPException(status_code=400, detail=f"请先完成第 {next_chapter} 章,不能跳章创作")
     else:
         chapter_num = next_chapter
 
     chapter = repo.get_chapter(book_id, chapter_num)
 
+    title = ""
     core_event = (
         chapter.core_event
         if chapter and chapter.core_event
         else extract_chapter_outline(str(book.memory_summary), chapter_num)
     )
+    if chapter and chapter.title:
+        title = chapter.title
 
     prev_ending = repo.get_prev_ending(book_id, chapter_num)
 
     is_completed = chapter is not None and chapter.status == "已完成"
-    is_editing = is_completed or edit
+    is_editing = (is_completed or edit) and not regenerate
     existing_content = ""
-    if is_editing and chapter:
+    if (is_editing or regenerate) and chapter:
         existing_content = chapter.content or ""
 
     templates = get_templates()
 
-    if is_completed and not edit:
+    if is_completed and not edit and not regenerate:
         return templates.TemplateResponse(
             request,
             "chapter_preview.html",
@@ -104,9 +107,11 @@ async def write_chapter_form(request: Request, book_id: int, repo: RepoDep, num:
             "chapter_number": chapter_num,
             "prev_ending": prev_ending,
             "core_event": core_event,
+            "title": title,
             "editing": is_editing,
             "chapter": chapter,
             "existing_content": existing_content,
+            "regenerate": regenerate,
         },
     )
 
@@ -118,7 +123,9 @@ async def generate_chapter(
     repo: RepoDep,
     service: NovelServiceDep,
     chapter_number: int | None = Form(None),
+    title: str = Form(""),
     core_event: str = Form(...),
+    regenerate: bool = Form(False),
 ):
     book = service.get_book(book_id)
     if not book:
@@ -134,7 +141,6 @@ async def generate_chapter(
         raise HTTPException(status_code=400, detail=f"请先完成第 {next_chapter} 章,不能跳章创作")
 
     prev_ending = service.get_prev_ending(book_id, int(chapter_number))
-
     stream = book.config.get("stream", True)
 
     templates = get_templates()
@@ -148,29 +154,15 @@ async def generate_chapter(
                 "chapter_number": chapter_number,
                 "content": "",
                 "stream": True,
+                "title": title,
                 "core_event": core_event,
                 "prev_ending": prev_ending,
+                "regenerate": regenerate,
             },
         )
 
-    from app.services.ai_service import AiService
-    from app.config import settings as app_settings
-
-    global_config = {
-        "deepseek_api_key": app_settings.deepseek_api_key,
-        "deepseek_base_url": app_settings.deepseek_base_url,
-        "temperature": book.config.get("temperature"),
-        "top_p": book.config.get("top_p"),
-        "max_tokens": book.config.get("max_tokens"),
-    }
-    ai_service = AiService(
-        api_key=global_config.get("deepseek_api_key") or app_settings.deepseek_api_key,
-        base_url=global_config.get("deepseek_base_url") or app_settings.deepseek_base_url,
-        global_config=global_config,
-    )
-    agent = ChapterWriterAgent(ai_service, book, global_config)
     try:
-        content = await agent.write(int(chapter_number), core_event, prev_ending)
+        content = await service.write_chapter(book, int(chapter_number), core_event, prev_ending)
     except (TimeoutError, OSError, ConnectionError) as e:
         return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
     except Exception as e:
@@ -184,14 +176,16 @@ async def generate_chapter(
             "chapter_number": chapter_number,
             "content": content,
             "stream": False,
+            "title": title,
             "core_event": core_event,
             "prev_ending": prev_ending,
+            "regenerate": regenerate,
         },
     )
 
 
 @router.get("/regenerate", response_class=HTMLResponse)
-async def regenerate_chapter(request: Request, book_id: int, num: int, repo: RepoDep, service: NovelServiceDep):
+async def regenerate_chapter_form(request: Request, book_id: int, num: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
@@ -203,65 +197,7 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, repo: Rep
     if num > max_num:
         raise HTTPException(status_code=400, detail=f"第 {num} 章尚未创建,请先完成第 {max_num} 章")
 
-    chapter = service.get_chapter(book_id, num)
-
-    core_event = (
-        chapter.core_event if chapter and chapter.core_event else extract_chapter_outline(str(book.memory_summary), num)
-    )
-
-    prev_ending = service.get_prev_ending(book_id, num)
-
-    stream = book.config.get("stream", True)
-    templates = get_templates()
-
-    if stream:
-        return templates.TemplateResponse(
-            request,
-            "partials/edit_chapter.html",
-            {
-                "book": book,
-                "chapter_number": num,
-                "content": "",
-                "stream": True,
-                "core_event": core_event,
-                "prev_ending": prev_ending,
-                "regenerate": True,
-            },
-        )
-
-    from app.services.ai_service import AiService
-    from app.config import settings as app_settings
-
-    global_config = {
-        "deepseek_api_key": app_settings.deepseek_api_key,
-        "deepseek_base_url": app_settings.deepseek_base_url,
-    }
-    ai_service = AiService(
-        api_key=global_config.get("deepseek_api_key") or app_settings.deepseek_api_key,
-        base_url=global_config.get("deepseek_base_url") or app_settings.deepseek_base_url,
-        global_config=global_config,
-    )
-    agent = ChapterWriterAgent(ai_service, book, global_config)
-    try:
-        content = await agent.write(int(num), core_event, prev_ending)
-    except (TimeoutError, OSError, ConnectionError) as e:
-        return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
-    except Exception as e:
-        return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
-
-    return templates.TemplateResponse(
-        request,
-        "partials/edit_chapter.html",
-        {
-            "book": book,
-            "chapter_number": num,
-            "content": content,
-            "stream": False,
-            "core_event": core_event,
-            "prev_ending": prev_ending,
-            "regenerate": True,
-        },
-    )
+    return await write_chapter_form(request, book_id, repo, num=num, edit=False, regenerate=True)
 
 
 @router.post("/stream")
@@ -270,7 +206,9 @@ async def stream_chapter(
     book_id: int,
     repo: RepoDep,
     service: NovelServiceDep,
+    ai_service: AiServiceDep,
     chapter_number: int | None = Form(None),
+    title: str = Form(""),
     core_event: str = Form(""),
 ):
     book = service.get_book(book_id)
@@ -288,10 +226,6 @@ async def stream_chapter(
 
     prev_ending = service.get_prev_ending(book_id, chapter_number)
 
-    from app.services.ai_service import AiService
-    from app.core.dependencies import get_ai_service
-
-    ai_service = get_ai_service(repo)
     agent = ChapterWriterAgent(ai_service, book, ai_service.global_config)
 
     async def generate():
@@ -394,6 +328,7 @@ async def save_chapter_endpoint(
     repo: RepoDep,
     service: NovelServiceDep,
     chapter_number: int = Form(...),
+    title: str = Form(""),
     content: str = Form(...),
 ):
     book = service.get_book(book_id)
@@ -404,7 +339,7 @@ async def save_chapter_endpoint(
         return HTMLResponse(content="章节号必须大于0", status_code=400)
 
     try:
-        chapter, _ = service.save_chapter(book, chapter_number, content)
+        chapter, _ = service.save_chapter(book, chapter_number, content, title=title or None)
     except Exception as e:
         logger.exception("Error during chapter save")
         return HTMLResponse(content=f"保存失败: {str(e)}", status_code=500)

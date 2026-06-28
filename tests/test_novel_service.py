@@ -272,3 +272,24 @@ class TestNovelService:
     def test_extract_title_empty(self, service, sample_book):
         title = service._extract_title("")
         assert title is None
+
+    def test_save_summary_with_chapter_update(self, service, sample_book, repo):
+        repo.create_chapter(sample_book.id, 1, "旧标题", "", core_event="旧事件")
+        service.save_summary_with_chapter_update(sample_book, "新摘要", chapter_number=1, title="新标题", core_event="新事件")
+        updated_book = service.get_book(sample_book.id)
+        assert updated_book.memory_summary == "新摘要"
+        chapter = repo.get_chapter(sample_book.id, 1)
+        assert chapter.title == "新标题"
+        assert chapter.core_event == "新事件"
+
+    def test_save_summary_with_chapter_update_no_chapter(self, service, sample_book):
+        service.save_summary_with_chapter_update(sample_book, "新摘要")
+        updated_book = service.get_book(sample_book.id)
+        assert updated_book.memory_summary == "新摘要"
+
+    def test_save_summary_with_chapter_update_title_only(self, service, sample_book, repo):
+        repo.create_chapter(sample_book.id, 1, "旧标题", "")
+        service.save_summary_with_chapter_update(sample_book, "摘要", chapter_number=1, title="新标题")
+        chapter = repo.get_chapter(sample_book.id, 1)
+        assert chapter.title == "新标题"
+        assert chapter.core_event == ""

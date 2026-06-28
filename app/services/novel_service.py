@@ -101,6 +101,26 @@ class NovelService:
         book.memory_summary = summary
         return self.repo.update_book(book)
 
+    def save_summary_with_chapter_update(
+        self, book: Book, summary: str, chapter_number: int | None = None, title: str | None = None, core_event: str | None = None
+    ) -> Book:
+        book.memory_summary = summary
+        self.repo.update_book(book)
+
+        if chapter_number is None:
+            chapter_number = book.current_chapter or 1
+
+        if title or core_event:
+            ch = self.repo.get_chapter(book.id, chapter_number)
+            if ch:
+                if title:
+                    ch.title = title
+                if core_event:
+                    ch.core_event = core_event
+                self.repo.update_chapter(ch)
+
+        return book
+
     def update_style(self, book: Book, style: str) -> Book:
         book.style = style
         return self.repo.update_book(book)

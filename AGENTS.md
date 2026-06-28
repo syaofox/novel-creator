@@ -56,6 +56,51 @@ books/{book_id}/
 - `service` — `NovelService(repo, mock_ai_service)`
 - `client` — FastAPI `TestClient` with all dependencies overridden
 
+## Chapter Writing Flow
+
+### Write / Generate
+1. `GET /books/{id}/chapters/write` — shows form with title (optional), core_event, prev_ending
+2. `POST /books/{id}/chapters/` — generates content via `ChapterWriterAgent` (stream or direct)
+   - Uses injected `service.ai_service` (no manual AiService creation)
+   - Accepts `title`, `core_event`, `regenerate` (bool) form params
+   - Returns `edit_chapter.html` with content for user review/edit
+3. `POST /books/{id}/chapters/save` — saves chapter content
+   - Accepts `chapter_number`, `title`, `content`
+   - Calls `NovelService.save_chapter()` with optional title
+   - Returns OOB chapter list update + save confirmation
+
+### Regenerate
+1. `GET /books/{id}/chapters/regenerate?num=X` — shows `write_chapter.html` with pre-filled title + core_event
+   - `regenerate=True` query param sets button text to "重新生成" instead of "生成章节"
+   - Uses `write_chapter_form` internally (reuses the same UI)
+2. Form POSTs to `POST /chapters/` with `regenerate=true` hidden field
+3. Generation and save follow the same flow as new chapter
+
+### Add Chapter
+1. `GET /books/{id}/chapters/add` — shows form with position select, title, core_event
+2. `POST /books/{id}/chapters/add` — inserts chapter at position, renumbers existing ones
+3. Response uses `hx-swap="innerHTML"` targeting `#chapter-list` (preserves wrapper div)
+
+### Delete Chapter
+1. `DELETE /books/{id}/chapters/{num}` — deletes and renumbers remaining chapters
+
+## Summary Update
+
+### AI Update Summary
+1. `POST /books/{id}/ai/stream-summary` — SSE stream of updated summary via `SummaryAgent`
+   - After streaming completes: auto-saves summary + extracts optimized title/core_event
+   - Auto-save via `POST /books/{id}/ai/save-summary` (handled in JS)
+2. `POST /books/{id}/ai/save-summary` — persisted by `NovelService.save_summary_with_chapter_update()`
+   - Also updates chapter's title and/or core_event if provided
+
+### Key NovelService Methods
+- `save_summary_with_chapter_update(book, summary, chapter_number, title, core_event)` — saves summary and optionally updates chapter metadata
+
+## AI Service Dependency
+All routes now use injected `AiService` via `AiServiceDep` / `service.ai_service`:
+- `get_ai_service(repo)` creates AiService with proper global_config
+- No manual `AiService()` instantiation in route handlers
+
 ## Cache Optimization (DeepSeek V4)
 
 ### Chapter Writer (`chapter_writer_agent.py`)
