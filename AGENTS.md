@@ -36,7 +36,15 @@ books/{book_id}/
 - `app/repositories/file_repository.py` - File-based storage (replaces SQLAlchemy)
 - `app/routes/` - FastAPI route handlers
 - `app/utils/` - Prompts, helpers, config
+- `app/static/css/styles.css` - Custom CSS (no Tailwind/DaisyUI)
+- `app/static/js/htmx.min.js` - HTMX for interactivity
+- `app/templates/` - Jinja2 templates using HTMX + custom CSS
 - `tests/` - pytest test suite
+
+## Frontend Stack
+- **HTMX**: All interactivity (form submits, partial refreshes, modal dialogs)
+- **Custom CSS**: Clean, modern design without framework dependencies
+- **No JavaScript framework**: Server-rendered HTML via Jinja2
 
 ## Cache Optimization (DeepSeek V4)
 

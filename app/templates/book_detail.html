@@ -3,7 +3,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
     <!-- 左侧：章节列表 -->
     <div class="lg:col-span-1">
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">章节列表</h2>
           <div id="chapter-list">
@@ -14,7 +14,7 @@
     </div>
     <!-- 中间：主工作区 -->
     <div class="lg:col-span-2">
-      <div class="card bg-base-100 shadow-xl min-h-[500px]">
+      <div class="card shadow-xl min-h-[500px]">
         <div class="card-body" id="main-workspace">
           <h2 class="card-title">创作区</h2>
           {% if book.current_chapter < book.target_chapters %}
@@ -34,7 +34,7 @@
     </div>
     <!-- 右侧：工具栏 -->
     <div class="lg:col-span-1">
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">工具</h2>
           <div class="space-y-2">
@@ -424,11 +424,11 @@
   <dialog id="memory_modal" class="modal">
     <div class="modal-box w-11/12 max-w-3xl">
       <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        <button class="btn btn-sm btn-ghost absolute right-2 top-2">✕</button>
       </form>
       <h3 class="font-bold text-lg mb-4">记忆摘要 - <span id="memory-modal-chapter">第 {{ book.current_chapter or 1 }} 章</span></h3>
       
-      <div class="tabs tabs-boxed mb-4">
+      <div class="tabs tabs-box mb-4">
         <a class="tab tab-active" onclick="switchSummaryTab('view')">查看</a>
         <a class="tab" onclick="switchSummaryTab('edit')">编辑</a>
       </div>
@@ -441,7 +441,7 @@
         <div class="mt-4 flex gap-2">
           <button class="btn btn-sm btn-outline" onclick="switchSummaryTab('edit')">手动编辑</button>
           <button class="btn btn-sm btn-primary" id="update-summary-btn" onclick="streamSummary()">
-            <span id="update-summary-loading" class="loading loading-spinner loading-xs hidden"></span>
+            <span id="update-summary-loading" class="loading loading-xs hidden"></span>
             <span id="update-summary-text">AI 更新</span>
           </button>
         </div>
@@ -453,7 +453,7 @@
           <input type="hidden" name="chapter" id="summary-chapter-num" value="{{ book.current_chapter or 1 }}" />
           <input type="hidden" name="title" id="summary-title" value="" />
           <input type="hidden" name="core_event" id="summary-core-event" value="" />
-          <textarea name="summary" id="memory-summary" class="textarea textarea-bordered w-full h-64 text-sm font-mono" placeholder="摘要内容">{{ book.memory_summary or '' }}</textarea>
+          <textarea name="summary" id="memory-summary" class="textarea w-full h-64 text-sm font-mono" placeholder="摘要内容">{{ book.memory_summary or '' }}</textarea>
           <div id="ai-optimized-fields" class="hidden mt-2 p-2 bg-base-300 rounded text-xs">
             <div class="flex items-center gap-2 mb-1">
               <span class="font-bold">AI优化建议：</span>
@@ -477,12 +477,12 @@
   <dialog id="style_modal" class="modal">
     <div class="modal-box w-11/12 max-w-2xl">
       <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        <button class="btn btn-sm btn-ghost absolute right-2 top-2">✕</button>
       </form>
       <h3 class="font-bold text-lg mb-4">风格规范</h3>
       <div id="style-summary">
         <form hx-post="/books/{{ book.id }}/ai/update-style" hx-target="#style-result" hx-swap="innerHTML">
-          <textarea name="style" class="textarea textarea-bordered w-full h-64 text-sm" placeholder="输入小说的风格规范，如叙事视角、语言特点、节奏等">{{ book.style }}</textarea>
+          <textarea name="style" class="textarea w-full h-64 text-sm" placeholder="输入小说的风格规范，如叙事视角、语言特点、节奏等">{{ book.style }}</textarea>
           <button type="submit" class="btn btn-primary w-full mt-4">保存风格</button>
         </form>
         <div id="style-result" class="mt-2"></div>

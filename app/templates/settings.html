@@ -7,7 +7,7 @@
             <label class="label">
                 <span class="label-text">Temperature</span>
             </label>
-            <input type="range" name="temperature" min="0" max="2" step="0.01" value="{{ book.config.temperature }}" class="range range-primary" />
+            <input type="range" name="temperature" min="0" max="2" step="0.01" value="{{ book.config.temperature }}" class="range" />
             <div class="flex justify-between text-xs px-2">
                 <span>0</span>
                 <span>1</span>
@@ -18,31 +18,31 @@
             <label class="label">
                 <span class="label-text">Top P</span>
             </label>
-            <input type="number" name="top_p" min="0" max="1" step="0.01" value="{{ book.config.top_p }}" class="input input-bordered" />
+            <input type="number" name="top_p" min="0" max="1" step="0.01" value="{{ book.config.top_p }}" class="input" />
         </div>
         <div class="form-control">
             <label class="label">
                 <span class="label-text">Max Tokens</span>
             </label>
-            <input type="number" name="max_tokens" min="1" max="384000" value="{{ book.config.max_tokens }}" class="input input-bordered" />
+            <input type="number" name="max_tokens" min="1" max="384000" value="{{ book.config.max_tokens }}" class="input" />
         </div>
         <div class="form-control">
             <label class="label cursor-pointer">
                 <span class="label-text">流式输出</span>
-                <input type="checkbox" name="stream" {% if book.config.stream %}checked{% endif %} class="toggle toggle-primary" />
+                <input type="checkbox" name="stream" {% if book.config.stream %}checked{% endif %} class="toggle" />
             </label>
         </div>
         <div class="form-control">
             <label class="label">
                 <span class="label-text">破限前缀</span>
             </label>
-            <textarea name="jailbreak_prefix" rows="4" class="textarea textarea-bordered">{{ book.config.jailbreak_prefix }}</textarea>
+            <textarea name="jailbreak_prefix" rows="4" class="textarea">{{ book.config.jailbreak_prefix }}</textarea>
         </div>
         <div class="form-control">
             <label class="label">
                 <span class="label-text">系统模板（可使用 {memory} {style} 占位符）</span>
             </label>
-            <textarea name="system_template" rows="6" class="textarea textarea-bordered">{{ book.config.system_template }}</textarea>
+            <textarea name="system_template" rows="6" class="textarea">{{ book.config.system_template }}</textarea>
         </div>
         <div class="form-control mt-6">
             <button type="submit" class="btn btn-primary">保存设置</button>

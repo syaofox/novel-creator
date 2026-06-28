@@ -53,7 +53,7 @@
         id="plot-tab"
         class="tab-content {% if active_tab == 'plot' %}block{% else %}hidden{% endif %}"
       >
-        <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card mb-4">
           <div class="card-body">
             <h2 class="card-title">新增剧情梗概</h2>
             <form method="post" action="/materials/plot-summaries">
@@ -63,7 +63,7 @@
                   name="title"
                   required
                   placeholder="标题"
-                  class="input input-bordered"
+                  class="input input"
                 />
               </div>
               <div class="form-control mb-2">
@@ -71,7 +71,7 @@
                   name="content"
                   rows="4"
                   placeholder="剧情梗概内容..."
-                  class="textarea textarea-bordered"
+                  class="textarea textarea"
                 ></textarea>
               </div>
               <button type="submit" class="btn btn-primary">保存</button>
@@ -81,7 +81,7 @@
 
         <div class="space-y-2">
           {% for plot in plot_summaries %}
-            <div class="card bg-base-100 shadow-sm">
+            <div class="card shadow-sm">
               <div class="card-body p-4">
                 <div class="flex justify-between items-start">
                   <h3 class="font-semibold">{{ plot.title }}</h3>
@@ -123,7 +123,7 @@
         id="character-tab"
         class="tab-content {% if active_tab == 'character' %}block{% else %}hidden{% endif %}"
       >
-        <div id="character-form-container" class="card bg-base-100 shadow-md mb-4">
+        <div id="character-form-container" class="card mb-4">
           <div class="card-body">
             <h2 class="card-title">新增人物卡</h2>
             <form method="post" action="/materials/character-cards"
@@ -136,7 +136,7 @@
                   name="title"
                   required
                   placeholder="人物名称"
-                  class="input input-bordered"
+                  class="input input"
                 />
               </div>
               <div class="form-control mb-2">
@@ -144,7 +144,7 @@
                   name="content"
                   rows="4"
                   placeholder="人物设定、性格、背景..."
-                  class="textarea textarea-bordered"
+                  class="textarea textarea"
                 ></textarea>
               </div>
               <button type="submit" class="btn btn-primary">保存</button>
@@ -154,7 +154,7 @@
 
         <div class="space-y-2">
           {% for card in character_cards %}
-            <div class="card bg-base-100 shadow-sm">
+            <div class="card shadow-sm">
               <div class="card-body p-4">
                 <div class="flex justify-between items-start">
                   <h3 class="font-semibold">{{ card.title }}</h3>
@@ -196,7 +196,7 @@
         id="note-tab"
         class="tab-content {% if active_tab == 'note' %}block{% else %}hidden{% endif %}"
       >
-        <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card mb-4">
           <div class="card-body">
             <h2 class="card-title">新增注意事项</h2>
             <form method="post" action="/materials/material-notes">
@@ -206,7 +206,7 @@
                   name="title"
                   required
                   placeholder="标题"
-                  class="input input-bordered"
+                  class="input input"
                 />
               </div>
               <div class="form-control mb-2">
@@ -214,7 +214,7 @@
                   name="content"
                   rows="4"
                   placeholder="注意事项内容..."
-                  class="textarea textarea-bordered"
+                  class="textarea textarea"
                 ></textarea>
               </div>
               <button type="submit" class="btn btn-primary">保存</button>
@@ -224,7 +224,7 @@
 
         <div class="space-y-2">
           {% for note in material_notes %}
-            <div class="card bg-base-100 shadow-sm">
+            <div class="card shadow-sm">
               <div class="card-body p-4">
                 <div class="flex justify-between items-start">
                   <h3 class="font-semibold">{{ note.title }}</h3>
@@ -266,7 +266,7 @@
         id="style-tab"
         class="tab-content {% if active_tab == 'style' %}block{% else %}hidden{% endif %}"
       >
-        <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card mb-4">
           <div class="card-body">
             <h2 class="card-title">新增文风</h2>
 
@@ -278,7 +278,7 @@
                   id="textSnippet"
                   rows="4"
                   placeholder="粘贴一段文字，AI 将自动分析其写作风格..."
-                  class="textarea textarea-bordered w-full"
+                  class="textarea textarea w-full"
                 ></textarea>
                 <div class="flex items-center gap-2 mt-2">
                   <button
@@ -302,7 +302,7 @@
                   name="title"
                   required
                   placeholder="文风名称"
-                  class="input input-bordered"
+                  class="input input"
                 />
               </div>
               <div class="form-control mb-2">
@@ -311,7 +311,7 @@
                   name="content"
                   rows="4"
                   placeholder="写作风格规范..."
-                  class="textarea textarea-bordered"
+                  class="textarea textarea"
                 >
 {{ default_style }}</textarea
                 >
@@ -322,7 +322,7 @@
                     type="checkbox"
                     name="is_default"
                     value="1"
-                    class="checkbox checkbox-primary"
+                    class="checkbox"
                   />
                   <span class="label-text">设为默认</span>
                 </label>
@@ -335,7 +335,7 @@
         <div class="space-y-2">
           {% for style in writing_styles %}
             <div
-              class="card bg-base-100 shadow-sm {% if style.is_default %}
+              class="card shadow-sm {% if style.is_default %}
                 border-2 border-primary
               {% endif %}"
             >
@@ -387,7 +387,7 @@
         id="init-tab"
         class="tab-content {% if active_tab == 'init' %}block{% else %}hidden{% endif %}"
       >
-        <div class="card bg-base-100 shadow-md mb-4">
+        <div class="card mb-4">
           <div class="card-body">
             <h2 class="card-title">新增初始化数据</h2>
             <form method="post" action="/materials/book-init-data">
@@ -397,7 +397,7 @@
                   name="title"
                   required
                   placeholder="标题"
-                  class="input input-bordered"
+                  class="input input"
                 />
               </div>
               <div class="form-control mb-2">
@@ -405,7 +405,7 @@
                   type="text"
                   name="book_title"
                   placeholder="关联书名（可选）"
-                  class="input input-bordered"
+                  class="input input"
                 />
               </div>
               <div class="form-control mb-2">
@@ -413,7 +413,7 @@
                   name="content"
                   rows="6"
                   placeholder="AI 原始输出内容..."
-                  class="textarea textarea-bordered"
+                  class="textarea textarea"
                 ></textarea>
               </div>
               <button type="submit" class="btn btn-primary">保存</button>
@@ -423,7 +423,7 @@
 
         <div class="space-y-2">
           {% for data in book_init_data %}
-            <div class="card bg-base-100 shadow-sm">
+            <div class="card shadow-sm">
               <div class="card-body p-4">
                 <div class="flex justify-between items-start">
                   <div>

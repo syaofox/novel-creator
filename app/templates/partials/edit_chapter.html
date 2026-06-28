@@ -1,4 +1,4 @@
-<div class="alert alert-success shadow-lg">
+<div class="alert alert-success">
   <div>
     {% if regenerate %}
       <span>第{{ chapter_number }}章重新生成成功！请审核并编辑内容，然后保存。</span>
@@ -20,7 +20,7 @@
   <textarea
     readonly
     rows="3"
-    class="textarea textarea-bordered bg-gray-50"
+    class="textarea bg-gray-50"
   >
 {{ core_event }}</textarea>
 </div>
@@ -32,7 +32,7 @@
   <textarea
     readonly
     rows="4"
-    class="textarea textarea-bordered bg-gray-50"
+    class="textarea bg-gray-50"
   >
 {{ prev_ending }}</textarea>
 </div>
@@ -52,7 +52,7 @@
         id="chapter-content"
         name="content"
         rows="30"
-        class="textarea textarea-bordered font-mono whitespace-pre-wrap"
+        class="textarea font-mono whitespace-pre-wrap"
         placeholder="章节内容..."
       >{{ content }}</textarea>
     </div>

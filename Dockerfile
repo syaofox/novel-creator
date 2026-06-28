@@ -11,21 +11,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # ============================================================
-# Stage 2: Build CSS assets
-# ============================================================
-FROM node:22-alpine AS builder
-
-WORKDIR /app
-
-COPY package.json package-lock.json* ./
-RUN npm install
-
-COPY app/static ./app/static
-COPY app/templates ./app/templates
-RUN npm run build:css
-
-# ============================================================
-# Stage 3: Production runtime
+# Stage 2: Production runtime
 # ============================================================
 FROM python:3.13-slim AS production
 
@@ -40,7 +26,6 @@ RUN mkdir -p data books && \
     groupadd --gid 1000 nonroot && \
     useradd --uid 1000 --gid nonroot --shell /bin/bash --create-home nonroot
 
-COPY --from=builder /app/app/static ./app/static
 COPY --chown=nonroot:nonroot . .
 
 USER nonroot

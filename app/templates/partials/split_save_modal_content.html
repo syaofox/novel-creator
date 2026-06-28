@@ -1,5 +1,5 @@
 {% if duplicate_names %}
-<div id="split-save-warning" class="alert alert-warning shadow-lg mb-3">
+<div id="split-save-warning" class="alert alert-warning mb-3">
   <div>
     <span>发现同名人物: {{ duplicate_names|join('、') }}，是否继续保存？</span>
   </div>
@@ -22,7 +22,7 @@
     <label class="label">
       <span class="label-text">内容（多人物用空行分隔，将自动拆分为独立素材）</span>
     </label>
-    <textarea id="characterContentForSave" name="content" rows="8" class="textarea textarea-bordered" placeholder="张三: 主角，二十岁&#10;外貌：...&#10;&#10;李四: 配角，十八岁&#10;外貌：..." oninput="previewCharacterSplit()">{{ content }}</textarea>
+    <textarea id="characterContentForSave" name="content" rows="8" class="textarea" placeholder="张三: 主角，二十岁&#10;外貌：...&#10;&#10;李四: 配角，十八岁&#10;外貌：..." oninput="previewCharacterSplit()">{{ content }}</textarea>
   </div>
   <div class="modal-action">
     <button type="button" class="btn" onclick="document.getElementById('createCharacterModal').close()">取消</button>

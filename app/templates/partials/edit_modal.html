@@ -9,7 +9,7 @@
       {% endif %}
     </h3>
     {% if duplicate_warning %}
-    <div class="alert alert-warning shadow-lg mb-3">
+    <div class="alert alert-warning mb-3">
       <div>
         <span>同名人物卡「{{ duplicate_warning.title }}」已存在，是否继续保存？</span>
       </div>
@@ -21,22 +21,22 @@
       {% endif %}>
       <div class="form-control mb-2">
         <label class="label"><span class="label-text">标题</span></label>
-        <input type="text" name="title" value="{{ duplicate_warning.title if duplicate_warning else item.title }}" required class="input input-bordered" />
+        <input type="text" name="title" value="{{ duplicate_warning.title if duplicate_warning else item.title }}" required class="input" />
       </div>
       {% if item_type == 'init' %}
       <div class="form-control mb-2">
         <label class="label"><span class="label-text">关联书名</span></label>
-        <input type="text" name="book_title" value="{{ item.book_title }}" class="input input-bordered" />
+        <input type="text" name="book_title" value="{{ item.book_title }}" class="input" />
       </div>
       {% endif %}
       <div class="form-control mb-2">
         <label class="label"><span class="label-text">内容</span></label>
-        <textarea name="content" rows="6" class="textarea textarea-bordered">{{ duplicate_warning.content if duplicate_warning else item.content }}</textarea>
+        <textarea name="content" rows="6" class="textarea">{{ duplicate_warning.content if duplicate_warning else item.content }}</textarea>
       </div>
       {% if show_default %}
       <div class="form-control mb-4">
         <label class="label cursor-pointer justify-start gap-2">
-          <input type="checkbox" name="is_default" value="1" {% if item.is_default %}checked{% endif %} class="checkbox checkbox-primary" />
+          <input type="checkbox" name="is_default" value="1" {% if item.is_default %}checked{% endif %} class="checkbox" />
           <span class="label-text">设为默认</span>
         </label>
       </div>

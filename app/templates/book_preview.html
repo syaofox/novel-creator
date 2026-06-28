@@ -4,15 +4,15 @@
     <input type="hidden" id="rawInitData" value="{{ raw_init_data | default('') }}" />
     <h1 class="text-2xl font-bold mb-4">预览并确认小说设定</h1>
     <div id="streamStatus" class="hidden alert alert-info mb-4">
-      <span class="loading loading-spinner"></span>
+      <span class="loading"></span>
       <span>AI 正在生成中...</span>
     </div>
-    <div id="rawOutput" class="hidden card bg-base-100 shadow-xl mb-4">
+    <div id="rawOutput" class="hidden card shadow-xl mb-4">
       <div class="card-body">
         <h2 class="card-title text-sm">AI 原始输出（实时）</h2>
         <textarea
           id="rawContent"
-          class="textarea textarea-bordered text-xs font-mono"
+          class="textarea textarea text-xs font-mono"
           rows="6"
         ></textarea>
         <div class="flex gap-2 mt-2">
@@ -58,7 +58,7 @@
         value="{{ system_template }}"
       />
 
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">基本信息</h2>
           <div class="grid grid-cols-2 gap-4">
@@ -71,7 +71,7 @@
                 name="title"
                 id="titleInput"
                 value="{{ title }}"
-                class="input input-bordered w-full"
+                class="input input w-full"
                 placeholder="输入书名"
               />
               <div id="suggestedTitle" class="hidden mt-1">
@@ -108,7 +108,7 @@
         </div>
       </div>
 
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">人物卡</h2>
           <div id="characters-container" class="space-y-4"></div>
@@ -116,7 +116,7 @@
         </div>
       </div>
 
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">世界观</h2>
           <div class="grid grid-cols-1 gap-3">
@@ -125,7 +125,7 @@
               <textarea
                 id="world_setting"
                 rows="3"
-                class="textarea textarea-bordered w-full"
+                class="textarea textarea w-full"
                 placeholder="世界观设定"
               ></textarea>
             </div>
@@ -136,7 +136,7 @@
               <textarea
                 id="world_special_rules"
                 rows="2"
-                class="textarea textarea-bordered w-full"
+                class="textarea textarea w-full"
                 placeholder="特殊规则"
               ></textarea>
             </div>
@@ -145,7 +145,7 @@
               <textarea
                 id="world_themes"
                 rows="2"
-                class="textarea textarea-bordered w-full"
+                class="textarea textarea w-full"
                 placeholder="主题"
               ></textarea>
             </div>
@@ -154,7 +154,7 @@
         </div>
       </div>
 
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">风格规范</h2>
           <div class="grid grid-cols-1 gap-3">
@@ -165,7 +165,7 @@
               <input
                 type="text"
                 id="style_perspective"
-                class="input input-bordered w-full"
+                class="input input w-full"
                 placeholder="叙事视角"
               />
             </div>
@@ -176,7 +176,7 @@
               <textarea
                 id="style_language"
                 rows="2"
-                class="textarea textarea-bordered w-full"
+                class="textarea textarea w-full"
                 placeholder="语言风格"
               ></textarea>
             </div>
@@ -187,7 +187,7 @@
               <input
                 type="text"
                 id="style_pace"
-                class="input input-bordered w-full"
+                class="input input w-full"
                 placeholder="节奏特点"
               />
             </div>
@@ -198,7 +198,7 @@
               <input
                 type="text"
                 id="style_audience"
-                class="input input-bordered w-full"
+                class="input input w-full"
                 placeholder="目标读者"
               />
             </div>
@@ -207,7 +207,7 @@
         </div>
       </div>
 
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">主线大纲</h2>
           <p class="text-sm text-gray-500 mb-2">编辑每章的标题和核心事件</p>
@@ -226,13 +226,13 @@
                     name="chapter_title"
                     value="{{ ch.title }}"
                     placeholder="章节标题"
-                    class="input input-bordered w-full"
+                    class="input input w-full"
                   />
                   <textarea
                     name="chapter_core_event"
                     rows="2"
                     placeholder="本章核心事件"
-                    class="textarea textarea-bordered w-full"
+                    class="textarea textarea w-full"
                   >
 {{ ch.core_event }}</textarea
                   >
@@ -244,7 +244,7 @@
         </div>
       </div>
 
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">伏笔清单</h2>
           <div id="foreshadowing-list" class="space-y-2"></div>
@@ -256,7 +256,7 @@
         </div>
       </div>
 
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card shadow-xl">
         <div class="card-body">
           <h2 class="card-title">其他信息</h2>
           <div class="grid grid-cols-1 gap-3">
@@ -267,7 +267,7 @@
               <textarea
                 id="other_key_points"
                 rows="3"
-                class="textarea textarea-bordered w-full"
+                class="textarea textarea w-full"
                 placeholder="关键要点"
               ></textarea>
             </div>
@@ -278,7 +278,7 @@
               <textarea
                 id="other_writing_guidance"
                 rows="3"
-                class="textarea textarea-bordered w-full"
+                class="textarea textarea w-full"
                 placeholder="写作指导"
               ></textarea>
             </div>
@@ -607,35 +607,35 @@
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="label py-1"><span class="label-text-alt">姓名</span></label>
-                <input type="text" class="input input-sm input-bordered w-full" data-char-field="name" value="${escapeHtml(char.name || "")}" placeholder="姓名">
+                <input type="text" class="input input-sm input w-full" data-char-field="name" value="${escapeHtml(char.name || "")}" placeholder="姓名">
               </div>
               <div>
                 <label class="label py-1"><span class="label-text-alt">昵称</span></label>
-                <input type="text" class="input input-sm input-bordered w-full" data-char-field="nickname" value="${escapeHtml(char.nickname || "")}" placeholder="昵称">
+                <input type="text" class="input input-sm input w-full" data-char-field="nickname" value="${escapeHtml(char.nickname || "")}" placeholder="昵称">
               </div>
               <div>
                 <label class="label py-1"><span class="label-text-alt">年龄</span></label>
-                <input type="text" class="input input-sm input-bordered w-full" data-char-field="age" value="${char.age || ""}" placeholder="年龄">
+                <input type="text" class="input input-sm input w-full" data-char-field="age" value="${char.age || ""}" placeholder="年龄">
               </div>
               <div>
                 <label class="label py-1"><span class="label-text-alt">人物关系</span></label>
-                <input type="text" class="input input-sm input-bordered w-full" data-char-field="relationships" value="${escapeHtml(char.relationships || "")}" placeholder="人物关系">
+                <input type="text" class="input input-sm input w-full" data-char-field="relationships" value="${escapeHtml(char.relationships || "")}" placeholder="人物关系">
               </div>
               <div class="col-span-2">
                 <label class="label py-1"><span class="label-text-alt">外貌描述</span></label>
-                <textarea class="textarea textarea-sm textarea-bordered w-full" data-char-field="appearance" rows="2" placeholder="外貌描述">${escapeHtml(char.appearance || "")}</textarea>
+                <textarea class="textarea textarea-sm textarea w-full" data-char-field="appearance" rows="2" placeholder="外貌描述">${escapeHtml(char.appearance || "")}</textarea>
               </div>
               <div class="col-span-2">
                 <label class="label py-1"><span class="label-text-alt">性格特点</span></label>
-                <textarea class="textarea textarea-sm textarea-bordered w-full" data-char-field="personality" rows="2" placeholder="性格特点">${escapeHtml(char.personality || "")}</textarea>
+                <textarea class="textarea textarea-sm textarea w-full" data-char-field="personality" rows="2" placeholder="性格特点">${escapeHtml(char.personality || "")}</textarea>
               </div>
               <div class="col-span-2">
                 <label class="label py-1"><span class="label-text-alt">背景故事</span></label>
-                <textarea class="textarea textarea-sm textarea-bordered w-full" data-char-field="background" rows="2" placeholder="背景故事">${escapeHtml(char.background || "")}</textarea>
+                <textarea class="textarea textarea-sm textarea w-full" data-char-field="background" rows="2" placeholder="背景故事">${escapeHtml(char.background || "")}</textarea>
               </div>
               <div class="col-span-2">
                 <label class="label py-1"><span class="label-text-alt">角色目标</span></label>
-                <textarea class="textarea textarea-sm textarea-bordered w-full" data-char-field="goal" rows="2" placeholder="角色目标">${escapeHtml(char.goal || "")}</textarea>
+                <textarea class="textarea textarea-sm textarea w-full" data-char-field="goal" rows="2" placeholder="角色目标">${escapeHtml(char.goal || "")}</textarea>
               </div>
             </div>
           `;
@@ -758,7 +758,7 @@
           const row = document.createElement("div");
           row.className = "flex gap-2";
           row.innerHTML = `
-            <input type="text" class="input input-sm input-bordered flex-1" data-foreshadowing-idx="${idx}" value="${escapeHtml(typeof item === "string" ? item : "")}" placeholder="伏笔">
+            <input type="text" class="input input-sm input flex-1" data-foreshadowing-idx="${idx}" value="${escapeHtml(typeof item === "string" ? item : "")}" placeholder="伏笔">
             <button type="button" class="btn btn-sm btn-ghost text-error" onclick="removeForeshadowingItem(${idx})">×</button>
           `;
           container.appendChild(row);
@@ -779,7 +779,7 @@
         const row = document.createElement("div");
         row.className = "flex gap-2";
         row.innerHTML = `
-          <input type="text" class="input input-sm input-bordered flex-1" data-foreshadowing-idx="${idx}" value="" placeholder="伏笔">
+          <input type="text" class="input input-sm input flex-1" data-foreshadowing-idx="${idx}" value="" placeholder="伏笔">
           <button type="button" class="btn btn-sm btn-ghost text-error" onclick="removeForeshadowingItem(${idx})">×</button>
         `;
         container.insertBefore(row, container.lastElementChild);

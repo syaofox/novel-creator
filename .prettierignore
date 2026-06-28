@@ -1,8 +1,0 @@
-.git
-__pycache__
-.venv
-venv
-books
-app/static
-app/templates
-node_modules

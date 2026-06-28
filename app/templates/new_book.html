@@ -15,7 +15,7 @@
         class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50"
       >
         <div class="text-center">
-          <span class="loading loading-spinner loading-lg text-primary"></span>
+          <span class="loading loading-lg text-primary"></span>
           <p class="mt-2 text-white">正在初始化AI创作...</p>
         </div>
       </div>
@@ -23,7 +23,7 @@
         <label class="label" for="title">
           <span class="label-text">书名</span>
         </label>
-        <input type="text" name="title" id="title" required class="input input-bordered" />
+        <input type="text" name="title" id="title" required class="input input" />
       </div>
       <div class="form-control">
         <label class="label">
@@ -37,7 +37,7 @@
               name="genre"
               id="genre_{{ loop.index0 }}"
               value="{{ genre }}"
-              class="checkbox checkbox-primary"
+              class="checkbox"
             />
             <span class="label-text">{{ genre }}</span>
           </label>
@@ -55,7 +55,7 @@
           min="1"
           value="3"
           required
-          class="input input-bordered"
+          class="input input"
         />
       </div>
       <div class="form-control" style="display: none;">
@@ -66,7 +66,7 @@
           name="basic_idea"
           id="basic_idea"
           rows="6"
-          class="textarea textarea-bordered"
+          class="textarea textarea"
           placeholder="请输入你的创意..."
         ></textarea>
       </div>
@@ -88,7 +88,7 @@
             {% if plot_summaries %}
             <select
               id="plotSelect"
-              class="select select-bordered w-full mb-2"
+              class="select select w-full mb-2"
               onchange="loadPlotSummary()"
             >
               <option value="">-- 选择已有剧情梗概 --</option>
@@ -97,7 +97,7 @@
               {% endfor %}
             </select>
             {% else %}
-            <select id="plotSelect" class="select select-bordered w-full mb-2 hidden">
+            <select id="plotSelect" class="select select w-full mb-2 hidden">
               <option value="">-- 选择已有剧情梗概 --</option>
             </select>
             {% endif %}
@@ -105,7 +105,7 @@
               id="plotSummary"
               name="plot_summary"
               rows="3"
-              class="textarea textarea-bordered w-full"
+              class="textarea textarea w-full"
               placeholder="请输入小说的剧情梗概..."
             ></textarea>
           </div>
@@ -129,7 +129,7 @@
               id="characterCard"
               name="character_card"
               rows="3"
-              class="textarea textarea-bordered w-full"
+              class="textarea textarea w-full"
               placeholder="请输入主要人物设定..."
             ></textarea>
           </div>
@@ -145,7 +145,7 @@
             {% if material_notes %}
             <select
               id="noteSelect"
-              class="select select-bordered w-full mb-2"
+              class="select select w-full mb-2"
               onchange="loadMaterialNote()"
             >
               <option value="">-- 选择已有注意事项 --</option>
@@ -154,7 +154,7 @@
               {% endfor %}
             </select>
             {% else %}
-            <select id="noteSelect" class="select select-bordered w-full mb-2 hidden">
+            <select id="noteSelect" class="select select w-full mb-2 hidden">
               <option value="">-- 选择已有注意事项 --</option>
             </select>
             {% endif %}
@@ -162,7 +162,7 @@
               id="materialNote"
               name="notes"
               rows="3"
-              class="textarea textarea-bordered w-full"
+              class="textarea textarea w-full"
               placeholder="请输入需要注意的事项..."
             ></textarea>
           </div>
@@ -179,7 +179,7 @@
         </div>
         <select
           id="styleSelect"
-          class="select select-bordered w-full mb-2"
+          class="select select w-full mb-2"
           onchange="updateStyleFromSelect()"
         >
           <option value="">-- 选择已有文风 --</option>
@@ -194,7 +194,7 @@
           id="styleTextarea"
           name="style"
           rows="4"
-          class="textarea textarea-bordered"
+          class="textarea textarea"
           placeholder="选择预设风格或手动输入自定义风格规范..."
         >{{ default_style }}</textarea>
       </div>
@@ -213,7 +213,7 @@
           max="2"
           step="0.01"
           value="{{ default_temperature }}"
-          class="range range-primary"
+          class="range"
         />
         <div class="flex justify-between text-xs px-2">
           <span>0</span>
@@ -233,7 +233,7 @@
           max="1"
           step="0.01"
           value="{{ default_top_p }}"
-          class="input input-bordered"
+          class="input input"
         />
       </div>
       <div class="form-control">
@@ -247,7 +247,7 @@
           min="1"
           max="32768"
           value="{{ default_max_tokens }}"
-          class="input input-bordered"
+          class="input input"
         />
       </div>
       <div class="form-control">
@@ -258,7 +258,7 @@
             name="stream"
             id="stream"
             checked
-            class="toggle toggle-primary"
+            class="toggle"
           />
         </label>
       </div>
@@ -270,7 +270,7 @@
           name="jailbreak_prefix"
           id="jailbreak_prefix"
           rows="3"
-          class="textarea textarea-bordered"
+          class="textarea textarea"
         >{{ jailbreak_prefix }}</textarea>
       </div>
       <div class="form-control">
@@ -283,7 +283,7 @@
           name="system_template"
           id="system_template"
           rows="4"
-          class="textarea textarea-bordered"
+          class="textarea textarea"
         >{{ system_template }}</textarea>
       </div>
 
@@ -308,7 +308,7 @@
         </label>
         <select
           id="initDataSelect"
-          class="select select-bordered w-full mb-2"
+          class="select select w-full mb-2"
           onchange="loadInitData()"
         >
           <option value="">-- 选择已有初始化数据 --</option>
@@ -326,7 +326,7 @@
           name="init_data"
           id="initData"
           rows="20"
-          class="textarea textarea-bordered font-mono text-sm"
+          class="textarea textarea font-mono text-sm"
           placeholder="【characters】
 [
   {
@@ -730,11 +730,11 @@
         <input type="hidden" name="source" value="new_book">
         <div class="form-control mb-2">
           <label class="label"><span class="label-text">标题</span></label>
-          <input type="text" name="title" required class="input input-bordered" />
+          <input type="text" name="title" required class="input input" />
         </div>
         <div class="form-control mb-2">
           <label class="label"><span class="label-text">内容</span></label>
-          <textarea id="plotContentForSave" name="content" rows="6" class="textarea textarea-bordered"></textarea>
+          <textarea id="plotContentForSave" name="content" rows="6" class="textarea textarea"></textarea>
         </div>
         <div class="modal-action">
           <button type="button" class="btn" onclick="document.getElementById('createPlotModal').close()">取消</button>
@@ -767,11 +767,11 @@
         <input type="hidden" name="source" value="new_book">
         <div class="form-control mb-2">
           <label class="label"><span class="label-text">标题</span></label>
-          <input type="text" name="title" required class="input input-bordered" />
+          <input type="text" name="title" required class="input input" />
         </div>
         <div class="form-control mb-2">
           <label class="label"><span class="label-text">内容</span></label>
-          <textarea id="noteContentForSave" name="content" rows="6" class="textarea textarea-bordered"></textarea>
+          <textarea id="noteContentForSave" name="content" rows="6" class="textarea textarea"></textarea>
         </div>
         <div class="modal-action">
           <button type="button" class="btn" onclick="document.getElementById('createNoteModal').close()">取消</button>
@@ -791,15 +791,15 @@
         <input type="hidden" name="source" value="new_book">
         <div class="form-control mb-2">
           <label class="label"><span class="label-text">标题</span></label>
-          <input type="text" name="title" required class="input input-bordered" />
+          <input type="text" name="title" required class="input input" />
         </div>
         <div class="form-control mb-2">
           <label class="label"><span class="label-text">内容</span></label>
-          <textarea id="styleContentForSave" name="content" rows="6" class="textarea textarea-bordered"></textarea>
+          <textarea id="styleContentForSave" name="content" rows="6" class="textarea textarea"></textarea>
         </div>
         <div class="form-control mb-4">
           <label class="label cursor-pointer justify-start gap-2">
-            <input type="checkbox" name="is_default" value="1" class="checkbox checkbox-primary" />
+            <input type="checkbox" name="is_default" value="1" class="checkbox" />
             <span class="label-text">设为默认</span>
           </label>
         </div>

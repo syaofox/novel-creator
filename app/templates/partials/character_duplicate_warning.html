@@ -1,6 +1,6 @@
-<div id="character-form-container" class="card bg-base-100 shadow-md mb-4">
+<div id="character-form-container" class="card mb-4">
   <div class="card-body">
-    <div id="duplicate-warning" class="alert alert-warning shadow-lg mb-3">
+    <div id="duplicate-warning" class="alert alert-warning mb-3">
       <div>
         <span>同名人物卡「{{ title }}」已存在，是否继续保存？</span>
         <div class="mt-1 text-sm opacity-80">
@@ -26,10 +26,10 @@
     <h2 class="card-title">新增人物卡</h2>
     <form hx-post="/materials/character-cards" hx-target="#character-form-container" hx-swap="outerHTML">
       <div class="form-control mb-2">
-        <input type="text" name="title" value="{{ title }}" required placeholder="人物名称" class="input input-bordered" />
+        <input type="text" name="title" value="{{ title }}" required placeholder="人物名称" class="input" />
       </div>
       <div class="form-control mb-2">
-        <textarea name="content" rows="4" placeholder="人物设定、性格、背景..." class="textarea textarea-bordered">{{ content }}</textarea>
+        <textarea name="content" rows="4" placeholder="人物设定、性格、背景..." class="textarea">{{ content }}</textarea>
       </div>
       {% if source %}
       <input type="hidden" name="source" value="{{ source }}">
