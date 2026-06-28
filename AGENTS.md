@@ -40,11 +40,21 @@ books/{book_id}/
 - `app/static/js/htmx.min.js` - HTMX for interactivity
 - `app/templates/` - Jinja2 templates using HTMX + custom CSS
 - `tests/` - pytest test suite
+- **Note**: `app/schemas/` was removed (dead code — all models live in `file_repository.py`)
 
 ## Frontend Stack
 - **HTMX**: All interactivity (form submits, partial refreshes, modal dialogs)
 - **Custom CSS**: Clean, modern design without framework dependencies
 - **No JavaScript framework**: Server-rendered HTML via Jinja2
+
+## Test Structure
+
+### Shared Fixtures (`tests/conftest.py`)
+- `repo` — `FileRepository` with temp directory
+- `sample_book` — Default book with config, memory_summary, style
+- `mock_ai_service` — Mocked `AiService` with `global_config = {}`
+- `service` — `NovelService(repo, mock_ai_service)`
+- `client` — FastAPI `TestClient` with all dependencies overridden
 
 ## Cache Optimization (DeepSeek V4)
 
@@ -62,7 +72,7 @@ books/{book_id}/
 # Run all tests
 uv run pytest tests/ -v
 
-# Run with coverage
+# Run with coverage (target: >85%)
 uv run pytest tests/ --cov=app -v
 
 # Lint

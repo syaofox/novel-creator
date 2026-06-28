@@ -310,14 +310,14 @@ async def stream_chapter(
 
 
 @router.get("/list", response_class=HTMLResponse)
-async def get_chapter_list(book_id: int, repo: RepoDep, service: NovelServiceDep):
+async def get_chapter_list(request: Request, book_id: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
     chapters = service.get_chapters(book_id)
 
     templates = get_templates()
-    return templates.TemplateResponse("partials/chapter_list.html", {"book": book, "chapters": chapters})
+    return templates.TemplateResponse(request, "partials/chapter_list.html", {"book": book, "chapters": chapters})
 
 
 @router.get("/add", response_class=HTMLResponse)

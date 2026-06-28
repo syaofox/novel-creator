@@ -19,6 +19,9 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # Run all tests
 uv run pytest tests/ -v
 
+# Run with coverage (target: >85%)
+uv run pytest tests/ --cov=app -v
+
 # Lint
 uv run ruff check app/ tests/
 ```
