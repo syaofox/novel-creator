@@ -1,17 +1,15 @@
 import logging
-from collections.abc import AsyncGenerator
 
 from app.services.agents.base_agent import BaseAgent, AgentFactory
 
 logger = logging.getLogger(__name__)
 
 _EXTRACT_STYLE_PROMPT = (
-    "请分析以下文字片段的写作风格，并以结构化条目给出详细的风格规范描述。\n"
-    "输出格式要求：第一行为「标题: 文风名称」，空一行后列出风格特征条目。例如：\n"
-    "标题: 简洁干练\n\n"
-    "1. 短句为主，节奏明快\n"
-    "2. 多用白描手法\n"
-    "3. ..."
+    "请以 JSON 格式分析以下文字片段的写作风格。\n"
+    "要求：\n"
+    '- "title"：为这种风格取一个简洁准确的名称（2-6个字）\n'
+    '- "content"：详细描述该风格的各个特征，每一条独立成行\n'
+    '示例：{"title": "简洁干练", "content": "1. 短句为主，节奏明快\\n2. 多用白描手法\\n3. 叙事直白精炼"}'
 )
 
 
@@ -33,9 +31,6 @@ class StyleExtractorAgent(BaseAgent):
 
     async def extract_style(self, text: str) -> dict:
         return await self.run_json(text=text)
-
-    def stream_extract_style(self, text: str) -> AsyncGenerator[str]:
-        return self.run_stream(text=text)
 
 
 AgentFactory.register("style_extractor", StyleExtractorAgent)

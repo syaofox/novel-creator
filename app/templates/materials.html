@@ -488,65 +488,28 @@
       btn.disabled = true;
       startRequest();
 
-      fetch('/materials/writing-styles/extract-stream', {
+      fetch('/materials/writing-styles/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ text_snippet: snippet }),
       })
         .then((response) => {
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let fullText = '';
-
-          function read() {
-            reader.read().then(({ done, value }) => {
-              if (done) {
-                const lines = fullText.split('\n');
-                const titleLine = lines[0] || '';
-                const match = titleLine.match(/^标题[：:]\s*(.+)/);
-                if (match) {
-                  titleEl.value = match[1].trim();
-                  contentEl.value = lines.slice(1).join('\n').trim();
-                } else {
-                  contentEl.value = fullText;
-                }
-                statusEl.textContent = '提取完成';
-                statusEl.className = 'text-sm text-success';
-                btn.disabled = false;
-                endRequest();
-                return;
-              }
-
-              const chunk = decoder.decode(value, { stream: true });
-              const lines = chunk.split('\n').filter((line) => line.trim());
-
-              lines.forEach((line) => {
-                try {
-                  const data = JSON.parse(line);
-                  if (data.done) return;
-                  if (data.error) {
-                    statusEl.textContent = '提取失败: ' + data.error;
-                    statusEl.className = 'text-sm text-error';
-                    btn.disabled = false;
-                    endRequest();
-                    return;
-                  }
-                  if (data.content) {
-                    fullText += data.content;
-                    contentEl.value = fullText;
-                    contentEl.scrollTop = contentEl.scrollHeight;
-                  }
-                } catch (e) {}
-              });
-
-              read();
-            });
+          if (!response.ok) {
+            return response.json().then((e) => { throw new Error(e.detail || '提取失败'); });
           }
-          read();
+          return response.json();
+        })
+        .then((data) => {
+          titleEl.value = data.title || '';
+          contentEl.value = data.content || '';
+          statusEl.textContent = '提取完成';
+          statusEl.className = 'text-sm text-success';
         })
         .catch((error) => {
-          statusEl.textContent = '请求失败: ' + error.message;
+          statusEl.textContent = '提取失败: ' + error.message;
           statusEl.className = 'text-sm text-error';
+        })
+        .finally(() => {
           btn.disabled = false;
           endRequest();
         });

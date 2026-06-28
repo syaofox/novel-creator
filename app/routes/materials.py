@@ -252,23 +252,20 @@ async def delete_character_card(card_id: int, repo: RepoDep):
     return RedirectResponse(url="/materials?tab=character", status_code=303)
 
 
-@router.post("/writing-styles/extract-stream")
-async def extract_writing_style_stream(ai_service: AiServiceDep, text_snippet: str = Form(...)):
+@router.post("/writing-styles/extract")
+async def extract_writing_style(ai_service: AiServiceDep, text_snippet: str = Form(...)):
     from app.services.agents import AgentFactory
 
     agent = AgentFactory.create("style_extractor", ai_service, global_config=ai_service.global_config)
 
-    async def generate():
-        try:
-            async for chunk in agent.stream_extract_style(text_snippet):
-                data = json.dumps({"content": chunk}, ensure_ascii=False)
-                yield f"{data}\n"
-                await asyncio.sleep(0.01)
-            yield json.dumps({"done": True}) + "\n"
-        except Exception as e:
-            yield json.dumps({"error": str(e)}) + "\n"
-
-    return StreamingResponse(generate(), media_type="application/x-ndjson")
+    try:
+        result = await agent.extract_style(text_snippet)
+        return {
+            "title": result.get("title", ""),
+            "content": result.get("content", ""),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/writing-styles", response_class=HTMLResponse)
