@@ -724,7 +724,7 @@
   {% endif %}
 
   <dialog id="createPlotModal" class="modal">
-    <div class="modal-box max-w-lg">
+    <div class="modal-box">
       <h3 class="font-bold text-lg">保存剧情梗概</h3>
       <form hx-post="/materials/plot-summaries" hx-target="#plotSelect" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) { handleMaterialCreate('plotSelect', 'createPlotModal', event.detail.xhr.getResponseHeader('X-New-Id')); this.reset(); }">
         <input type="hidden" name="source" value="new_book">
@@ -748,7 +748,7 @@
   </dialog>
 
   <dialog id="createCharacterModal" class="modal">
-    <div class="modal-box max-w-lg">
+    <div class="modal-box">
       <div id="split-save-container" hx-on::after-request="if(event.detail.successful) { handleCharacterSplitSave(event); }">
         {% with content = "", duplicate_names = [] %}
         {% include "partials/split_save_modal_content.html" %}
@@ -761,7 +761,7 @@
   </dialog>
 
   <dialog id="createNoteModal" class="modal">
-    <div class="modal-box max-w-lg">
+    <div class="modal-box">
       <h3 class="font-bold text-lg">保存注意事项</h3>
       <form hx-post="/materials/material-notes" hx-target="#noteSelect" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) { handleMaterialCreate('noteSelect', 'createNoteModal', event.detail.xhr.getResponseHeader('X-New-Id')); this.reset(); }">
         <input type="hidden" name="source" value="new_book">
@@ -785,7 +785,7 @@
   </dialog>
 
   <dialog id="createStyleModal" class="modal">
-    <div class="modal-box max-w-lg">
+    <div class="modal-box">
       <h3 class="font-bold text-lg">保存文风</h3>
       <form hx-post="/materials/writing-styles" hx-target="#styleSelect" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) { handleMaterialCreate('styleSelect', 'createStyleModal', event.detail.xhr.getResponseHeader('X-New-Id')); this.reset(); }">
         <input type="hidden" name="source" value="new_book">
