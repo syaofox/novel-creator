@@ -27,10 +27,16 @@ class Book(BaseModel):
     genre: str = ""
     target_chapters: int = 3
     basic_idea: str = ""
-    config: dict[str, Any] = Field(default_factory=lambda: {
-        "temperature": 0.78, "top_p": 0.92, "max_tokens": 16384, "stream": True,
-        "jailbreak_prefix": "", "system_template": "",
-    })
+    config: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "temperature": 0.78,
+            "top_p": 0.92,
+            "max_tokens": 16384,
+            "stream": True,
+            "jailbreak_prefix": "",
+            "system_template": "",
+        }
+    )
     memory_summary: str = ""
     style: str = ""
     current_chapter: int = 0
@@ -289,18 +295,11 @@ class FileRepository:
             status=status,
             created_at=_china_now(),
         )
-        self._write_json(
-            self._book_chapters_dir(book_id) / f"{chapter_number}.json",
-            chapter.model_dump(),
-        )
+        self._write_json(self._book_chapters_dir(book_id) / f"{chapter_number}.json", chapter.model_dump())
         return chapter
 
     def update_chapter(
-        self,
-        chapter: Chapter,
-        title: str | None = None,
-        content: str | None = None,
-        status: str | None = None,
+        self, chapter: Chapter, title: str | None = None, content: str | None = None, status: str | None = None
     ) -> Chapter:
         if title is not None:
             chapter.title = title
@@ -309,8 +308,7 @@ class FileRepository:
         if status is not None:
             chapter.status = status
         self._write_json(
-            self._book_chapters_dir(chapter.book_id) / f"{chapter.chapter_number}.json",
-            chapter.model_dump(),
+            self._book_chapters_dir(chapter.book_id) / f"{chapter.chapter_number}.json", chapter.model_dump()
         )
         return chapter
 
@@ -350,12 +348,7 @@ class FileRepository:
 
     def insert_chapter_at(self, book_id: int, position: int, title: str, core_event: str = "") -> Chapter:
         self.renumber_chapters(book_id, position)
-        chapter = self.create_chapter(
-            book_id=book_id,
-            chapter_number=position,
-            title=title,
-            core_event=core_event,
-        )
+        chapter = self.create_chapter(book_id=book_id, chapter_number=position, title=title, core_event=core_event)
         return chapter
 
     # ── GlobalConfig ──────────────────────────────────────────────
@@ -443,6 +436,13 @@ class FileRepository:
 
     def get_character_card(self, item_id: int) -> CharacterCard | None:
         return self._material_get(CharacterCard, "character_cards", item_id)
+
+    def get_character_card_by_title(self, title: str) -> CharacterCard | None:
+        cards = self.get_character_cards()
+        for card in cards:
+            if card.title == title:
+                return card
+        return None
 
     def create_character_card(self, **data) -> CharacterCard:
         return self._material_create(CharacterCard, "character_cards", data)

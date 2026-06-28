@@ -8,10 +8,20 @@
       {% elif item_type == 'init' %}编辑初始化数据
       {% endif %}
     </h3>
-    <form method="post" action="{{ action_url }}">
+    {% if duplicate_warning %}
+    <div class="alert alert-warning shadow-lg mb-3">
+      <div>
+        <span>同名人物卡「{{ duplicate_warning.title }}」已存在，是否继续保存？</span>
+      </div>
+    </div>
+    {% endif %}
+    <form method="post" action="{{ action_url }}"
+      {% if item_type == 'character' %}
+      hx-post="{{ action_url }}" hx-target="#editModal" hx-swap="outerHTML"
+      {% endif %}>
       <div class="form-control mb-2">
         <label class="label"><span class="label-text">标题</span></label>
-        <input type="text" name="title" value="{{ item.title }}" required class="input input-bordered" />
+        <input type="text" name="title" value="{{ duplicate_warning.title if duplicate_warning else item.title }}" required class="input input-bordered" />
       </div>
       {% if item_type == 'init' %}
       <div class="form-control mb-2">
@@ -21,7 +31,7 @@
       {% endif %}
       <div class="form-control mb-2">
         <label class="label"><span class="label-text">内容</span></label>
-        <textarea name="content" rows="6" class="textarea textarea-bordered">{{ item.content }}</textarea>
+        <textarea name="content" rows="6" class="textarea textarea-bordered">{{ duplicate_warning.content if duplicate_warning else item.content }}</textarea>
       </div>
       {% if show_default %}
       <div class="form-control mb-4">
@@ -31,9 +41,14 @@
         </label>
       </div>
       {% endif %}
+      {% if duplicate_warning %}
+      <input type="hidden" name="confirm_overwrite" value="1">
+      {% endif %}
       <div class="modal-action">
         <button type="button" class="btn" hx-on="click: document.getElementById('editModal').close()">取消</button>
-        <button type="submit" class="btn btn-primary">保存</button>
+        <button type="submit" class="btn {% if duplicate_warning %}btn-warning{% else %}btn-primary{% endif %}">
+          {% if duplicate_warning %}确认覆盖保存{% else %}保存{% endif %}
+        </button>
       </div>
     </form>
   </div>

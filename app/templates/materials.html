@@ -123,10 +123,13 @@
         id="character-tab"
         class="tab-content {% if active_tab == 'character' %}block{% else %}hidden{% endif %}"
       >
-        <div class="card bg-base-100 shadow-md mb-4">
+        <div id="character-form-container" class="card bg-base-100 shadow-md mb-4">
           <div class="card-body">
             <h2 class="card-title">新增人物卡</h2>
-            <form method="post" action="/materials/character-cards">
+            <form method="post" action="/materials/character-cards"
+                  hx-post="/materials/character-cards"
+                  hx-target="#character-form-container"
+                  hx-swap="outerHTML">
               <div class="form-control mb-2">
                 <input
                   type="text"

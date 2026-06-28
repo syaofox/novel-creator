@@ -1,0 +1,43 @@
+<div id="character-form-container" class="card bg-base-100 shadow-md mb-4">
+  <div class="card-body">
+    <div id="duplicate-warning" class="alert alert-warning shadow-lg mb-3">
+      <div>
+        <span>同名人物卡「{{ title }}」已存在，是否继续保存？</span>
+        <div class="mt-1 text-sm opacity-80">
+          已存在内容: {{ existing.content[:80] }}{% if existing.content|length > 80 %}...{% endif %}
+        </div>
+      </div>
+      <div class="flex gap-2 flex-shrink-0">
+        <form hx-post="/materials/character-cards" hx-target="#character-form-container" hx-swap="outerHTML">
+          <input type="hidden" name="title" value="{{ title }}">
+          <input type="hidden" name="content" value="{{ content }}">
+          <input type="hidden" name="confirm_overwrite" value="1">
+          {% if source %}
+          <input type="hidden" name="source" value="{{ source }}">
+          {% endif %}
+          {% if auto_title %}
+          <input type="hidden" name="auto_title" value="{{ auto_title }}">
+          {% endif %}
+          <button type="submit" class="btn btn-warning btn-sm">覆盖保存</button>
+        </form>
+        <button type="button" class="btn btn-sm" onclick="document.getElementById('duplicate-warning').remove()">换名字</button>
+      </div>
+    </div>
+    <h2 class="card-title">新增人物卡</h2>
+    <form hx-post="/materials/character-cards" hx-target="#character-form-container" hx-swap="outerHTML">
+      <div class="form-control mb-2">
+        <input type="text" name="title" value="{{ title }}" required placeholder="人物名称" class="input input-bordered" />
+      </div>
+      <div class="form-control mb-2">
+        <textarea name="content" rows="4" placeholder="人物设定、性格、背景..." class="textarea textarea-bordered">{{ content }}</textarea>
+      </div>
+      {% if source %}
+      <input type="hidden" name="source" value="{{ source }}">
+      {% endif %}
+      {% if auto_title %}
+      <input type="hidden" name="auto_title" value="{{ auto_title }}">
+      {% endif %}
+      <button type="submit" class="btn btn-primary">保存</button>
+    </form>
+  </div>
+</div>

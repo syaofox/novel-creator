@@ -37,11 +37,7 @@ async def materials_page(request: Request, repo: RepoDep, tab: str = Query(defau
 
 @router.post("/plot-summaries", response_class=HTMLResponse)
 async def create_plot_summary(
-    request: Request,
-    repo: RepoDep,
-    title: str = Form(...),
-    content: str = Form(""),
-    source: str = Form(None),
+    request: Request, repo: RepoDep, title: str = Form(...), content: str = Form(""), source: str = Form(None)
 ):
     new_plot = repo.create_plot_summary(title=title, content=content)
 
@@ -139,10 +135,34 @@ def split_characters(content: str) -> list[dict[str, str]]:
 
 
 @router.post("/character-cards/split-save", response_class=HTMLResponse)
-async def split_save_character_cards(request: Request, repo: RepoDep, content: str = Form(...)):
+async def split_save_character_cards(
+    request: Request, repo: RepoDep, content: str = Form(...), confirm_overwrite: int = Form(0)
+):
     characters = split_characters(content)
-    saved_cards = []
+    duplicate_names = []
 
+    if not characters:
+        title = "未命名人物卡"
+        if repo.get_character_card_by_title(title):
+            duplicate_names.append(title)
+    else:
+        for char in characters:
+            existing = repo.get_character_card_by_title(char["name"])
+            if existing:
+                duplicate_names.append(char["name"])
+
+    if duplicate_names and not confirm_overwrite:
+        templates = get_templates()
+        return templates.TemplateResponse(
+            request,
+            "partials/split_save_modal_content.html",
+            {
+                "content": content,
+                "duplicate_names": duplicate_names,
+            },
+        )
+
+    saved_cards = []
     if not characters:
         card = repo.create_character_card(title="未命名人物卡", content=content)
         saved_cards = [{"id": card.id, "name": card.title}]
@@ -153,6 +173,8 @@ async def split_save_character_cards(request: Request, repo: RepoDep, content: s
 
     response = HTMLResponse(content=f'<input type="hidden" name="saved_count" value="{len(saved_cards)}">')
     response.headers["X-New-Ids"] = json.dumps(saved_cards)
+    if duplicate_names:
+        response.headers["X-Duplicate-Names"] = json.dumps(duplicate_names)
     return response
 
 
@@ -164,9 +186,19 @@ async def create_character_card(
     content: str = Form(""),
     source: str = Form(None),
     auto_title: int = Form(0),
+    confirm_overwrite: int = Form(0),
 ):
     if auto_title == 1 or not title.strip():
         title = generate_character_card_title(content)
+
+    existing = repo.get_character_card_by_title(title)
+    if existing and not confirm_overwrite:
+        templates = get_templates()
+        return templates.TemplateResponse(
+            request,
+            "partials/character_duplicate_warning.html",
+            {"title": title, "content": content, "existing": existing, "source": source, "auto_title": auto_title},
+        )
 
     card = repo.create_character_card(title=title, content=content)
 
@@ -175,17 +207,42 @@ async def create_character_card(
         response.headers["X-New-Id"] = str(card.id)
         return response
 
-    return RedirectResponse(url="/materials?tab=character", status_code=303)
+    response = HTMLResponse("")
+    response.headers["HX-Redirect"] = "/materials?tab=character"
+    return response
 
 
 @router.post("/character-cards/{card_id}", response_class=HTMLResponse)
 async def update_character_card(
-    request: Request, card_id: int, repo: RepoDep, title: str = Form(...), content: str = Form("")
+    request: Request,
+    card_id: int,
+    repo: RepoDep,
+    title: str = Form(...),
+    content: str = Form(""),
+    confirm_overwrite: int = Form(0),
 ):
-    updated = repo.update_character_card(card_id, title=title, content=content)
-    if not updated:
+    card = repo.get_character_card(card_id)
+    if not card:
         raise HTTPException(status_code=404, detail="人物卡不存在")
-    return RedirectResponse(url="/materials?tab=character", status_code=303)
+
+    existing = repo.get_character_card_by_title(title)
+    if existing and existing.id != card_id and not confirm_overwrite:
+        templates = get_templates()
+        return templates.TemplateResponse(
+            request,
+            "partials/edit_modal.html",
+            {
+                "item": card,
+                "item_type": "character",
+                "action_url": f"/materials/character-cards/{card_id}",
+                "duplicate_warning": {"title": title, "content": content, "existing_title": existing.title},
+            },
+        )
+
+    repo.update_character_card(card_id, title=title, content=content)
+    response = HTMLResponse("")
+    response.headers["HX-Redirect"] = "/materials?tab=character"
+    return response
 
 
 @router.post("/character-cards/{card_id}/delete", response_class=HTMLResponse)
@@ -276,11 +333,7 @@ async def delete_writing_style(style_id: int, repo: RepoDep):
 
 @router.post("/material-notes", response_class=HTMLResponse)
 async def create_material_note(
-    request: Request,
-    repo: RepoDep,
-    title: str = Form(...),
-    content: str = Form(""),
-    source: str = Form(None),
+    request: Request, repo: RepoDep, title: str = Form(...), content: str = Form(""), source: str = Form(None)
 ):
     new_note = repo.create_material_note(title=title, content=content)
 
@@ -390,11 +443,7 @@ async def edit_writing_style_modal(request: Request, style_id: int, repo: RepoDe
 
 @router.post("/book-init-data", response_class=HTMLResponse)
 async def create_book_init_data(
-    request: Request,
-    repo: RepoDep,
-    title: str = Form(...),
-    content: str = Form(""),
-    book_title: str = Form(""),
+    request: Request, repo: RepoDep, title: str = Form(...), content: str = Form(""), book_title: str = Form("")
 ):
     repo.create_book_init_data(title=title, content=content, book_title=book_title)
     return RedirectResponse(url="/materials?tab=init", status_code=303)

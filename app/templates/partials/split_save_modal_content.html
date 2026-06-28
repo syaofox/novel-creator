@@ -1,0 +1,31 @@
+{% if duplicate_names %}
+<div id="split-save-warning" class="alert alert-warning shadow-lg mb-3">
+  <div>
+    <span>发现同名人物: {{ duplicate_names|join('、') }}，是否继续保存？</span>
+  </div>
+  <div class="flex gap-2 flex-shrink-0 mt-2">
+    <form hx-post="/materials/character-cards/split-save" hx-target="#split-save-container" hx-swap="innerHTML">
+      <input type="hidden" name="content" value="{{ content }}">
+      <input type="hidden" name="confirm_overwrite" value="1">
+      <button type="submit" class="btn btn-warning btn-sm">覆盖保存</button>
+    </form>
+    <button type="button" class="btn btn-sm" onclick="document.getElementById('split-save-warning').remove()">换名字</button>
+  </div>
+</div>
+{% endif %}
+<h3 class="font-bold text-lg">保存人物卡</h3>
+<div id="characterSaveStatus" class="{% if content %}hidden{% endif %} mb-3 p-3 bg-base-200 rounded-lg">
+  <p class="text-sm text-info">检测到 <span id="characterCount">0</span> 个人物，将保存为独立的素材</p>
+</div>
+<form hx-post="/materials/character-cards/split-save" hx-target="#split-save-container" hx-swap="innerHTML">
+  <div class="form-control mb-2">
+    <label class="label">
+      <span class="label-text">内容（多人物用空行分隔，将自动拆分为独立素材）</span>
+    </label>
+    <textarea id="characterContentForSave" name="content" rows="8" class="textarea textarea-bordered" placeholder="张三: 主角，二十岁&#10;外貌：...&#10;&#10;李四: 配角，十八岁&#10;外貌：..." oninput="previewCharacterSplit()">{{ content }}</textarea>
+  </div>
+  <div class="modal-action">
+    <button type="button" class="btn" onclick="document.getElementById('createCharacterModal').close()">取消</button>
+    <button type="submit" class="btn btn-primary">保存</button>
+  </div>
+</form>

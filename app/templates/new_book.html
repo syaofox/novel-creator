@@ -536,9 +536,16 @@
     }
 
     function handleCharacterSplitSave(event) {
+      const newIdsHeader = event.detail.xhr.getResponseHeader('X-New-Ids');
+      const duplicateHeader = event.detail.xhr.getResponseHeader('X-Duplicate-Names');
+      
+      // Do not close modal when duplicate warning was shown (no save happened)
+      if (!newIdsHeader) {
+        return;
+      }
+      
       document.getElementById('createCharacterModal').close();
       
-      const newIdsHeader = event.detail.xhr.getResponseHeader('X-New-Ids');
       let message = '人物卡保存成功';
       
       if (newIdsHeader) {
@@ -553,14 +560,29 @@
         } catch (e) {}
       }
       
+      if (duplicateHeader) {
+        try {
+          const duplicates = JSON.parse(duplicateHeader);
+          if (duplicates.length > 0) {
+            message += '（同名人物: ' + duplicates.join('、') + '）';
+          }
+        } catch (e) {}
+      }
+      
       const toast = document.createElement('div');
       toast.className = 'toast toast-top toast-center';
-      toast.innerHTML = `<div class="alert alert-success"><span>${message}</span></div>`;
+      toast.innerHTML = `<div class="alert alert-${duplicateHeader ? 'warning' : 'success'}"><span>${message}</span></div>`;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 4000);
       
-      document.getElementById('characterContentForSave').value = '';
-      document.getElementById('characterSaveStatus').classList.add('hidden');
+      const contentField = document.getElementById('characterContentForSave');
+      if (contentField) {
+        contentField.value = '';
+      }
+      const statusEl = document.getElementById('characterSaveStatus');
+      if (statusEl) {
+        statusEl.classList.add('hidden');
+      }
     }
 
     function handleMaterialCreate(selectId, modalId, newId) {
@@ -727,22 +749,11 @@
 
   <dialog id="createCharacterModal" class="modal">
     <div class="modal-box max-w-lg">
-      <h3 class="font-bold text-lg">保存人物卡</h3>
-      <div id="characterSaveStatus" class="hidden mb-3 p-3 bg-base-200 rounded-lg">
-        <p class="text-sm text-info">检测到 <span id="characterCount">0</span> 个人物，将保存为独立的素材</p>
+      <div id="split-save-container" hx-on::after-request="if(event.detail.successful) { handleCharacterSplitSave(event); }">
+        {% with content = "", duplicate_names = [] %}
+        {% include "partials/split_save_modal_content.html" %}
+        {% endwith %}
       </div>
-      <form hx-post="/materials/character-cards/split-save" hx-target="#characterModal" hx-swap="beforebegin" hx-on::after-request="if(event.detail.successful) { handleCharacterSplitSave(event); }">
-        <div class="form-control mb-2">
-          <label class="label">
-            <span class="label-text">内容（多人物用空行分隔，将自动拆分为独立素材）</span>
-          </label>
-          <textarea id="characterContentForSave" name="content" rows="8" class="textarea textarea-bordered" placeholder="张三: 主角，二十岁&#10;外貌：...&#10;&#10;李四: 配角，十八岁&#10;外貌：..." oninput="previewCharacterSplit()"></textarea>
-        </div>
-        <div class="modal-action">
-          <button type="button" class="btn" onclick="document.getElementById('createCharacterModal').close()">取消</button>
-          <button type="submit" class="btn btn-primary">保存</button>
-        </div>
-      </form>
     </div>
     <form method="dialog" class="modal-backdrop">
       <button>close</button>
