@@ -40,10 +40,19 @@ PROMPT_DEFAULTS: dict[str, str] = {
 }
 
 
-def get_agent_prompt(global_config: dict[str, Any] | None, key: str) -> str:
-    """获取 Agent prompt，优先使用全局配置，否则返回代码默认值"""
+def get_agent_prompt(global_config: dict[str, Any] | None, key: str, book: Book | None = None) -> str:
+    """获取 Agent prompt，按 book.config → global_config.agent_prompts → PROMPT_DEFAULTS 优先级解析"""
+    if book:
+        book_config = book.config if book.config is not None else {}
+        if key in book_config and book_config[key]:
+            return book_config[key]
+
     agent_prompts = (global_config or {}).get("agent_prompts", {}) if global_config else {}
-    return agent_prompts.get(key) or PROMPT_DEFAULTS.get(key, "")
+    value = agent_prompts.get(key)
+    if value:
+        return value
+
+    return PROMPT_DEFAULTS.get(key, "")
 
 
 def get_config_value(book: Book | None, global_config: dict[str, Any] | None, key: str, default: Any) -> Any:

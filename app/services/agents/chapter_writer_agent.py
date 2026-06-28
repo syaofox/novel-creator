@@ -36,7 +36,7 @@ class ChapterWriterAgent(BaseAgent):
         return base
 
     def build_prompt(self, chapter_number: int, core_event: str, prev_ending: str) -> str:
-        user_prompt = get_agent_prompt(self.global_config, "chapter_writer_user_prompt")
+        user_prompt = get_agent_prompt(self.global_config, "chapter_writer_user_prompt", self.book)
         return user_prompt.format(
             chapter_number=chapter_number, core_event=core_event, prev_ending=prev_ending
         )

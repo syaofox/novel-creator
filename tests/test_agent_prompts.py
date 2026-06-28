@@ -57,6 +57,47 @@ class TestGetAgentPrompt:
             assert key in PROMPT_DEFAULTS, f"Missing default for {key}"
             assert PROMPT_DEFAULTS[key], f"Empty default for {key}"
 
+    # ── book-level override tests ──
+
+    def _mock_book(self, **config_overrides) -> MagicMock:
+        from app.repositories.file_repository import Book
+        book = MagicMock(spec=Book)
+        book.config = dict(config_overrides)
+        return book
+
+    def test_book_override_takes_precedence_over_global(self):
+        book = self._mock_book(chapter_writer_user_prompt="book-level prompt {chapter_number}")
+        global_config = {"agent_prompts": {"chapter_writer_user_prompt": "global prompt"}}
+        result = get_agent_prompt(global_config, "chapter_writer_user_prompt", book)
+        assert result == "book-level prompt {chapter_number}"
+
+    def test_book_override_precedes_default(self):
+        book = self._mock_book(summary_system_prompt="book summary prompt")
+        result = get_agent_prompt(None, "summary_system_prompt", book)
+        assert result == "book summary prompt"
+
+    def test_global_config_used_when_book_has_no_key(self):
+        book = self._mock_book(temperature=0.5)
+        global_config = {"agent_prompts": {"chapter_writer_user_prompt": "global fallback"}}
+        result = get_agent_prompt(global_config, "chapter_writer_user_prompt", book)
+        assert result == "global fallback"
+
+    def test_default_used_when_neither_book_nor_global_has_key(self):
+        book = self._mock_book(temperature=0.5)
+        result = get_agent_prompt(None, "chapter_writer_user_prompt", book)
+        assert "{chapter_number}" in result
+
+    def test_book_empty_string_falls_through(self):
+        book = self._mock_book(chapter_writer_user_prompt="")
+        result = get_agent_prompt(None, "chapter_writer_user_prompt", book)
+        assert "{chapter_number}" in result
+
+    def test_book_none_config(self):
+        book = self._mock_book()
+        book.config = None
+        result = get_agent_prompt(None, "chapter_writer_user_prompt", book)
+        assert "{chapter_number}" in result
+
 
 class TestAgentUsesConfigPrompts:
     def test_summary_system_prompt_from_config(self, ai_service):

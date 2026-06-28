@@ -23,7 +23,7 @@ class SummaryAgent(BaseAgent):
         super().__init__(ai_service, book, global_config)
 
     def _get_role_prompt(self) -> str:
-        return get_agent_prompt(self.global_config, "summary_system_prompt")
+        return get_agent_prompt(self.global_config, "summary_system_prompt", self.book)
 
     def build_prompt(
         self,
@@ -35,7 +35,7 @@ class SummaryAgent(BaseAgent):
     ) -> str:
         memory_summary = getattr(self.book, "memory_summary", "")
         if is_last_chapter:
-            user_prompt = get_agent_prompt(self.global_config, "summary_user_prompt_last")
+            user_prompt = get_agent_prompt(self.global_config, "summary_user_prompt_last", self.book)
             return user_prompt.format(
                 old_summary=memory_summary,
                 new_chapter=new_chapter,
@@ -43,7 +43,7 @@ class SummaryAgent(BaseAgent):
                 chapter_title=chapter_title,
             )
         else:
-            user_prompt = get_agent_prompt(self.global_config, "summary_user_prompt")
+            user_prompt = get_agent_prompt(self.global_config, "summary_user_prompt", self.book)
             return user_prompt.format(
                 old_summary=memory_summary,
                 new_chapter=new_chapter,

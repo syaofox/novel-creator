@@ -17,6 +17,8 @@ from app.constants import (
     AGENT_NAMES,
 )
 
+BOOK_PROMPT_KEYS = ["chapter_writer_user_prompt", "summary_system_prompt", "summary_user_prompt", "summary_user_prompt_last"]
+
 book_settings_router = APIRouter(prefix="/books/{book_id}/settings", tags=["book_settings"])
 
 
@@ -42,6 +44,12 @@ async def save_settings(request: Request, book_id: int, repo: RepoDep):
     config["stream"] = form.get("stream") == "on"
     config["jailbreak_prefix"] = form.get("jailbreak_prefix", config.get("jailbreak_prefix", ""))
     config["system_template"] = form.get("system_template", config.get("system_template", ""))
+    for key in BOOK_PROMPT_KEYS:
+        value = form.get(f"prompt_{key}")
+        if value:
+            config[key] = value
+        else:
+            config.pop(key, None)
     book.config = config
     repo.update_book(book)
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)

@@ -44,6 +44,44 @@
             </label>
             <textarea name="system_template" rows="6" class="textarea">{{ book.config.system_template }}</textarea>
         </div>
+
+        <div class="divider">Prompt 覆盖（留空则使用全局/默认值）</div>
+
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">章节写作 - 用户提问</span>
+            </label>
+            <span class="text-xs text-base-content/60 mb-1">覆盖全局的章节写作 user prompt，仅作用于本书</span>
+            <span class="text-xs text-warning mb-1">可用 {chapter_number} {core_event} {prev_ending} 占位符</span>
+            <textarea name="prompt_chapter_writer_user_prompt" rows="4" class="textarea font-mono text-sm">{{ book.config.get("chapter_writer_user_prompt", "") }}</textarea>
+        </div>
+
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">摘要更新 - 系统提示</span>
+            </label>
+            <span class="text-xs text-base-content/60 mb-1">覆盖全局的摘要 system prompt，含全部格式说明。修改后需同步调整 user prompt</span>
+            <textarea name="prompt_summary_system_prompt" rows="4" class="textarea font-mono text-sm">{{ book.config.get("summary_system_prompt", "") }}</textarea>
+        </div>
+
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">摘要更新 - 用户提问（有下一章）</span>
+            </label>
+            <span class="text-xs text-base-content/60 mb-1">覆盖全局的摘要 user prompt（非末章），仅放动态数据</span>
+            <span class="text-xs text-warning mb-1">可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} {next_chapter} 占位符</span>
+            <textarea name="prompt_summary_user_prompt" rows="4" class="textarea font-mono text-sm">{{ book.config.get("summary_user_prompt", "") }}</textarea>
+        </div>
+
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">摘要更新 - 用户提问（最后一章）</span>
+            </label>
+            <span class="text-xs text-base-content/60 mb-1">覆盖全局的摘要 user prompt（末章），仅放动态数据</span>
+            <span class="text-xs text-warning mb-1">可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} 占位符</span>
+            <textarea name="prompt_summary_user_prompt_last" rows="4" class="textarea font-mono text-sm">{{ book.config.get("summary_user_prompt_last", "") }}</textarea>
+        </div>
+
         <div class="form-control mt-6">
             <button type="submit" class="btn btn-primary">保存设置</button>
             <a href="/books/{{ book.id }}" class="btn btn-ghost">取消</a>
