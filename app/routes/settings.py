@@ -17,7 +17,7 @@ from app.constants import (
     AGENT_NAMES,
 )
 
-BOOK_PROMPT_KEYS = ["chapter_writer_user_prompt", "summary_system_prompt", "summary_user_prompt", "summary_user_prompt_last"]
+BOOK_PROMPT_KEYS = ["chapter_writer_user_prompt", "summary_system_prompt", "summary_user_prompt", "summary_user_prompt_last", "optimize_outline_user_prompt"]
 
 book_settings_router = APIRouter(prefix="/books/{book_id}/settings", tags=["book_settings"])
 

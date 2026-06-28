@@ -309,6 +309,28 @@ async def stream_chapter(
     return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
+@router.post("/optimize-outline")
+async def optimize_outline_endpoint(
+    request: Request,
+    book_id: int,
+    repo: RepoDep,
+    service: NovelServiceDep,
+    position: int = Form(...),
+    title: str = Form(...),
+    core_event: str = Form(""),
+):
+    book = service.get_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+
+    try:
+        result = await service.optimize_outline(book, position, title, core_event)
+        return {"title": result.get("title", title), "core_event": result.get("core_event", core_event)}
+    except Exception as e:
+        logger.exception("Error optimizing outline")
+        return {"title": title, "core_event": core_event, "error": str(e)}
+
+
 @router.get("/list", response_class=HTMLResponse)
 async def get_chapter_list(request: Request, book_id: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)

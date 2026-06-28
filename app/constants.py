@@ -43,6 +43,7 @@ AGENT_PROMPT_LABELS: dict[str, str] = {
     "init_book_user_prompt": "书籍初始化 - 用户提问",
     "style_extractor_system_prompt": "风格提取 - 系统提示",
     "style_extractor_user_prompt": "风格提取 - 用户提问",
+    "optimize_outline_user_prompt": "提纲优化 - 用户提问",
 }
 
 AGENT_PROMPT_TIPS: dict[str, str] = {
@@ -54,6 +55,7 @@ AGENT_PROMPT_TIPS: dict[str, str] = {
     "init_book_user_prompt": "可用 {basic_idea} {genre} {target_chapters} 占位符",
     "style_extractor_system_prompt": "",
     "style_extractor_user_prompt": "",
+    "optimize_outline_user_prompt": "可用 {chapter_position} {style} {characters} {world_view} {progress} {foreshadowing} {user_title} {user_core_event} 占位符",
 }
 
 STYLE_PRESETS = {

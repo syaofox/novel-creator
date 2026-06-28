@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from collections.abc import AsyncGenerator
@@ -5,6 +6,8 @@ from collections.abc import AsyncGenerator
 from app.repositories.file_repository import FileRepository, Book, Chapter
 from app.services.ai_service import AiService
 from app.services.agents import ChapterWriterAgent, SummaryAgent
+from app.utils.ai_utils import get_agent_prompt, extract_stable_sections, extract_dynamic_sections
+from app.constants import DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +136,58 @@ class NovelService:
             if len(line) > 5 and len(line) < 100:
                 return line
         return None
+
+    async def optimize_outline(
+        self, book: Book, chapter_position: int, user_title: str, user_core_event: str
+    ) -> dict[str, str]:
+        prompt_template = get_agent_prompt(self.ai_service.global_config, "optimize_outline_user_prompt", book)
+        style = getattr(book, "style", "") or ""
+        memory_summary = getattr(book, "memory_summary", "") or ""
+        stable = extract_stable_sections(memory_summary)
+        characters = ""
+        world_view = ""
+        if stable:
+            c_match = re.search(r"【人物卡】\s*(.*?)(?=\n【|$)", stable, re.DOTALL)
+            if c_match:
+                characters = c_match.group(1).strip()
+            w_match = re.search(r"【世界观】\s*(.*?)(?=\n【|$)", stable, re.DOTALL)
+            if w_match:
+                world_view = w_match.group(1).strip()
+        dynamic = extract_dynamic_sections(memory_summary)
+        progress = ""
+        foreshadowing = ""
+        if dynamic:
+            p_match = re.search(r"【主线进度】\s*(.*?)(?=\n【|$)", dynamic, re.DOTALL)
+            if p_match:
+                progress = p_match.group(1).strip()
+            f_match = re.search(r"【伏笔清单】\s*(.*?)(?=\n【|$)", dynamic, re.DOTALL)
+            if f_match:
+                foreshadowing = f_match.group(1).strip()
+        prompt = prompt_template.format(
+            chapter_position=chapter_position,
+            style=style or "无",
+            characters=characters or "无",
+            world_view=world_view or "无",
+            progress=progress or "无",
+            foreshadowing=foreshadowing or "无",
+            user_title=user_title,
+            user_core_event=user_core_event,
+        )
+        agent_models = self.ai_service.global_config.get("agent_models", {}) or {}
+        model = agent_models.get("chapter_writer") or "deepseek-v4-flash"
+        result = await self.ai_service.call_llm(
+            user_prompt=prompt,
+            system_prompt="你是一个专业的小说创作辅助AI，帮助作者优化章节提纲。",
+            response_format={"type": "json_object"},
+            model=model,
+            temperature=DEFAULT_TEMPERATURE,
+            top_p=DEFAULT_TOP_P,
+            max_tokens=DEFAULT_MAX_TOKENS,
+        )
+        try:
+            return json.loads(result) if isinstance(result, str) else result
+        except (json.JSONDecodeError, TypeError):
+            return {"title": user_title, "core_event": user_core_event}
 
     def finish_book(self, book: Book) -> Book:
         book.status = "已完结"

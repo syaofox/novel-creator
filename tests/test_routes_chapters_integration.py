@@ -160,3 +160,26 @@ class TestChapterRoutes:
         ))
         response = client.get(f"/books/{book.id}/chapters/regenerate?num=5")
         assert response.status_code == 400
+
+    def test_optimize_outline_book_not_found(self, client):
+        response = client.post(
+            "/books/99999/chapters/optimize-outline",
+            data={"position": 1, "title": "标题", "core_event": "事件"},
+        )
+        assert response.status_code == 404
+
+    def test_optimize_outline_success(self, client, repo):
+        book = repo.create_book(Book(
+            id=0, title="测试", genre="仙侠", target_chapters=5, basic_idea="创意",
+            config={},
+            style="语言简洁",
+            memory_summary="【人物卡】\n张三\n【世界观】\n仙侠世界\n【风格规范】\n简洁",
+        ))
+        response = client.post(
+            f"/books/{book.id}/chapters/optimize-outline",
+            data={"position": 1, "title": "测试标题", "core_event": "测试事件"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "title" in data
+        assert "core_event" in data

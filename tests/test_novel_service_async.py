@@ -189,3 +189,20 @@ class TestNovelServiceAsync:
         service_with_mock.add_chapter(sample_book, 1, "新章节")
         updated = service_with_mock.get_book(sample_book.id)
         assert updated.target_chapters >= 1
+
+    @pytest.mark.asyncio
+    async def test_optimize_outline_calls_llm(self, service_with_mock, sample_book):
+        service_with_mock.ai_service.call_llm = AsyncMock(
+            return_value='{"title": "优化标题", "core_event": "优化事件"}'
+        )
+        result = await service_with_mock.optimize_outline(sample_book, 1, "原标题", "原事件")
+        assert result["title"] == "优化标题"
+        assert result["core_event"] == "优化事件"
+        service_with_mock.ai_service.call_llm.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_optimize_outline_fallback_on_invalid_json(self, service_with_mock, sample_book):
+        service_with_mock.ai_service.call_llm = AsyncMock(return_value="非JSON内容")
+        result = await service_with_mock.optimize_outline(sample_book, 1, "原标题", "原事件")
+        assert result["title"] == "原标题"
+        assert result["core_event"] == "原事件"

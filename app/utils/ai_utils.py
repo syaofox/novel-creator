@@ -37,6 +37,7 @@ PROMPT_DEFAULTS: dict[str, str] = {
         '- "content"：详细描述该风格的各个特征，每一条独立成行\n'
         '示例：{"title": "简洁干练", "content": "1. 短句为主，节奏明快\\n2. 多用白描手法\\n3. 叙事直白精炼"}'
     ),
+    "optimize_outline_user_prompt": prompts.OPTIMIZE_OUTLINE_PROMPT,
 }
 
 

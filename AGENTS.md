@@ -66,6 +66,12 @@ books/{book_id}/
 - **System prompt**: fixed role + format instructions
 - **User prompt**: old_summary + new_chapter
 
+### Optimize Outline (`novel_service.py:optimize_outline()`)
+- Not an agent — a direct LLM call from NovelService
+- Used in the `添加新章节` form to optimize user's title + core_event
+- Sends: style + 人物卡 + 世界观 + 主线进度 + 伏笔清单 + user's draft
+- Configurable via `optimize_outline_user_prompt` (global / per-book)
+
 ## Running Tests
 
 ```bash

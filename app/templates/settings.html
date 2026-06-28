@@ -86,6 +86,16 @@
             <textarea name="prompt_summary_user_prompt_last" rows="4" class="textarea font-mono text-sm">{{ book_summary_upl }}</textarea>
         </div>
 
+        {% set book_optimize_outline = book.config.get("optimize_outline_user_prompt") or prompt_defaults["optimize_outline_user_prompt"] %}
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text">提纲优化 - 用户提问</span>
+            </label>
+            <span class="text-xs text-base-content/60 mb-1">覆盖全局的提纲优化 user prompt，用于 AI 优化用户添加新章节时的标题和核心事件。留空则使用全局/默认值</span>
+            <span class="text-xs text-warning mb-1">可用 {chapter_position} {style} {characters} {world_view} {progress} {foreshadowing} {user_title} {user_core_event} 占位符</span>
+            <textarea name="prompt_optimize_outline_user_prompt" rows="4" class="textarea font-mono text-sm">{{ book_optimize_outline }}</textarea>
+        </div>
+
         <div class="form-control mt-6">
             <button type="submit" class="btn btn-primary">保存设置</button>
             <a href="/books/{{ book.id }}" class="btn btn-ghost">取消</a>
