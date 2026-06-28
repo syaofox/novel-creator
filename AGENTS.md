@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-FastAPI + Pydantic 长篇小说创作平台，使用 DeepSeek API v4，**纯文件存储**(JSON)替代 SQLite。
+FastAPI + Pydantic 长篇小说创作平台，使用 DeepSeek API v4，**纯文件存储**(JSON)。
 
 ## Architecture
 
