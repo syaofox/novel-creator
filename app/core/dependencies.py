@@ -25,11 +25,9 @@ def get_ai_service(repo: FileRepository = Depends(get_repo)) -> AiService:
     global_config = get_global_config_dict(repo)
     api_key = global_config.get("deepseek_api_key") or app_settings.deepseek_api_key
     base_url = global_config.get("deepseek_base_url") or app_settings.deepseek_base_url
-    model = global_config.get("default_model") or app_settings.default_model
     return AiService(
         api_key=api_key,
         base_url=base_url,
-        model=model,
         global_config=global_config,
     )
 

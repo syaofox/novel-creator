@@ -159,7 +159,6 @@ async def generate_chapter(
     global_config = {
         "deepseek_api_key": app_settings.deepseek_api_key,
         "deepseek_base_url": app_settings.deepseek_base_url,
-        "default_model": app_settings.default_model,
         "temperature": book.config.get("temperature"),
         "top_p": book.config.get("top_p"),
         "max_tokens": book.config.get("max_tokens"),
@@ -167,7 +166,6 @@ async def generate_chapter(
     ai_service = AiService(
         api_key=global_config.get("deepseek_api_key") or app_settings.deepseek_api_key,
         base_url=global_config.get("deepseek_base_url") or app_settings.deepseek_base_url,
-        model=global_config.get("default_model") or app_settings.default_model,
         global_config=global_config,
     )
     agent = ChapterWriterAgent(ai_service, book, global_config)
@@ -237,11 +235,11 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, repo: Rep
     global_config = {
         "deepseek_api_key": app_settings.deepseek_api_key,
         "deepseek_base_url": app_settings.deepseek_base_url,
-        "default_model": app_settings.default_model,
     }
     ai_service = AiService(
         api_key=global_config.get("deepseek_api_key") or app_settings.deepseek_api_key,
         base_url=global_config.get("deepseek_base_url") or app_settings.deepseek_base_url,
+        global_config=global_config,
     )
     agent = ChapterWriterAgent(ai_service, book, global_config)
     try:

@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class ChapterWriterAgent(BaseAgent):
+    AGENT_NAME = "chapter_writer"
     AGENT_MODEL = "deepseek-v4-flash"
     THINKING_MODE = False
 

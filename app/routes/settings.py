@@ -11,7 +11,7 @@ from app.constants import (
     DEFAULT_STREAM,
     DEFAULT_JAILBREAK_PREFIX,
     DEFAULT_SYSTEM_TEMPLATE,
-    DEFAULT_MODEL,
+    AGENT_NAMES,
 )
 
 book_settings_router = APIRouter(prefix="/books/{book_id}/settings", tags=["book_settings"])
@@ -63,7 +63,12 @@ async def save_global_settings(request: Request, repo: RepoDep):
     config = repo.get_global_config()
     config.deepseek_api_key = form.get("deepseek_api_key", config.deepseek_api_key or "")
     config.deepseek_base_url = form.get("deepseek_base_url", config.deepseek_base_url or "https://api.deepseek.com")
-    config.default_model = form.get("default_model", config.default_model or DEFAULT_MODEL)
+    agent_models: dict[str, str] = {}
+    for agent_name in AGENT_NAMES:
+        value = form.get(f"agent_model_{agent_name}")
+        if value:
+            agent_models[agent_name] = value
+    config.agent_models = agent_models
     config.temperature = float(form.get("temperature", config.temperature if config.temperature is not None else DEFAULT_TEMPERATURE))
     config.top_p = float(form.get("top_p", config.top_p if config.top_p is not None else DEFAULT_TOP_P))
     config.max_tokens = int(form.get("max_tokens", config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS))

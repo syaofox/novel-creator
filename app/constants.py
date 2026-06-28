@@ -6,8 +6,18 @@ DEFAULT_TEMPERATURE = 0.78
 DEFAULT_TOP_P = 0.92
 DEFAULT_MAX_TOKENS = 16384
 DEFAULT_STREAM = True
-DEFAULT_MODEL = "deepseek-v4-pro"
-DEFAULT_MODEL_FLASH = "deepseek-v4-flash"
+DEFAULT_AGENT_MODEL = "deepseek-v4-flash"
+MODEL_PRO = "deepseek-v4-pro"
+MODEL_FLASH = "deepseek-v4-flash"
+
+AGENT_NAMES: dict[str, str] = {
+    "chapter_writer": "章节写作",
+    "summary": "摘要更新",
+    "init_book": "书籍初始化",
+    "style_extractor": "风格提取",
+}
+
+AGENT_MODEL_OPTIONS: list[str] = [MODEL_FLASH, MODEL_PRO]
 DEFAULT_REASONING_EFFORT = "high"
 MAX_TOKENS_LIMIT = 384000
 

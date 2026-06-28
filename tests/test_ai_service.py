@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock
 from app.utils.ai_utils import extract_json, get_config_value
 from app.services.ai_service import AiService, _build_extra_body
-from app.constants import DEFAULT_MODEL, DEFAULT_MODEL_FLASH, DEFAULT_REASONING_EFFORT, MAX_TOKENS_LIMIT, DEFAULT_MAX_TOKENS
+from app.constants import MODEL_PRO, MODEL_FLASH, DEFAULT_AGENT_MODEL, DEFAULT_REASONING_EFFORT, MAX_TOKENS_LIMIT, DEFAULT_MAX_TOKENS
 
 
 class TestBuildExtraBody:
@@ -27,15 +27,18 @@ class TestAiServiceDefaults:
     def test_default_base_url(self):
         assert AiService(api_key="test").client.base_url == "https://api.deepseek.com"
 
-    def test_default_model(self):
-        service = AiService(api_key="test")
-        assert service.model == DEFAULT_MODEL
+    def test_init_model_stored_for_logging(self):
+        service = AiService(api_key="test", model="custom-model")
+        assert service.model == "custom-model"
 
-    def test_default_model_is_v4_pro(self):
-        assert DEFAULT_MODEL == "deepseek-v4-pro"
+    def test_default_agent_model(self):
+        assert DEFAULT_AGENT_MODEL == "deepseek-v4-flash"
 
-    def test_default_model_flash(self):
-        assert DEFAULT_MODEL_FLASH == "deepseek-v4-flash"
+    def test_model_flash(self):
+        assert MODEL_FLASH == "deepseek-v4-flash"
+
+    def test_model_pro(self):
+        assert MODEL_PRO == "deepseek-v4-pro"
 
     def test_default_reasoning_effort(self):
         assert DEFAULT_REASONING_EFFORT == "high"
@@ -59,16 +62,16 @@ class TestAiServiceCallLlm:
         )
         return svc
 
-    async def test_model_override(self, service):
+    async def test_model_passed(self, service):
         result = await service.call_llm(user_prompt="hello", model="deepseek-v4-flash")
         assert result == "test response"
         call_kwargs = service.client.chat.completions.create.call_args[1]
         assert call_kwargs["model"] == "deepseek-v4-flash"
 
-    async def test_default_model_used(self, service):
-        await service.call_llm(user_prompt="hello")
+    async def test_model_empty_string(self, service):
+        await service.call_llm(user_prompt="hello", model="")
         call_kwargs = service.client.chat.completions.create.call_args[1]
-        assert call_kwargs["model"] == DEFAULT_MODEL
+        assert call_kwargs["model"] == ""
 
     async def test_thinking_mode_enabled(self, service):
         await service.call_llm(user_prompt="hello", thinking_mode=True, reasoning_effort="high")

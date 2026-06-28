@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class SummaryAgent(BaseAgent):
-    AGENT_MODEL = "deepseek-v4-pro"
+    AGENT_NAME = "summary"
+    AGENT_MODEL = "deepseek-v4-flash"
     THINKING_MODE = True
 
     def __init__(self, ai_service: AiService, book: Book, global_config: dict[str, Any] | None = None):

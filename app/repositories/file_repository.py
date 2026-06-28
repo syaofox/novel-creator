@@ -60,7 +60,7 @@ class GlobalConfig(BaseModel):
     id: int = 1
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
-    default_model: str = "deepseek-v4-pro"
+    agent_models: dict[str, str] = {}
     temperature: float = 0.78
     top_p: float = 0.92
     max_tokens: int = 16384

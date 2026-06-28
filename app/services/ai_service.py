@@ -87,7 +87,7 @@ class AiService:
         max_tokens: int | None = None,
         top_p: float | None = None,
         response_format: dict[str, str] | None = None,
-        model: str | None = None,
+        model: str = "",
         thinking_mode: bool | None = None,
         reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
     ) -> str:
@@ -100,7 +100,7 @@ class AiService:
         messages = self._build_messages(system_prompt, user_prompt)
 
         params: dict[str, Any] = {
-            "model": model or self.model,
+            "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -129,7 +129,7 @@ class AiService:
         max_tokens: int | None = None,
         top_p: float | None = None,
         response_format: dict[str, str] | None = None,
-        model: str | None = None,
+        model: str = "",
         thinking_mode: bool | None = None,
         reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
     ) -> AsyncGenerator[str]:
@@ -142,7 +142,7 @@ class AiService:
         messages = self._build_messages(system_prompt, user_prompt)
 
         params: dict[str, Any] = {
-            "model": model or self.model,
+            "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -198,13 +198,13 @@ class AiService:
         max_tokens: int,
         top_p: float | None = None,
         response_format: dict[str, str] | None = None,
-        model: str | None = None,
+        model: str = "",
         thinking_mode: bool | None = None,
         reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
     ) -> str:
         """直接传递 messages 列表的非流式调用"""
         params: dict[str, Any] = {
-            "model": model or self.model,
+            "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -232,13 +232,13 @@ class AiService:
         max_tokens: int,
         top_p: float | None = None,
         response_format: dict[str, str] | None = None,
-        model: str | None = None,
+        model: str = "",
         thinking_mode: bool | None = None,
         reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
     ) -> AsyncGenerator[str]:
         """直接传递 messages 列表的流式调用"""
         params: dict[str, Any] = {
-            "model": model or self.model,
+            "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,

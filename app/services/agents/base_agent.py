@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAgent(ABC):
+    AGENT_NAME: str | None = None
     AGENT_MODEL: str | None = None
     THINKING_MODE: bool | None = None
     REASONING_EFFORT: str | None = None
@@ -42,10 +43,19 @@ class BaseAgent(ABC):
     def build_prompt(self, **kwargs) -> str:
         return ""
 
+    def _resolve_model(self) -> str | None:
+        model = self.AGENT_MODEL
+        if self.AGENT_NAME:
+            agent_models = self.global_config.get("agent_models", {})
+            if isinstance(agent_models, dict):
+                model = agent_models.get(self.AGENT_NAME) or model
+        return model
+
     def _get_call_kwargs(self) -> dict[str, Any]:
         kwargs: dict[str, Any] = {}
-        if self.AGENT_MODEL is not None:
-            kwargs["model"] = self.AGENT_MODEL
+        model = self._resolve_model()
+        if model is not None:
+            kwargs["model"] = model
         if self.THINKING_MODE is not None:
             kwargs["thinking_mode"] = self.THINKING_MODE
         if self.REASONING_EFFORT is not None:

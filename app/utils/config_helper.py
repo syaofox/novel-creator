@@ -1,5 +1,4 @@
 from app.repositories.file_repository import FileRepository
-from app.constants import DEFAULT_MODEL
 
 
 def get_global_config_dict(repo: FileRepository) -> dict:
@@ -14,5 +13,5 @@ def get_global_config_dict(repo: FileRepository) -> dict:
         "stream": config.stream,
         "jailbreak_prefix": config.jailbreak_prefix or "",
         "system_template": config.system_template or "",
-        "default_model": config.default_model or "",
+        "agent_models": config.agent_models,
     }

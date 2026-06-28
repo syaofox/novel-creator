@@ -16,7 +16,8 @@ _EXTRACT_STYLE_PROMPT = (
 
 
 class StyleExtractorAgent(BaseAgent):
-    AGENT_MODEL = "deepseek-v4-pro"
+    AGENT_NAME = "style_extractor"
+    AGENT_MODEL = "deepseek-v4-flash"
     THINKING_MODE = True
 
     def _get_role_prompt(self) -> str:

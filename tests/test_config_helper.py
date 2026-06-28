@@ -23,7 +23,7 @@ class TestGetGlobalConfigDict:
         gc.stream = True
         gc.jailbreak_prefix = "test_prefix"
         gc.system_template = "test_template"
-        gc.default_model = "gpt-4"
+        gc.agent_models = {"chapter_writer": "deepseek-v4-pro"}
         repo.save_global_config(gc)
 
         result = get_global_config_dict(repo)
@@ -33,7 +33,7 @@ class TestGetGlobalConfigDict:
         assert result["stream"] is True
         assert result["jailbreak_prefix"] == "test_prefix"
         assert result["system_template"] == "test_template"
-        assert result["default_model"] == "gpt-4"
+        assert result["agent_models"] == {"chapter_writer": "deepseek-v4-pro"}
 
     def test_creates_default_config_when_not_exists(self, repo):
         result = get_global_config_dict(repo)
@@ -43,4 +43,4 @@ class TestGetGlobalConfigDict:
         assert "stream" in result
         assert "jailbreak_prefix" in result
         assert "system_template" in result
-        assert "default_model" in result
+        assert "agent_models" in result

@@ -9,7 +9,6 @@ from app.constants import (
     DEFAULT_JAILBREAK_PREFIX,
     DEFAULT_SYSTEM_TEMPLATE,
     DEFAULT_STYLE,
-    DEFAULT_MODEL,
 )
 
 
@@ -18,7 +17,6 @@ class Settings(BaseSettings):
 
     deepseek_api_key: str = Field(default="")
     deepseek_base_url: str = Field(default="https://api.deepseek.com")
-    default_model: str = Field(default=DEFAULT_MODEL)
     database_url: str = Field(default="sqlite:///./data/novel.db")
 
     default_temperature: float = Field(default=DEFAULT_TEMPERATURE)

@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class InitBookAgent(BaseAgent):
-    AGENT_MODEL = "deepseek-v4-pro"
+    AGENT_NAME = "init_book"
+    AGENT_MODEL = "deepseek-v4-flash"
     THINKING_MODE = True
 
     def __init__(self, ai_service: AiService, book: Book | None = None, global_config: dict[str, Any] | None = None):
