@@ -63,6 +63,7 @@ async def global_settings_form(request: Request, repo: RepoDep):
     templates = get_templates()
     return templates.TemplateResponse(request, "global_settings.html", {
         "config": config,
+        "prompt_defaults": PROMPT_DEFAULTS,
         "prompt_defaults_json": json.dumps(PROMPT_DEFAULTS, ensure_ascii=False),
     })
 

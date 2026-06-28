@@ -70,14 +70,14 @@
         {% set prompt_fields = [
           ('system_template', '系统模板（章节写作）', config.system_template, '可用 {style} 占位符'),
           ('jailbreak_prefix', '破限前缀', config.jailbreak_prefix, ''),
-          ('chapter_writer_user_prompt', '章节写作 - 用户提问', config.agent_prompts.get('chapter_writer_user_prompt', ''), '可用 {chapter_number} {core_event} {prev_ending} 占位符'),
-          ('summary_system_prompt', '摘要更新 - 系统提示', config.agent_prompts.get('summary_system_prompt', ''), ''),
-          ('summary_user_prompt', '摘要更新 - 用户提问（有下一章）', config.agent_prompts.get('summary_user_prompt', ''), '可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} {next_chapter} 占位符'),
-          ('summary_user_prompt_last', '摘要更新 - 用户提问（最后一章）', config.agent_prompts.get('summary_user_prompt_last', ''), '可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} 占位符'),
-          ('init_book_system_prompt', '书籍初始化 - 系统提示', config.agent_prompts.get('init_book_system_prompt', ''), '可用 {target_chapters} {style_section} 占位符'),
-          ('init_book_user_prompt', '书籍初始化 - 用户提问', config.agent_prompts.get('init_book_user_prompt', ''), '可用 {basic_idea} {genre} {target_chapters} 占位符'),
-          ('style_extractor_system_prompt', '风格提取 - 系统提示', config.agent_prompts.get('style_extractor_system_prompt', ''), ''),
-          ('style_extractor_user_prompt', '风格提取 - 用户提问', config.agent_prompts.get('style_extractor_user_prompt', ''), ''),
+          ('chapter_writer_user_prompt', '章节写作 - 用户提问', config.agent_prompts.get('chapter_writer_user_prompt') or prompt_defaults['chapter_writer_user_prompt'], '可用 {chapter_number} {core_event} {prev_ending} 占位符'),
+          ('summary_system_prompt', '摘要更新 - 系统提示', config.agent_prompts.get('summary_system_prompt') or prompt_defaults['summary_system_prompt'], ''),
+          ('summary_user_prompt', '摘要更新 - 用户提问（有下一章）', config.agent_prompts.get('summary_user_prompt') or prompt_defaults['summary_user_prompt'], '可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} {next_chapter} 占位符'),
+          ('summary_user_prompt_last', '摘要更新 - 用户提问（最后一章）', config.agent_prompts.get('summary_user_prompt_last') or prompt_defaults['summary_user_prompt_last'], '可用 {old_summary} {chapter_number} {chapter_title} {new_chapter} 占位符'),
+          ('init_book_system_prompt', '书籍初始化 - 系统提示', config.agent_prompts.get('init_book_system_prompt') or prompt_defaults['init_book_system_prompt'], '可用 {target_chapters} {style_section} 占位符'),
+          ('init_book_user_prompt', '书籍初始化 - 用户提问', config.agent_prompts.get('init_book_user_prompt') or prompt_defaults['init_book_user_prompt'], '可用 {basic_idea} {genre} {target_chapters} 占位符'),
+          ('style_extractor_system_prompt', '风格提取 - 系统提示', config.agent_prompts.get('style_extractor_system_prompt') or prompt_defaults['style_extractor_system_prompt'], ''),
+          ('style_extractor_user_prompt', '风格提取 - 用户提问', config.agent_prompts.get('style_extractor_user_prompt') or prompt_defaults['style_extractor_user_prompt'], ''),
         ] %}
 
         {% for key, label, value, tip in prompt_fields %}
