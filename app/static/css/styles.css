@@ -29,6 +29,7 @@ body {
   color: var(--text);
   background: var(--bg-muted);
   line-height: 1.6;
+  scrollbar-gutter: stable;
 }
 
 /* ===== Container ===== */
