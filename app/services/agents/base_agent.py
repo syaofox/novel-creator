@@ -9,7 +9,7 @@ from app.services.ai_service import AiService
 from app.utils.ai_utils import get_config_value
 
 if TYPE_CHECKING:
-    from app.models import Book
+    from app.repositories.file_repository import Book
 
 logger = logging.getLogger(__name__)
 

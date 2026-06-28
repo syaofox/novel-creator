@@ -6,11 +6,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
-from sqlalchemy.orm import Session
 
-from app.core.dependencies import DbSession, NovelServiceDep, get_ai_service
-from app.constants import TEMPLATE_DIR
-from app.models import Book, Chapter
+from app.core.dependencies import RepoDep, NovelServiceDep
+from app.repositories.file_repository import Book, Chapter
 from app.utils.helpers import get_templates
 from app.services.agents import ChapterWriterAgent
 
@@ -20,6 +18,8 @@ router = APIRouter(prefix="/books/{book_id}/chapters", tags=["chapters"])
 
 
 def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
+    if not memory_summary:
+        return ""
     match = re.search(r"【主线进度】\s*\n(.*?)(?=\n【|$)", memory_summary, re.DOTALL)
     if not match:
         return ""
@@ -46,11 +46,8 @@ def extract_chapter_outline(memory_summary: str, chapter_number: int) -> str:
 
 
 @router.get("/write", response_class=HTMLResponse)
-async def write_chapter_form(request: Request, book_id: int, db: DbSession, num: int | None = None, edit: bool = False):
-    from app.repositories.novel_repository import NovelRepository
-
-    repo = NovelRepository(db)
-    book = repo.get_book_by_id(book_id)
+async def write_chapter_form(request: Request, book_id: int, repo: RepoDep, num: int | None = None, edit: bool = False):
+    book = repo.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
@@ -62,7 +59,6 @@ async def write_chapter_form(request: Request, book_id: int, db: DbSession, num:
         chapter_num = num
         if chapter_num < 1:
             raise HTTPException(status_code=400, detail="章节号必须大于0")
-        # 禁止跳章节:不允许创建比下一章更靠后的章节
         if chapter_num > next_chapter:
             raise HTTPException(status_code=400, detail=f"请先完成第 {next_chapter} 章,不能跳章创作")
     else:
@@ -119,18 +115,15 @@ async def write_chapter_form(request: Request, book_id: int, db: DbSession, num:
 async def generate_chapter(
     request: Request,
     book_id: int,
-    db: DbSession,
+    repo: RepoDep,
     service: NovelServiceDep,
     chapter_number: int | None = Form(None),
     core_event: str = Form(...),
 ):
-    from app.repositories.novel_repository import NovelRepository
-
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    repo = NovelRepository(db)
     max_num = repo.get_max_chapter_number(book_id)
     current = int(book.current_chapter) if book.current_chapter is not None else 0
     next_chapter = max(max_num, current) + 1
@@ -147,81 +140,60 @@ async def generate_chapter(
     templates = get_templates()
 
     if stream:
-        try:
-            return templates.TemplateResponse(
-                request,
-                "partials/edit_chapter.html",
-                {
-                    "book": book,
-                    "chapter_number": chapter_number,
-                    "content": "",
-                    "stream": True,
-                    "core_event": core_event,
-                    "prev_ending": prev_ending,
-                },
-            )
-        except TimeoutError:
-            logger.error("Timeout during template rendering")
-            return HTMLResponse(content="请求超时，请稍后重试", status_code=504)
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during rendering: {e}")
-            return HTMLResponse(content="网络连接失败", status_code=503)
-        except Exception as e:
-            logger.exception("Unexpected error during template rendering")
-            import traceback
+        return templates.TemplateResponse(
+            request,
+            "partials/edit_chapter.html",
+            {
+                "book": book,
+                "chapter_number": chapter_number,
+                "content": "",
+                "stream": True,
+                "core_event": core_event,
+                "prev_ending": prev_ending,
+            },
+        )
 
-            return HTMLResponse(
-                content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
-            )
-    else:
-        from app.utils.config_helper import get_global_config_dict
+    from app.services.ai_service import AiService
+    from app.config import settings as app_settings
 
-        global_config = get_global_config_dict(db)
-        ai_service = get_ai_service(db)
-        agent = ChapterWriterAgent(ai_service, book, global_config)
-        try:
-            content = await agent.write(int(chapter_number), core_event, prev_ending)
-        except TimeoutError:
-            logger.error("Timeout during chapter generation")
-            return HTMLResponse(content="生成超时，请稍后重试", status_code=504)
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during chapter generation: {e}")
-            return HTMLResponse(content="网络连接失败", status_code=503)
-        except Exception as e:
-            logger.exception("Error during chapter generation")
-            return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
-        try:
-            return templates.TemplateResponse(
-                request,
-                "partials/edit_chapter.html",
-                {
-                    "book": book,
-                    "chapter_number": chapter_number,
-                    "content": content,
-                    "stream": False,
-                    "core_event": core_event,
-                    "prev_ending": prev_ending,
-                },
-            )
-        except TimeoutError:
-            logger.error("Timeout during template rendering")
-            return HTMLResponse(content="请求超时，请稍后重试", status_code=504)
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during rendering: {e}")
-            return HTMLResponse(content="网络连接失败", status_code=503)
-        except Exception as e:
-            logger.exception("Unexpected error during template rendering")
-            import traceback
+    global_config = {
+        "deepseek_api_key": app_settings.deepseek_api_key,
+        "deepseek_base_url": app_settings.deepseek_base_url,
+        "default_model": app_settings.default_model,
+        "temperature": book.config.get("temperature"),
+        "top_p": book.config.get("top_p"),
+        "max_tokens": book.config.get("max_tokens"),
+    }
+    ai_service = AiService(
+        api_key=global_config.get("deepseek_api_key") or app_settings.deepseek_api_key,
+        base_url=global_config.get("deepseek_base_url") or app_settings.deepseek_base_url,
+        model=global_config.get("default_model") or app_settings.default_model,
+        global_config=global_config,
+    )
+    agent = ChapterWriterAgent(ai_service, book, global_config)
+    try:
+        content = await agent.write(int(chapter_number), core_event, prev_ending)
+    except (TimeoutError, OSError, ConnectionError) as e:
+        return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
+    except Exception as e:
+        return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
 
-            return HTMLResponse(
-                content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
-            )
+    return templates.TemplateResponse(
+        request,
+        "partials/edit_chapter.html",
+        {
+            "book": book,
+            "chapter_number": chapter_number,
+            "content": content,
+            "stream": False,
+            "core_event": core_event,
+            "prev_ending": prev_ending,
+        },
+    )
 
 
 @router.get("/regenerate", response_class=HTMLResponse)
-async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSession, service: NovelServiceDep):
-    from app.repositories.novel_repository import NovelRepository
-
+async def regenerate_chapter(request: Request, book_id: int, num: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
@@ -229,10 +201,7 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSes
     if num < 1:
         raise HTTPException(status_code=400, detail="章节号必须大于0")
 
-    repo = NovelRepository(db)
     max_num = repo.get_max_chapter_number(book_id)
-
-    # 禁止跳章:只允许重新生成已存在的章节
     if num > max_num:
         raise HTTPException(status_code=400, detail=f"第 {num} 章尚未创建,请先完成第 {max_num} 章")
 
@@ -245,99 +214,71 @@ async def regenerate_chapter(request: Request, book_id: int, num: int, db: DbSes
     prev_ending = service.get_prev_ending(book_id, num)
 
     stream = book.config.get("stream", True)
-
     templates = get_templates()
 
     if stream:
-        try:
-            return templates.TemplateResponse(
-                request,
-                "partials/edit_chapter.html",
-                {
-                    "book": book,
-                    "chapter_number": num,
-                    "content": "",
-                    "stream": True,
-                    "core_event": core_event,
-                    "prev_ending": prev_ending,
-                    "regenerate": True,
-                },
-            )
-        except TimeoutError:
-            logger.error("Timeout during regenerate template rendering")
-            return HTMLResponse(content="请求超时，请稍后重试", status_code=504)
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during regenerate rendering: {e}")
-            return HTMLResponse(content="网络连接失败", status_code=503)
-        except Exception as e:
-            logger.exception("Unexpected error during regenerate template rendering")
-            import traceback
+        return templates.TemplateResponse(
+            request,
+            "partials/edit_chapter.html",
+            {
+                "book": book,
+                "chapter_number": num,
+                "content": "",
+                "stream": True,
+                "core_event": core_event,
+                "prev_ending": prev_ending,
+                "regenerate": True,
+            },
+        )
 
-            return HTMLResponse(
-                content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
-            )
-    else:
-        from app.utils.config_helper import get_global_config_dict
+    from app.services.ai_service import AiService
+    from app.config import settings as app_settings
 
-        global_config = get_global_config_dict(db)
-        ai_service = get_ai_service(db)
-        agent = ChapterWriterAgent(ai_service, book, global_config)
-        try:
-            content = await agent.write(int(num), core_event, prev_ending)
-        except TimeoutError:
-            logger.error("Timeout during chapter regeneration")
-            return HTMLResponse(content="生成超时，请稍后重试", status_code=504)
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during chapter regeneration: {e}")
-            return HTMLResponse(content="网络连接失败", status_code=503)
-        except Exception as e:
-            logger.exception("Error during chapter regeneration")
-            return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
-        try:
-            return templates.TemplateResponse(
-                request,
-                "partials/edit_chapter.html",
-                {
-                    "book": book,
-                    "chapter_number": num,
-                    "content": content,
-                    "stream": False,
-                    "core_event": core_event,
-                    "prev_ending": prev_ending,
-                    "regenerate": True,
-                },
-            )
-        except TimeoutError:
-            logger.error("Timeout during regenerate template rendering")
-            return HTMLResponse(content="请求超时，请稍后重试", status_code=504)
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during regenerate rendering: {e}")
-            return HTMLResponse(content="网络连接失败", status_code=503)
-        except Exception as e:
-            logger.exception("Unexpected error during regenerate template rendering")
-            import traceback
+    global_config = {
+        "deepseek_api_key": app_settings.deepseek_api_key,
+        "deepseek_base_url": app_settings.deepseek_base_url,
+        "default_model": app_settings.default_model,
+    }
+    ai_service = AiService(
+        api_key=global_config.get("deepseek_api_key") or app_settings.deepseek_api_key,
+        base_url=global_config.get("deepseek_base_url") or app_settings.deepseek_base_url,
+    )
+    agent = ChapterWriterAgent(ai_service, book, global_config)
+    try:
+        content = await agent.write(int(num), core_event, prev_ending)
+    except (TimeoutError, OSError, ConnectionError) as e:
+        return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
+    except Exception as e:
+        return HTMLResponse(content=f"生成失败: {str(e)}", status_code=500)
 
-            return HTMLResponse(
-                content=f"模板渲染失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500
-            )
+    return templates.TemplateResponse(
+        request,
+        "partials/edit_chapter.html",
+        {
+            "book": book,
+            "chapter_number": num,
+            "content": content,
+            "stream": False,
+            "core_event": core_event,
+            "prev_ending": prev_ending,
+            "regenerate": True,
+        },
+    )
 
 
 @router.post("/stream")
 async def stream_chapter(
     request: Request,
     book_id: int,
-    db: DbSession,
+    repo: RepoDep,
     service: NovelServiceDep,
     chapter_number: int | None = Form(None),
     core_event: str = Form(""),
 ):
-    from app.repositories.novel_repository import NovelRepository
-
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    repo = NovelRepository(db)
     max_num = repo.get_max_chapter_number(book_id)
     current = int(book.current_chapter) if book.current_chapter is not None else 0
     next_chapter = max(max_num, current) + 1
@@ -349,7 +290,10 @@ async def stream_chapter(
 
     prev_ending = service.get_prev_ending(book_id, chapter_number)
 
-    ai_service = get_ai_service(db)
+    from app.services.ai_service import AiService
+    from app.core.dependencies import get_ai_service
+
+    ai_service = get_ai_service(repo)
     agent = ChapterWriterAgent(ai_service, book, ai_service.global_config)
 
     async def generate():
@@ -359,24 +303,16 @@ async def stream_chapter(
                 yield f"{data}\n"
                 await asyncio.sleep(0.01)
             yield json.dumps({"done": True}) + "\n"
-        except TimeoutError:
-            logger.error("Timeout during streaming chapter generation")
-            yield json.dumps({"error": "请求超时，请稍后重试"}) + "\n"
-        except (OSError, ConnectionError) as e:
-            logger.error(f"Network error during streaming: {e}")
-            yield json.dumps({"error": "网络连接失败，请检查网络"}) + "\n"
+        except (TimeoutError, OSError, ConnectionError) as e:
+            yield json.dumps({"error": str(e)}) + "\n"
         except Exception as e:
-            logger.exception("Error during streaming chapter generation")
-            import traceback
-
-            error_msg = f"\n\n--- 生成过程中发生错误 ---\n{str(e)}\n{traceback.format_exc()}\n"
             yield json.dumps({"error": str(e)}) + "\n"
 
     return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.get("/list", response_class=HTMLResponse)
-async def get_chapter_list(book_id: int, db: DbSession, service: NovelServiceDep):
+async def get_chapter_list(book_id: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
@@ -387,11 +323,8 @@ async def get_chapter_list(book_id: int, db: DbSession, service: NovelServiceDep
 
 
 @router.get("/add", response_class=HTMLResponse)
-async def add_chapter_form(request: Request, book_id: int, db: DbSession, position: int | None = None):
-    from app.repositories.novel_repository import NovelRepository
-
-    repo = NovelRepository(db)
-    book = repo.get_book_by_id(book_id)
+async def add_chapter_form(request: Request, book_id: int, repo: RepoDep, position: int | None = None):
+    book = repo.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
@@ -409,7 +342,7 @@ async def add_chapter_form(request: Request, book_id: int, db: DbSession, positi
 async def add_chapter_endpoint(
     request: Request,
     book_id: int,
-    db: DbSession,
+    repo: RepoDep,
     service: NovelServiceDep,
     position: int = Form(...),
     title: str = Form(...),
@@ -438,7 +371,7 @@ async def add_chapter_endpoint(
 async def save_chapter_endpoint(
     request: Request,
     book_id: int,
-    db: DbSession,
+    repo: RepoDep,
     service: NovelServiceDep,
     chapter_number: int = Form(...),
     content: str = Form(...),
@@ -450,21 +383,11 @@ async def save_chapter_endpoint(
     if chapter_number < 1:
         return HTMLResponse(content="章节号必须大于0", status_code=400)
 
-    chapter = service.get_chapter(book_id, chapter_number)
-
     try:
         chapter, _ = service.save_chapter(book, chapter_number, content)
-    except TimeoutError:
-        logger.error("Timeout during chapter save")
-        return HTMLResponse(content="保存超时，请稍后重试", status_code=504)
-    except (OSError, ConnectionError) as e:
-        logger.error(f"Network error during chapter save: {e}")
-        return HTMLResponse(content="网络连接失败", status_code=503)
     except Exception as e:
         logger.exception("Error during chapter save")
-        import traceback
-
-        return HTMLResponse(content=f"保存失败: {str(e)}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
+        return HTMLResponse(content=f"保存失败: {str(e)}", status_code=500)
 
     templates = get_templates()
     chapters = service.get_chapters(book_id)
@@ -477,7 +400,7 @@ async def save_chapter_endpoint(
 
 
 @router.get("/{chapter_num}", response_class=HTMLResponse)
-async def read_chapter(request: Request, book_id: int, chapter_num: int, db: DbSession, service: NovelServiceDep):
+async def read_chapter(request: Request, book_id: int, chapter_num: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
@@ -493,7 +416,7 @@ async def read_chapter(request: Request, book_id: int, chapter_num: int, db: DbS
 
 
 @router.delete("/{chapter_num}", response_class=HTMLResponse)
-async def delete_chapter_endpoint(book_id: int, chapter_num: int, db: DbSession, service: NovelServiceDep):
+async def delete_chapter_endpoint(book_id: int, chapter_num: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")

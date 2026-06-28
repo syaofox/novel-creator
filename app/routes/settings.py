@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import Book, GlobalConfig
-from app.utils.config_helper import get_global_config_dict
+
+from app.core.dependencies import RepoDep
+from app.repositories.file_repository import GlobalConfig
 from app.utils.helpers import get_templates
 from app.constants import (
     DEFAULT_TEMPERATURE,
@@ -12,19 +11,15 @@ from app.constants import (
     DEFAULT_STREAM,
     DEFAULT_JAILBREAK_PREFIX,
     DEFAULT_SYSTEM_TEMPLATE,
-    TEMPLATE_DIR,
     DEFAULT_MODEL,
 )
-from app.models import get_china_now
 
-
-# 书籍设置路由
 book_settings_router = APIRouter(prefix="/books/{book_id}/settings", tags=["book_settings"])
 
 
 @book_settings_router.get("/", response_class=HTMLResponse)
-async def settings_form(request: Request, book_id: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def settings_form(request: Request, book_id: int, repo: RepoDep):
+    book = repo.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
     templates = get_templates()
@@ -32,9 +27,9 @@ async def settings_form(request: Request, book_id: int, db: Session = Depends(ge
 
 
 @book_settings_router.post("/", response_class=HTMLResponse)
-async def save_settings(request: Request, book_id: int, db: Session = Depends(get_db)):
+async def save_settings(request: Request, book_id: int, repo: RepoDep):
     form = await request.form()
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = repo.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
     config = book.config
@@ -45,42 +40,27 @@ async def save_settings(request: Request, book_id: int, db: Session = Depends(ge
     config["jailbreak_prefix"] = form.get("jailbreak_prefix", config.get("jailbreak_prefix", ""))
     config["system_template"] = form.get("system_template", config.get("system_template", ""))
     book.config = config
-    book.updated_at = get_china_now()
-    db.commit()
+    repo.update_book(book)
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)
 
 
-# 全局设置路由
 global_settings_router = APIRouter(prefix="/settings", tags=["global_settings"])
 
 
 @global_settings_router.get("/global", response_class=HTMLResponse)
-async def global_settings_form(request: Request, db: Session = Depends(get_db)):
-    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
-    if not config:
-        config = GlobalConfig(
-            id=1,
-            temperature=DEFAULT_TEMPERATURE,
-            top_p=DEFAULT_TOP_P,
-            max_tokens=DEFAULT_MAX_TOKENS,
-            stream=DEFAULT_STREAM,
-            jailbreak_prefix=DEFAULT_JAILBREAK_PREFIX,
-            system_template=DEFAULT_SYSTEM_TEMPLATE,
-        )
-        db.add(config)
-        db.commit()
-        db.refresh(config)
+async def global_settings_form(request: Request, repo: RepoDep):
+    config = repo.get_global_config()
+    if not config.id:
+        config = GlobalConfig()
+        repo.save_global_config(config)
     templates = get_templates()
     return templates.TemplateResponse(request, "global_settings.html", {"config": config})
 
 
 @global_settings_router.post("/global", response_class=HTMLResponse)
-async def save_global_settings(request: Request, db: Session = Depends(get_db)):
+async def save_global_settings(request: Request, repo: RepoDep):
     form = await request.form()
-    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
-    if not config:
-        config = GlobalConfig(id=1)
-        db.add(config)
+    config = repo.get_global_config()
     config.deepseek_api_key = form.get("deepseek_api_key", config.deepseek_api_key or "")
     config.deepseek_base_url = form.get("deepseek_base_url", config.deepseek_base_url or "https://api.deepseek.com")
     config.default_model = form.get("default_model", config.default_model or DEFAULT_MODEL)
@@ -90,5 +70,5 @@ async def save_global_settings(request: Request, db: Session = Depends(get_db)):
     config.stream = form.get("stream") == "on"
     config.jailbreak_prefix = form.get("jailbreak_prefix", config.jailbreak_prefix or DEFAULT_JAILBREAK_PREFIX)
     config.system_template = form.get("system_template", config.system_template or DEFAULT_SYSTEM_TEMPLATE)
-    db.commit()
+    repo.save_global_config(config)
     return RedirectResponse(url="/", status_code=303)

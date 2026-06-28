@@ -1,25 +1,32 @@
 import asyncio
 import json
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, StreamingResponse
-from sqlalchemy.orm import Session
 
 from app.config import settings as app_settings
-from app.database import get_db
-from app.models import Book, Chapter, GlobalConfig, PlotSummary, CharacterCard, WritingStyle, MaterialNote, BookInitData
+from app.core.dependencies import RepoDep
+from app.repositories.file_repository import (
+    FileRepository,
+    Book,
+    Chapter,
+    GlobalConfig,
+    PlotSummary,
+    CharacterCard,
+    WritingStyle,
+    MaterialNote,
+    BookInitData,
+)
 from app.services.ai_service import AiService
 from app.services.agents import InitBookAgent
 from app.services.file_service import delete_book_files
 from app.utils.config_helper import get_global_config_dict
 from app.utils.helpers import get_book_dir, get_templates
 from app.utils.json_helper import parse_chapter_titles, parse_init_data_markers
-from app.models import get_china_now
 from app.constants import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
@@ -39,70 +46,56 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/books", tags=["books"])
 
 
-@router.get("/new", response_class=HTMLResponse)
-async def new_book_form(request: Request, db: Session = Depends(get_db)):
-    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
-    if config:
-        jailbreak_prefix = config.jailbreak_prefix or DEFAULT_JAILBREAK_PREFIX
-        system_template = config.system_template or DEFAULT_SYSTEM_TEMPLATE
-        temperature = config.temperature if config.temperature is not None else DEFAULT_TEMPERATURE
-        top_p = config.top_p if config.top_p is not None else DEFAULT_TOP_P
-        max_tokens = config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS
-        stream = config.stream if config.stream is not None else DEFAULT_STREAM
-    else:
-        jailbreak_prefix = DEFAULT_JAILBREAK_PREFIX
-        system_template = DEFAULT_SYSTEM_TEMPLATE
-        temperature = DEFAULT_TEMPERATURE
-        top_p = DEFAULT_TOP_P
-        max_tokens = DEFAULT_MAX_TOKENS
-        stream = DEFAULT_STREAM
+def _get_global_config(repo: FileRepository) -> dict:
+    config = repo.get_global_config()
+    return {
+        "jailbreak_prefix": config.jailbreak_prefix or DEFAULT_JAILBREAK_PREFIX,
+        "system_template": config.system_template or DEFAULT_SYSTEM_TEMPLATE,
+        "temperature": config.temperature if config.temperature is not None else DEFAULT_TEMPERATURE,
+        "top_p": config.top_p if config.top_p is not None else DEFAULT_TOP_P,
+        "max_tokens": config.max_tokens if config.max_tokens is not None else DEFAULT_MAX_TOKENS,
+        "stream": config.stream if config.stream is not None else DEFAULT_STREAM,
+    }
 
-    plot_summaries = [
-        {"id": p.id, "title": p.title, "content": p.content}
-        for p in db.query(PlotSummary).order_by(PlotSummary.updated_at.desc()).all()
-    ]
-    character_cards = [
-        {"id": c.id, "title": c.title, "content": c.content}
-        for c in db.query(CharacterCard).order_by(CharacterCard.updated_at.desc()).all()
-    ]
-    writing_styles = [
-        {"id": w.id, "title": w.title, "content": w.content, "is_default": w.is_default}
-        for w in db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
-    ]
-    material_notes = [
-        {"id": n.id, "title": n.title, "content": n.content}
-        for n in db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
-    ]
-    book_init_data = [
-        {"id": d.id, "title": d.title, "content": d.content, "book_title": d.book_title}
-        for d in db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
-    ]
+
+def _all_materials(repo: FileRepository):
+    return {
+        "plot_summaries": [{"id": p.id, "title": p.title, "content": p.content} for p in repo.get_plot_summaries()],
+        "character_cards": [{"id": c.id, "title": c.title, "content": c.content} for c in repo.get_character_cards()],
+        "writing_styles": [
+            {"id": w.id, "title": w.title, "content": w.content, "is_default": w.is_default}
+            for w in repo.get_writing_styles()
+        ],
+        "material_notes": [{"id": n.id, "title": n.title, "content": n.content} for n in repo.get_material_notes()],
+        "book_init_data": [
+            {"id": d.id, "title": d.title, "content": d.content, "book_title": d.book_title}
+            for d in repo.get_book_init_data_list()
+        ],
+    }
+
+
+@router.get("/new", response_class=HTMLResponse)
+async def new_book_form(request: Request, repo: RepoDep):
+    gc = _get_global_config(repo)
+    mats = _all_materials(repo)
 
     templates = get_templates()
     return templates.TemplateResponse(
         request,
         "new_book.html",
         {
-            "jailbreak_prefix": jailbreak_prefix,
-            "system_template": system_template,
-            "default_temperature": temperature,
-            "default_top_p": top_p,
-            "default_max_tokens": max_tokens,
-            "default_stream": stream,
+            **gc,
             "default_style": DEFAULT_STYLE,
             "style_presets": STYLE_PRESETS,
-            "plot_summaries": plot_summaries,
-            "character_cards": character_cards,
-            "writing_styles": writing_styles,
-            "material_notes": material_notes,
-            "book_init_data": book_init_data,
             "genre_options": GENRE_OPTIONS,
+            **mats,
         },
     )
 
 
 def get_preview_params(
     request: Request,
+    repo: FileRepository,
     title: str = "",
     genre: list[str] | str = Query(default=[]),
     target_chapters: int = 3,
@@ -115,22 +108,20 @@ def get_preview_params(
     system_template: str = DEFAULT_SYSTEM_TEMPLATE,
     style: str = "",
     init_data: str = "",
-    db: Session = Depends(get_db),
 ):
-    config = db.query(GlobalConfig).filter(GlobalConfig.id == 1).first()
-    if config:
-        if temperature == DEFAULT_TEMPERATURE and config.temperature is not None:
-            temperature = config.temperature
-        if top_p == DEFAULT_TOP_P and config.top_p is not None:
-            top_p = config.top_p
-        if max_tokens == DEFAULT_MAX_TOKENS and config.max_tokens is not None:
-            max_tokens = config.max_tokens
-        if stream == DEFAULT_STREAM and config.stream is not None:
-            stream = config.stream
-        if not jailbreak_prefix and config.jailbreak_prefix:
-            jailbreak_prefix = config.jailbreak_prefix
-        if system_template == DEFAULT_SYSTEM_TEMPLATE and config.system_template:
-            system_template = config.system_template
+    gc = repo.get_global_config()
+    if temperature == DEFAULT_TEMPERATURE and gc.temperature is not None:
+        temperature = gc.temperature
+    if top_p == DEFAULT_TOP_P and gc.top_p is not None:
+        top_p = gc.top_p
+    if max_tokens == DEFAULT_MAX_TOKENS and gc.max_tokens is not None:
+        max_tokens = gc.max_tokens
+    if stream == DEFAULT_STREAM and gc.stream is not None:
+        stream = gc.stream
+    if not jailbreak_prefix and gc.jailbreak_prefix:
+        jailbreak_prefix = gc.jailbreak_prefix
+    if system_template == DEFAULT_SYSTEM_TEMPLATE and gc.system_template:
+        system_template = gc.system_template
 
     genre_str = genre if isinstance(genre, str) else ", ".join(genre) if genre else ""
 
@@ -208,6 +199,7 @@ def get_preview_params(
 @router.post("/preview", response_class=HTMLResponse)
 async def preview_book(
     request: Request,
+    repo: RepoDep,
     title: str = Form(""),
     genre: str = Form(""),
     target_chapters: int = Form(3),
@@ -220,42 +212,27 @@ async def preview_book(
     system_template: str = Form(DEFAULT_SYSTEM_TEMPLATE),
     style: str = Form(""),
     init_data: str = Form(""),
-    db: Session = Depends(get_db),
 ):
     genre_list = genre.split(",") if genre else []
     params = get_preview_params(
-        request,
-        title,
-        genre_list,
-        target_chapters,
-        basic_idea,
-        temperature,
-        top_p,
-        max_tokens,
-        stream,
-        jailbreak_prefix,
-        system_template,
-        style,
-        init_data,
-        db,
+        request, repo, title, genre_list, target_chapters,
+        basic_idea, temperature, top_p, max_tokens, stream,
+        jailbreak_prefix, system_template, style, init_data,
     )
-
     templates = get_templates()
     return templates.TemplateResponse(request, "book_preview.html", params)
 
 
 @router.post("/init-stream")
 async def init_book_stream(
+    repo: RepoDep,
     basic_idea: str = Form(""),
     genre: str = Form(""),
     target_chapters: int = Form(3),
     jailbreak_prefix: str = Form(""),
     style: str = Form(""),
-    db: Session = Depends(get_db),
 ):
-    """流式初始化小说,返回 ndjson 格式的流式响应"""
-
-    global_config = get_global_config_dict(db)
+    global_config = get_global_config_dict(repo)
 
     async def generate():
         api_key = global_config.get("deepseek_api_key") or app_settings.deepseek_api_key
@@ -291,6 +268,7 @@ async def init_book_stream(
 @router.post("/", response_class=HTMLResponse)
 async def create_book(
     request: Request,
+    repo: RepoDep,
     title: str = Form(...),
     genre: str = Form(default=""),
     target_chapters: int = Form(...),
@@ -309,7 +287,6 @@ async def create_book(
     outline: str = Form(""),
     foreshadowing: str = Form(""),
     other: str = Form(""),
-    db: Session = Depends(get_db),
 ):
     genre_str = genre if genre else ""
 
@@ -339,7 +316,8 @@ async def create_book(
     ]
     memory_summary = "\n\n".join(memory_parts)
 
-    new_book = Book(
+    new_book = repo.create_book(Book(
+        id=0,
         title=title,
         genre=genre_str,
         target_chapters=target_chapters,
@@ -348,26 +326,20 @@ async def create_book(
         memory_summary=memory_summary,
         style=final_style,
         current_chapter=0,
-    )
-    db.add(new_book)
-    db.commit()
-    db.refresh(new_book)
+    ))
 
     chapter_data = parse_chapter_titles(outline, target_chapters)
     for ch in chapter_data:
-        chapter = Chapter(
+        repo.create_chapter(
             book_id=new_book.id,
             chapter_number=ch["chapter"],
             title=ch["title"],
             core_event=ch.get("core_event", ""),
-            status="未完成",
         )
-        db.add(chapter)
-    db.commit()
 
     is_htmx = request.headers.get("HX-Request") == "true"
     if is_htmx:
-        chapters = db.query(Chapter).filter(Chapter.book_id == new_book.id).order_by(Chapter.chapter_number).all()
+        chapters = repo.get_chapters(new_book.id)
         templates = get_templates()
         return templates.TemplateResponse(request, "book_detail.html", {"book": new_book, "chapters": chapters})
 
@@ -375,32 +347,30 @@ async def create_book(
 
 
 @router.get("/{book_id}", response_class=HTMLResponse)
-async def book_detail(request: Request, book_id: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def book_detail(request: Request, book_id: int, repo: RepoDep):
+    book = repo.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
-    chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
+    chapters = repo.get_chapters(book_id)
     templates = get_templates()
     return templates.TemplateResponse(request, "book_detail.html", {"book": book, "chapters": chapters})
 
 
 @router.post("/{book_id}/delete")
-async def delete_book(book_id: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def delete_book(book_id: int, repo: RepoDep):
+    book = repo.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
-    db.query(Chapter).filter(Chapter.book_id == book_id).delete()
-    db.delete(book)
-    db.commit()
+    repo.delete_book(book_id)
     delete_book_files(book_id)
 
     return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/{book_id}/export")
-async def export_book(book_id: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def export_book(book_id: int, repo: RepoDep):
+    book = repo.get_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
 
@@ -408,11 +378,10 @@ async def export_book(book_id: int, db: Session = Depends(get_db)):
     export_dir = book_dir / "exports"
     export_dir.mkdir(parents=True, exist_ok=True)
 
-    # 合并所有章节
     export_path = export_dir / f"{book.title}_完整版.txt"
     with open(export_path, "w", encoding="utf-8") as outfile:
         outfile.write(f"《{book.title}》\n\n")
-        chapters = db.query(Chapter).filter(Chapter.book_id == book_id).order_by(Chapter.chapter_number).all()
+        chapters = repo.get_chapters(book_id)
         for ch in chapters:
             outfile.write(f"第{ch.chapter_number}章 {ch.title}\n\n")
             outfile.write(str(ch.content or ""))
@@ -421,23 +390,21 @@ async def export_book(book_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{book_id}/finish")
-async def finish_book(book_id: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
-    if book:
-        book.status = "已完结"  # type: ignore
-        book.updated_at = get_china_now()
-        db.commit()
+async def finish_book(book_id: int, repo: RepoDep):
+    book = repo.get_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="书籍不存在")
+    book.status = "已完结"
+    repo.update_book(book)
     return RedirectResponse(url=f"/books/{book_id}", status_code=303)
 
 
 @router.post("/{book_id}/unfinish")
-async def unfinish_book(request: Request, book_id: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def unfinish_book(request: Request, book_id: int, repo: RepoDep):
+    book = repo.get_book(book_id)
     if book:
-        book.status = "进行中"  # type: ignore
-        book.updated_at = get_china_now()
-        db.commit()
+        book.status = "进行中"
+        repo.update_book(book)
 
-    # 返回更新后的已完结书籍列表
-    books = db.query(Book).filter(Book.status == "已完结").order_by(Book.updated_at.desc()).all()
+    books = repo.get_books(status="已完结")
     return get_templates().TemplateResponse(request, "partials/book_list.html", {"books": books, "status": "已完结"})

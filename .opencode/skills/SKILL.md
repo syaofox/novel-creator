@@ -19,12 +19,6 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # Run all tests
 uv run pytest tests/ -v
 
-# Run specific test file
-uv run pytest tests/test_agents.py -v
-
-# Check types (requires pyright globally)
-uv run pyright app/
-
 # Lint
 uv run ruff check app/ tests/
 ```
@@ -36,6 +30,7 @@ uv run ruff check app/ tests/
 - All prompts live in `app/utils/prompts.py`
 - Stable sections (人物卡, 世界观, 风格规范) go in system prompt for cache optimization
 - Dynamic sections (主线进度, 伏笔清单) go in user prompt
+- Storage uses JSON files via `FileRepository` (NOT SQLAlchemy/SQLite)
 - Every Python change needs pytest tests
 - Run `ruff check` before committing
 
@@ -50,4 +45,5 @@ uv run ruff check app/ tests/
 ### Adding a new route
 1. Create `app/routes/my_routes.py`
 2. Include router in `app/main.py`
-3. Write integration test in `tests/test_routes_integration.py`
+3. Use `repo: RepoDep` for storage access
+4. Write integration test in `tests/test_routes_integration.py`

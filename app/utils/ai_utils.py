@@ -3,7 +3,7 @@ import logging
 import re
 from typing import Any
 
-from app.models import Book
+from app.repositories.file_repository import Book
 from app.constants import DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_TOKENS
 
 logger = logging.getLogger(__name__)

@@ -4,12 +4,9 @@ import logging
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
-from sqlalchemy.orm import Session
 
-from app.core.dependencies import AiServiceDep
-from app.database import get_db
-from app.models import PlotSummary, CharacterCard, WritingStyle, MaterialNote, BookInitData, get_china_now
-from app.constants import DEFAULT_STYLE, TEMPLATE_DIR
+from app.core.dependencies import RepoDep, AiServiceDep
+from app.constants import DEFAULT_STYLE
 from app.utils.helpers import get_templates
 
 logger = logging.getLogger(__name__)
@@ -17,51 +14,39 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/materials", tags=["materials"])
 
 
+def _materials_context(repo):
+    from app.repositories.file_repository import BookInitData
+
+    return {
+        "plot_summaries": repo.get_plot_summaries(),
+        "character_cards": repo.get_character_cards(),
+        "writing_styles": repo.get_writing_styles(),
+        "material_notes": repo.get_material_notes(),
+        "book_init_data": repo.get_book_init_data_list(),
+        "default_style": DEFAULT_STYLE,
+    }
+
+
 @router.get("", response_class=HTMLResponse)
-async def materials_page(request: Request, tab: str = Query(default="plot"), db: Session = Depends(get_db)):
-    from fastapi.templating import Jinja2Templates
-
-    plot_summaries = db.query(PlotSummary).order_by(PlotSummary.updated_at.desc()).all()
-    character_cards = db.query(CharacterCard).order_by(CharacterCard.updated_at.desc()).all()
-    writing_styles = (
-        db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
-    )
-    material_notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
-    book_init_data = db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
-
+async def materials_page(request: Request, repo: RepoDep, tab: str = Query(default="plot")):
+    ctx = _materials_context(repo)
+    ctx["active_tab"] = tab
     templates = get_templates()
-    return templates.TemplateResponse(
-        request,
-        "materials.html",
-        {
-            "plot_summaries": plot_summaries,
-            "character_cards": character_cards,
-            "writing_styles": writing_styles,
-            "material_notes": material_notes,
-            "book_init_data": book_init_data,
-            "default_style": DEFAULT_STYLE,
-            "active_tab": tab,
-        },
-    )
+    return templates.TemplateResponse(request, "materials.html", ctx)
 
 
 @router.post("/plot-summaries", response_class=HTMLResponse)
 async def create_plot_summary(
     request: Request,
+    repo: RepoDep,
     title: str = Form(...),
     content: str = Form(""),
     source: str = Form(None),
-    db: Session = Depends(get_db),
 ):
-    new_plot = PlotSummary(title=title, content=content)
-    db.add(new_plot)
-    db.commit()
-    db.refresh(new_plot)
+    new_plot = repo.create_plot_summary(title=title, content=content)
 
     if source == "new_book":
-        plots = db.query(PlotSummary).order_by(PlotSummary.updated_at.desc()).all()
-        from fastapi.templating import Jinja2Templates
-
+        plots = repo.get_plot_summaries()
         templates = get_templates()
         response = templates.TemplateResponse(
             request,
@@ -76,38 +61,28 @@ async def create_plot_summary(
 
 @router.post("/plot-summaries/{plot_id}", response_class=HTMLResponse)
 async def update_plot_summary(
-    request: Request, plot_id: int, title: str = Form(...), content: str = Form(""), db: Session = Depends(get_db)
+    request: Request, plot_id: int, repo: RepoDep, title: str = Form(...), content: str = Form("")
 ):
-    plot = db.query(PlotSummary).filter(PlotSummary.id == plot_id).first()
-    if not plot:
+    updated = repo.update_plot_summary(plot_id, title=title, content=content)
+    if not updated:
         raise HTTPException(status_code=404, detail="剧情梗概不存在")
-    plot.title = title
-    plot.content = content
-    plot.updated_at = get_china_now()
-    db.commit()
     return RedirectResponse(url="/materials", status_code=303)
 
 
 @router.post("/plot-summaries/{plot_id}/delete", response_class=HTMLResponse)
-async def delete_plot_summary(plot_id: int, db: Session = Depends(get_db)):
-    plot = db.query(PlotSummary).filter(PlotSummary.id == plot_id).first()
-    if not plot:
+async def delete_plot_summary(plot_id: int, repo: RepoDep):
+    if not repo.delete_plot_summary(plot_id):
         raise HTTPException(status_code=404, detail="剧情梗概不存在")
-    db.delete(plot)
-    db.commit()
     return RedirectResponse(url="/materials", status_code=303)
 
 
 def extract_character_names(content: str) -> list[str]:
-    """从人物卡内容中提取人物名称列表"""
     if not content:
         return []
-
     import re
 
     names = []
     lines = content.strip().split("\n")
-
     for line in lines:
         line = line.strip()
         if not line:
@@ -117,12 +92,10 @@ def extract_character_names(content: str) -> list[str]:
             name = match.group(1).strip()
             if name and name not in names:
                 names.append(name)
-
     return names
 
 
 def generate_character_card_title(content: str) -> str:
-    """根据人物卡内容生成标题"""
     names = extract_character_names(content)
     if not names:
         return "未命名人物卡"
@@ -134,10 +107,8 @@ def generate_character_card_title(content: str) -> str:
 
 
 def split_characters(content: str) -> list[dict[str, str]]:
-    """将人物卡内容拆分为多个单人物条目"""
     if not content:
         return []
-
     import re
 
     sections = re.split(r"\n\s*\n", content.strip())
@@ -168,30 +139,17 @@ def split_characters(content: str) -> list[dict[str, str]]:
 
 
 @router.post("/character-cards/split-save", response_class=HTMLResponse)
-async def split_save_character_cards(request: Request, content: str = Form(...), db: Session = Depends(get_db)):
-    """将多人物内容拆分为独立的单人物卡并保存"""
+async def split_save_character_cards(request: Request, repo: RepoDep, content: str = Form(...)):
     characters = split_characters(content)
     saved_cards = []
 
     if not characters:
-        new_card = CharacterCard(title="未命名人物卡", content=content)
-        db.add(new_card)
-        db.commit()
-        db.refresh(new_card)
-        saved_cards = [{"id": new_card.id, "name": new_card.title}]
+        card = repo.create_character_card(title="未命名人物卡", content=content)
+        saved_cards = [{"id": card.id, "name": card.title}]
     else:
-        cards = []
         for char in characters:
-            card = CharacterCard(title=char["name"], content=char["content"])
-            db.add(card)
-            cards.append(card)
-        db.commit()
-        for card in cards:
-            db.refresh(card)
+            card = repo.create_character_card(title=char["name"], content=char["content"])
             saved_cards.append({"id": card.id, "name": card.title})
-
-    from fastapi.responses import HTMLResponse
-    import json
 
     response = HTMLResponse(content=f'<input type="hidden" name="saved_count" value="{len(saved_cards)}">')
     response.headers["X-New-Ids"] = json.dumps(saved_cards)
@@ -201,25 +159,20 @@ async def split_save_character_cards(request: Request, content: str = Form(...),
 @router.post("/character-cards", response_class=HTMLResponse)
 async def create_character_card(
     request: Request,
+    repo: RepoDep,
     title: str = Form(""),
     content: str = Form(""),
     source: str = Form(None),
     auto_title: int = Form(0),
-    db: Session = Depends(get_db),
 ):
     if auto_title == 1 or not title.strip():
         title = generate_character_card_title(content)
 
-    new_card = CharacterCard(title=title, content=content)
-    db.add(new_card)
-    db.commit()
-    db.refresh(new_card)
+    card = repo.create_character_card(title=title, content=content)
 
     if source == "new_book":
-        from fastapi.responses import HTMLResponse
-
-        response = HTMLResponse(content=f'<input type="hidden" name="X-New-Id" value="{new_card.id}">')
-        response.headers["X-New-Id"] = str(new_card.id)
+        response = HTMLResponse(content=f'<input type="hidden" name="X-New-Id" value="{card.id}">')
+        response.headers["X-New-Id"] = str(card.id)
         return response
 
     return RedirectResponse(url="/materials?tab=character", status_code=303)
@@ -227,30 +180,23 @@ async def create_character_card(
 
 @router.post("/character-cards/{card_id}", response_class=HTMLResponse)
 async def update_character_card(
-    request: Request, card_id: int, title: str = Form(...), content: str = Form(""), db: Session = Depends(get_db)
+    request: Request, card_id: int, repo: RepoDep, title: str = Form(...), content: str = Form("")
 ):
-    card = db.query(CharacterCard).filter(CharacterCard.id == card_id).first()
-    if not card:
+    updated = repo.update_character_card(card_id, title=title, content=content)
+    if not updated:
         raise HTTPException(status_code=404, detail="人物卡不存在")
-    card.title = title
-    card.content = content
-    card.updated_at = get_china_now()
-    db.commit()
     return RedirectResponse(url="/materials?tab=character", status_code=303)
 
 
 @router.post("/character-cards/{card_id}/delete", response_class=HTMLResponse)
-async def delete_character_card(card_id: int, db: Session = Depends(get_db)):
-    card = db.query(CharacterCard).filter(CharacterCard.id == card_id).first()
-    if not card:
+async def delete_character_card(card_id: int, repo: RepoDep):
+    if not repo.delete_character_card(card_id):
         raise HTTPException(status_code=404, detail="人物卡不存在")
-    db.delete(card)
-    db.commit()
     return RedirectResponse(url="/materials?tab=character", status_code=303)
 
 
 @router.post("/writing-styles/extract-stream")
-async def extract_writing_style_stream(text_snippet: str = Form(...), ai_service: AiServiceDep = None):
+async def extract_writing_style_stream(ai_service: AiServiceDep, text_snippet: str = Form(...)):
     from app.services.agents import AgentFactory
 
     agent = AgentFactory.create("style_extractor", ai_service)
@@ -271,23 +217,20 @@ async def extract_writing_style_stream(text_snippet: str = Form(...), ai_service
 @router.post("/writing-styles", response_class=HTMLResponse)
 async def create_writing_style(
     request: Request,
+    repo: RepoDep,
     title: str = Form(...),
     content: str = Form(""),
     is_default: int = Form(0),
     source: str = Form(None),
-    db: Session = Depends(get_db),
 ):
     if is_default == 1:
-        db.query(WritingStyle).update({"is_default": 0})
-    new_style = WritingStyle(title=title, content=content, is_default=is_default)
-    db.add(new_style)
-    db.commit()
-    db.refresh(new_style)
+        for style in repo.get_writing_styles():
+            if style.is_default:
+                repo.update_writing_style(style.id, is_default=0)
+    new_style = repo.create_writing_style(title=title, content=content, is_default=is_default)
 
     if source == "new_book":
-        styles = db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
-        from fastapi.templating import Jinja2Templates
-
+        styles = repo.get_writing_styles()
         templates = get_templates()
         response = templates.TemplateResponse(
             request,
@@ -304,53 +247,45 @@ async def create_writing_style(
 async def update_writing_style(
     request: Request,
     style_id: int,
+    repo: RepoDep,
     title: str = Form(...),
     content: str = Form(""),
     is_default: int = Form(0),
-    db: Session = Depends(get_db),
 ):
-    style = db.query(WritingStyle).filter(WritingStyle.id == style_id).first()
-    if not style:
+    existing = repo.get_writing_style(style_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="文风不存在")
     if is_default == 1:
-        db.query(WritingStyle).filter(WritingStyle.id != style_id).update({"is_default": 0})
-    style.title = title
-    style.content = content
-    style.is_default = is_default
-    style.updated_at = get_china_now()
-    db.commit()
+        for style in repo.get_writing_styles():
+            if style.id != style_id and style.is_default:
+                repo.update_writing_style(style.id, is_default=0)
+    repo.update_writing_style(style_id, title=title, content=content, is_default=is_default)
     return RedirectResponse(url="/materials?tab=style", status_code=303)
 
 
 @router.post("/writing-styles/{style_id}/delete", response_class=HTMLResponse)
-async def delete_writing_style(style_id: int, db: Session = Depends(get_db)):
-    style = db.query(WritingStyle).filter(WritingStyle.id == style_id).first()
+async def delete_writing_style(style_id: int, repo: RepoDep):
+    style = repo.get_writing_style(style_id)
     if not style:
         raise HTTPException(status_code=404, detail="文风不存在")
     if style.is_default == 1:
         raise HTTPException(status_code=400, detail="不能删除默认文风")
-    db.delete(style)
-    db.commit()
+    repo.delete_writing_style(style_id)
     return RedirectResponse(url="/materials?tab=style", status_code=303)
 
 
 @router.post("/material-notes", response_class=HTMLResponse)
 async def create_material_note(
     request: Request,
+    repo: RepoDep,
     title: str = Form(...),
     content: str = Form(""),
     source: str = Form(None),
-    db: Session = Depends(get_db),
 ):
-    new_note = MaterialNote(title=title, content=content)
-    db.add(new_note)
-    db.commit()
-    db.refresh(new_note)
+    new_note = repo.create_material_note(title=title, content=content)
 
     if source == "new_book":
-        notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
-        from fastapi.templating import Jinja2Templates
-
+        notes = repo.get_material_notes()
         templates = get_templates()
         response = templates.TemplateResponse(
             request,
@@ -365,99 +300,52 @@ async def create_material_note(
 
 @router.post("/material-notes/{note_id}", response_class=HTMLResponse)
 async def update_material_note(
-    request: Request, note_id: int, title: str = Form(...), content: str = Form(""), db: Session = Depends(get_db)
+    request: Request, note_id: int, repo: RepoDep, title: str = Form(...), content: str = Form("")
 ):
-    note = db.query(MaterialNote).filter(MaterialNote.id == note_id).first()
-    if not note:
+    updated = repo.update_material_note(note_id, title=title, content=content)
+    if not updated:
         raise HTTPException(status_code=404, detail="注意事项不存在")
-    note.title = title
-    note.content = content
-    note.updated_at = get_china_now()
-    db.commit()
     return RedirectResponse(url="/materials?tab=note", status_code=303)
 
 
 @router.post("/material-notes/{note_id}/delete", response_class=HTMLResponse)
-async def delete_material_note(note_id: int, db: Session = Depends(get_db)):
-    note = db.query(MaterialNote).filter(MaterialNote.id == note_id).first()
-    if not note:
+async def delete_material_note(note_id: int, repo: RepoDep):
+    if not repo.delete_material_note(note_id):
         raise HTTPException(status_code=404, detail="注意事项不存在")
-    db.delete(note)
-    db.commit()
     return RedirectResponse(url="/materials?tab=note", status_code=303)
 
 
 @router.get("/partial", response_class=HTMLResponse)
-async def get_materials_partial(request: Request, tab: str = Query(default="plot"), db: Session = Depends(get_db)):
-    """htmx 片段路由，返回带有指定tab激活状态的内容"""
+async def get_materials_partial(request: Request, repo: RepoDep, tab: str = Query(default="plot")):
     is_htmx = request.headers.get("HX-Request") == "true"
-    from fastapi.templating import Jinja2Templates
-
-    plot_summaries = db.query(PlotSummary).order_by(PlotSummary.updated_at.desc()).all()
-    character_cards = db.query(CharacterCard).order_by(CharacterCard.updated_at.desc()).all()
-    writing_styles = (
-        db.query(WritingStyle).order_by(WritingStyle.is_default.desc(), WritingStyle.updated_at.desc()).all()
-    )
-    material_notes = db.query(MaterialNote).order_by(MaterialNote.updated_at.desc()).all()
-    book_init_data = db.query(BookInitData).order_by(BookInitData.updated_at.desc()).all()
+    ctx = _materials_context(repo)
+    ctx["active_tab"] = tab
 
     templates = get_templates()
 
     if is_htmx:
-        return templates.TemplateResponse(
-            request,
-            "partials/materials_tabs.html",
-            {
-                "plot_summaries": plot_summaries,
-                "character_cards": character_cards,
-                "writing_styles": writing_styles,
-                "material_notes": material_notes,
-                "book_init_data": book_init_data,
-                "default_style": DEFAULT_STYLE,
-                "active_tab": tab,
-            },
-        )
+        return templates.TemplateResponse(request, "partials/materials_tabs.html", ctx)
 
-    return templates.TemplateResponse(
-        request,
-        "materials.html",
-        {
-            "plot_summaries": plot_summaries,
-            "character_cards": character_cards,
-            "writing_styles": writing_styles,
-            "material_notes": material_notes,
-            "book_init_data": book_init_data,
-            "default_style": DEFAULT_STYLE,
-            "active_tab": tab,
-        },
-    )
+    return templates.TemplateResponse(request, "materials.html", ctx)
 
 
 @router.get("/plot-summaries/{plot_id}/edit", response_class=HTMLResponse)
-async def edit_plot_summary_modal(request: Request, plot_id: int, db: Session = Depends(get_db)):
-    """返回编辑剧情梗概的模态框"""
-    plot = db.query(PlotSummary).filter(PlotSummary.id == plot_id).first()
-    if not plot:
+async def edit_plot_summary_modal(request: Request, plot_id: int, repo: RepoDep):
+    item = repo.get_plot_summary(plot_id)
+    if not item:
         raise HTTPException(status_code=404, detail="剧情梗概不存在")
-
-    from fastapi.templating import Jinja2Templates
-
     templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
-        {"request": request, "item": plot, "item_type": "plot", "action_url": f"/materials/plot-summaries/{plot_id}"},
+        {"request": request, "item": item, "item_type": "plot", "action_url": f"/materials/plot-summaries/{plot_id}"},
     )
 
 
 @router.get("/character-cards/{card_id}/edit", response_class=HTMLResponse)
-async def edit_character_card_modal(request: Request, card_id: int, db: Session = Depends(get_db)):
-    """返回编辑人物卡的模态框"""
-    card = db.query(CharacterCard).filter(CharacterCard.id == card_id).first()
+async def edit_character_card_modal(request: Request, card_id: int, repo: RepoDep):
+    card = repo.get_character_card(card_id)
     if not card:
         raise HTTPException(status_code=404, detail="人物卡不存在")
-
-    from fastapi.templating import Jinja2Templates
-
     templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
@@ -471,14 +359,10 @@ async def edit_character_card_modal(request: Request, card_id: int, db: Session 
 
 
 @router.get("/material-notes/{note_id}/edit", response_class=HTMLResponse)
-async def edit_material_note_modal(request: Request, note_id: int, db: Session = Depends(get_db)):
-    """返回编辑注意事项的模态框"""
-    note = db.query(MaterialNote).filter(MaterialNote.id == note_id).first()
+async def edit_material_note_modal(request: Request, note_id: int, repo: RepoDep):
+    note = repo.get_material_note(note_id)
     if not note:
         raise HTTPException(status_code=404, detail="注意事项不存在")
-
-    from fastapi.templating import Jinja2Templates
-
     templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
@@ -487,14 +371,10 @@ async def edit_material_note_modal(request: Request, note_id: int, db: Session =
 
 
 @router.get("/writing-styles/{style_id}/edit", response_class=HTMLResponse)
-async def edit_writing_style_modal(request: Request, style_id: int, db: Session = Depends(get_db)):
-    """返回编辑文风的模态框"""
-    style = db.query(WritingStyle).filter(WritingStyle.id == style_id).first()
+async def edit_writing_style_modal(request: Request, style_id: int, repo: RepoDep):
+    style = repo.get_writing_style(style_id)
     if not style:
         raise HTTPException(status_code=404, detail="文风不存在")
-
-    from fastapi.templating import Jinja2Templates
-
     templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
@@ -511,14 +391,12 @@ async def edit_writing_style_modal(request: Request, style_id: int, db: Session 
 @router.post("/book-init-data", response_class=HTMLResponse)
 async def create_book_init_data(
     request: Request,
+    repo: RepoDep,
     title: str = Form(...),
     content: str = Form(""),
     book_title: str = Form(""),
-    db: Session = Depends(get_db),
 ):
-    new_data = BookInitData(title=title, content=content, book_title=book_title)
-    db.add(new_data)
-    db.commit()
+    repo.create_book_init_data(title=title, content=content, book_title=book_title)
     return RedirectResponse(url="/materials?tab=init", status_code=303)
 
 
@@ -526,43 +404,31 @@ async def create_book_init_data(
 async def update_book_init_data(
     request: Request,
     data_id: int,
+    repo: RepoDep,
     title: str = Form(...),
     content: str = Form(""),
     book_title: str = Form(""),
-    db: Session = Depends(get_db),
 ):
-    data = db.query(BookInitData).filter(BookInitData.id == data_id).first()
-    if not data:
+    updated = repo.update_book_init_data(data_id, title=title, content=content, book_title=book_title)
+    if not updated:
         raise HTTPException(status_code=404, detail="初始化数据不存在")
-    data.title = title
-    data.content = content
-    data.book_title = book_title
-    data.updated_at = get_china_now()
-    db.commit()
     return RedirectResponse(url="/materials?tab=init", status_code=303)
 
 
 @router.post("/book-init-data/{data_id}/delete", response_class=HTMLResponse)
-async def delete_book_init_data(data_id: int, db: Session = Depends(get_db)):
-    data = db.query(BookInitData).filter(BookInitData.id == data_id).first()
-    if not data:
+async def delete_book_init_data(data_id: int, repo: RepoDep):
+    if not repo.delete_book_init_data(data_id):
         raise HTTPException(status_code=404, detail="初始化数据不存在")
-    db.delete(data)
-    db.commit()
     return RedirectResponse(url="/materials?tab=init", status_code=303)
 
 
 @router.get("/book-init-data/{data_id}/edit", response_class=HTMLResponse)
-async def edit_book_init_data_modal(request: Request, data_id: int, db: Session = Depends(get_db)):
-    """返回编辑初始化数据的模态框"""
-    data = db.query(BookInitData).filter(BookInitData.id == data_id).first()
-    if not data:
+async def edit_book_init_data_modal(request: Request, data_id: int, repo: RepoDep):
+    item = repo.get_book_init_data(data_id)
+    if not item:
         raise HTTPException(status_code=404, detail="初始化数据不存在")
-
-    from fastapi.templating import Jinja2Templates
-
     templates = get_templates()
     return templates.TemplateResponse(
         "partials/edit_modal.html",
-        {"request": request, "item": data, "item_type": "init", "action_url": f"/materials/book-init-data/{data_id}"},
+        {"request": request, "item": item, "item_type": "init", "action_url": f"/materials/book-init-data/{data_id}"},
     )

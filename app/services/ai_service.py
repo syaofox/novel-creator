@@ -11,7 +11,7 @@ from app.constants import (
     DEFAULT_MAX_TOKENS,
     DEFAULT_REASONING_EFFORT,
 )
-from app.models import Book
+from app.repositories.file_repository import Book
 from app.utils.ai_utils import get_config_value, get_temperature_top_p_tokens
 
 logger = logging.getLogger(__name__)

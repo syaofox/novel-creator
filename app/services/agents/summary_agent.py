@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 
 from openai.types.chat import ChatCompletionMessageParam
 
-from app.models import Book
+from app.repositories.file_repository import Book
 from app.utils import prompts
 from app.services.agents.base_agent import BaseAgent, AgentFactory
 from app.services.ai_service import AiService

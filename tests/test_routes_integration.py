@@ -1,57 +1,29 @@
-"""Integration tests for FastAPI routes.
+"""Integration tests for FastAPI routes using FileRepository."""
 
-Uses a file-based temp SQLite database to avoid in-memory isolation issues.
-All POST requests that create resources use follow_redirects=False to check
-for 303 redirect responses.
-"""
-
-import atexit
 import os
 import tempfile
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.main import app
-from app.database import Base, get_db
-from app.models import Book, Chapter, GlobalConfig
-
-_tmp_fd, _tmp_path = tempfile.mkstemp(suffix=".db")
-
-
-def _cleanup():
-    os.close(_tmp_fd)
-    try:
-        os.unlink(_tmp_path)
-    except OSError:
-        pass
-
-
-atexit.register(_cleanup)
-
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{_tmp_path}"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
+from app.core.dependencies import get_repo
+from app.repositories.file_repository import FileRepository, Book
 
 
 @pytest.fixture
 def client():
-    app.dependency_overrides[get_db] = override_get_db
-    Base.metadata.create_all(bind=engine)
+    tmpdir = tempfile.mkdtemp()
+    book_dir = os.path.join(tmpdir, "books")
+    data_dir = os.path.join(tmpdir, "data")
+    os.makedirs(book_dir)
+    os.makedirs(data_dir)
+    test_repo = FileRepository(data_dir=data_dir, books_dir=book_dir)
+
+    app.dependency_overrides[get_repo] = lambda: test_repo
     with TestClient(app) as test_client:
         yield test_client
-    Base.metadata.drop_all(bind=engine)
-    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_repo, None)
 
 
 class TestHomePage:
@@ -113,10 +85,10 @@ class TestBooksRoutes:
         response = client.get("/books/99999")
         assert response.status_code == 404
 
-    def _create_book(self, client, title="测试小说"):
+    def _create_book(self, client):
         response = client.post(
             "/books/",
-            data={"title": title, "genre": "仙侠", "target_chapters": 3},
+            data={"title": "测试小说", "genre": "仙侠", "target_chapters": 3},
             follow_redirects=False,
         )
         assert response.status_code == 303
@@ -124,16 +96,13 @@ class TestBooksRoutes:
 
     def test_finish_book(self, client):
         book_id = self._create_book(client)
-
         response = client.post(f"/books/{book_id}/finish", follow_redirects=False)
         assert response.status_code == 303
 
     def test_delete_book(self, client):
         book_id = self._create_book(client)
-
         response = client.post(f"/books/{book_id}/delete", follow_redirects=False)
         assert response.status_code == 303
-
         response = client.get(f"/books/{book_id}")
         assert response.status_code == 404
 
@@ -141,7 +110,6 @@ class TestBooksRoutes:
 class TestChapterRoutes:
     def test_write_chapter_form(self, client):
         book_id = self._create_book(client)
-
         response = client.get(f"/books/{book_id}/chapters/write")
         assert response.status_code == 200
         assert "写第" in response.text
@@ -171,7 +139,6 @@ class TestChapterRoutes:
 
     def test_save_chapter(self, client):
         book_id = self._create_book(client)
-
         response = client.post(
             f"/books/{book_id}/chapters/save",
             data={"chapter_number": 1, "content": "第一章正文内容"},
@@ -181,25 +148,21 @@ class TestChapterRoutes:
 
     def test_read_chapter(self, client):
         book_id = self._create_book(client)
-
         client.post(
             f"/books/{book_id}/chapters/save",
             data={"chapter_number": 1, "content": "第一章正文内容"},
         )
-
         response = client.get(f"/books/{book_id}/chapters/1")
         assert response.status_code == 200
         assert "第一章正文内容" in response.text
 
     def test_read_nonexistent_chapter(self, client):
         book_id = self._create_book(client)
-
         response = client.get(f"/books/{book_id}/chapters/99")
         assert response.status_code == 404
 
     def test_add_chapter(self, client):
         book_id = self._create_book(client)
-
         response = client.post(
             f"/books/{book_id}/chapters/add",
             data={"position": 1, "title": "新章节", "core_event": "新事件"},
@@ -208,19 +171,17 @@ class TestChapterRoutes:
 
     def test_delete_chapter(self, client):
         book_id = self._create_book(client)
-
         client.post(
             f"/books/{book_id}/chapters/save",
             data={"chapter_number": 1, "content": "第一章内容"},
         )
-
         response = client.delete(f"/books/{book_id}/chapters/1")
         assert response.status_code == 200
 
-    def _create_book(self, client, title="测试小说"):
+    def _create_book(self, client):
         response = client.post(
             "/books/",
-            data={"title": title, "genre": "仙侠", "target_chapters": 5},
+            data={"title": "测试小说", "genre": "仙侠", "target_chapters": 5},
             follow_redirects=False,
         )
         assert response.status_code == 303
@@ -239,7 +200,6 @@ class TestSettingsRoutes:
             follow_redirects=False,
         )
         book_id = int(response.headers["location"].split("/")[-1])
-
         response = client.get(f"/books/{book_id}/settings/")
         assert response.status_code == 200
 
@@ -259,12 +219,10 @@ class TestExportRoute:
             follow_redirects=False,
         )
         book_id = int(response.headers["location"].split("/")[-1])
-
         client.post(
             f"/books/{book_id}/chapters/save",
             data={"chapter_number": 1, "content": "第一章正文"},
         )
-
         response = client.get(f"/books/{book_id}/export")
         assert response.status_code == 200
         assert "测试小说" in response.text

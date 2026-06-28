@@ -4,11 +4,8 @@ import logging
 
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
-from sqlalchemy.orm import Session
 
-from app.core.dependencies import DbSession, NovelServiceDep, NovelService
-from app.constants import TEMPLATE_DIR
-from app.models import get_china_now
+from app.core.dependencies import RepoDep, NovelServiceDep
 from app.utils.helpers import get_templates
 
 logger = logging.getLogger(__name__)
@@ -17,7 +14,7 @@ router = APIRouter(prefix="/books/{book_id}/ai", tags=["ai"])
 
 
 @router.post("/update-summary", response_class=HTMLResponse)
-async def update_summary(request: Request, book_id: int, db: DbSession, service: NovelServiceDep):
+async def update_summary(request: Request, book_id: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
@@ -50,7 +47,7 @@ async def update_summary(request: Request, book_id: int, db: DbSession, service:
 
 
 @router.post("/stream-summary", response_class=HTMLResponse)
-async def stream_summary(book_id: int, db: DbSession, service: NovelServiceDep, chapter: int | None = Form(None)):
+async def stream_summary(book_id: int, repo: RepoDep, service: NovelServiceDep, chapter: int | None = Form(None)):
     book = service.get_book(book_id)
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
@@ -88,7 +85,7 @@ async def stream_summary(book_id: int, db: DbSession, service: NovelServiceDep, 
 @router.post("/save-summary", response_class=HTMLResponse)
 async def save_summary(
     book_id: int,
-    db: DbSession,
+    repo: RepoDep,
     service: NovelServiceDep,
     summary: str = Form(...),
     chapter: int | None = Form(None),
@@ -101,28 +98,26 @@ async def save_summary(
 
     service.save_summary(book, summary)
 
-    # 如果提供了标题和核心事件，同时更新章节
+    chapter_number: int | None = None
     if (title or core_event) and chapter:
         chapter_number = chapter
     elif title or core_event:
         chapter_number = book.current_chapter or 1
-    else:
-        chapter_number = None
 
     if chapter_number and (title or core_event):
-        chapter_obj = service.get_chapter(book_id, chapter_number)
-        if chapter_obj:
+        ch = service.get_chapter(book_id, chapter_number)
+        if ch:
             if title:
-                service.repo.update_chapter(chapter_obj, title=title)
+                ch.title = title
             if core_event:
-                chapter_obj.core_event = core_event
-                service.repo.db.commit()
+                ch.core_event = core_event
+            repo.update_chapter(ch)
 
     return "<span class='text-success'>保存成功</span>"
 
 
 @router.post("/update-style", response_class=HTMLResponse)
-async def update_style(request: Request, book_id: int, db: DbSession, service: NovelServiceDep):
+async def update_style(request: Request, book_id: int, repo: RepoDep, service: NovelServiceDep):
     book = service.get_book(book_id)
     if not book:
         return HTMLResponse(content="书籍不存在", status_code=404)
