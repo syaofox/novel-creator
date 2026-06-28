@@ -28,7 +28,7 @@ async def settings_form(request: Request, book_id: int, repo: RepoDep):
     if not book:
         raise HTTPException(status_code=404, detail="书籍不存在")
     templates = get_templates()
-    return templates.TemplateResponse(request, "settings.html", {"book": book})
+    return templates.TemplateResponse(request, "settings.html", {"book": book, "prompt_defaults": PROMPT_DEFAULTS})
 
 
 @book_settings_router.post("/", response_class=HTMLResponse)
